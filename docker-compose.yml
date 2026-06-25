@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: attendance_mysql_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: attendance_db
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    container_name: attendance_django_backend
+    restart: always
+    command: gunicorn --bind 0.0.0.0:8000 attendance_saas.wsgi:application
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=prod-secret-key-123456
+      - DJANGO_SETTINGS_MODULE=attendance_saas.settings.prod
+      - DB_NAME=attendance_db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_HOST=db
+      - DB_PORT=3306
+      - ALLOWED_HOSTS=*
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: attendance_react_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

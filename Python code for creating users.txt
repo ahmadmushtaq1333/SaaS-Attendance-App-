@@ -1,0 +1,32 @@
+from django.contrib.auth import get_user_model
+from apps.institutions.models import Institution
+from apps.courses.models import Course, Enrollment
+
+User = get_user_model()
+
+# 1. Create Institution
+inst, _ = Institution.objects.get_or_create(name="UETP", slug="uetp")
+
+# 2. Create Teacher
+teacher = User.objects.create_user(
+    email="Ahmad@uetp.edu.pk",
+    password="////",
+    role="teacher",
+    institution=inst
+)
+
+# 3. Create Student
+student = User.objects.create_user(
+    email="Zohaib@uetp.edu.pk",
+    password="////",
+    role="student",
+    institution=inst
+)
+
+# 4. Create Course & Enrollment
+course = Course.objects.create(name="Introduction To Database ", institution=inst, teacher=teacher)
+Enrollment.objects.create(student=student, course=course)
+
+print("Mock accounts initialized successfully!")
+print("Teacher login -> Email: Ahmad@uetp.edu.pk | Password: ////")
+print("Student login -> Email: Zohaib@uetp.edu.pk | Password: ////")

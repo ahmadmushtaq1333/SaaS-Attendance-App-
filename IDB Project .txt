@@ -1,0 +1,287 @@
+project:
+  name: "Attendance Management System (SaaS)"
+  version: "1.0"
+  architecture:
+    backend: "Django + Django REST Framework"
+    database: "SQLite/MySQL"
+    deployment: "Docker"
+
+actors:
+  - id: admin
+    description: "Manages institution, users, and courses"
+
+  - id: teacher
+    description: "Creates attendance sessions and monitors reports"
+
+  - id: student
+    description: "Scans QR code and marks attendance"
+
+# =========================
+# FUNCTIONAL REQUIREMENTS
+# =========================
+
+requirements:
+
+  - id: FR-01
+    type: functional
+    name: "User Authentication"
+    actor: [admin, teacher, student]
+
+    input:
+      email: string
+      password: string
+
+    process:
+      - validate email format
+      - authenticate credentials
+
+    output:
+      success: boolean
+      token: string
+
+    constraints:
+      response_time: "<=2 seconds"
+      session_expiry: "30 minutes"
+
+    errors:
+      - condition: "invalid credentials"
+        response: "error: Invalid email or password"
+
+    acceptance_criteria:
+      - given: "valid email and password"
+        when: "user logs in"
+        then: "system returns authentication token"
+      - given: "invalid credentials"
+        when: "user logs in"
+        then: "system rejects request"
+
+
+
+  - id: FR-02
+    type: functional
+    name: "Create Attendance Session"
+    actor: teacher
+
+    input:
+      course_id: integer
+
+    process:
+      - generate session_id
+      - create start_time
+      - set expiry_time = start_time + 120 seconds
+
+    output:
+      session_id: integer
+      qr_code: string
+
+    constraints:
+      qr_validity: "120 seconds exactly"
+
+    acceptance_criteria:
+      - given: "teacher creates session"
+        when: "session is generated"
+        then: "QR code is valid for exactly 120 seconds"
+
+
+
+  - id: FR-03
+    type: functional
+    name: "QR Code Attendance Marking"
+    actor: student
+
+    input:
+      student_id: integer
+      session_id: integer
+      timestamp: datetime
+
+    process:
+      - check session validity
+      - check expiry_time
+      - check enrollment
+      - check duplicate attendance
+
+    output:
+      attendance_status: "success | rejected"
+
+    constraints:
+      processing_time: "<=2 seconds"
+
+    errors:
+      - condition: "QR expired"
+        response: "QR code expired"
+      - condition: "duplicate attendance"
+        response: "Attendance already recorded"
+      - condition: "not enrolled"
+        response: "Student not enrolled"
+
+    acceptance_criteria:
+      - given: "QR is valid and student enrolled"
+        when: "student scans QR"
+        then: "attendance is recorded"
+      - given: "QR expired"
+        when: "student scans"
+        then: "attendance is rejected"
+
+
+
+  - id: FR-04
+    type: functional
+    name: "Offline Attendance Support"
+    actor: student
+
+    input:
+      student_id: integer
+      session_id: integer
+      timestamp: datetime
+
+    process:
+      - if network unavailable:
+          store locally
+      - if network restored:
+          sync data to server
+
+    output:
+      sync_status: "pending | synced"
+
+    constraints:
+      sync_time: "<=10 seconds after reconnect"
+
+    acceptance_criteria:
+      - given: "no internet connection"
+        when: "student scans QR"
+        then: "data is stored locally"
+      - given: "internet restored"
+        when: "sync triggered"
+        then: "attendance is uploaded within 10 seconds"
+
+
+
+  - id: FR-05
+    type: functional
+    name: "Attendance Reporting"
+    actor: teacher
+
+    input:
+      course_id: integer
+
+    process:
+      - calculate attendance_percentage
+      - identify defaulters
+
+    output:
+      report:
+        attendance_percentage: float
+        defaulters_list: array
+
+    constraints:
+      defaulter_threshold: "<75%"
+      response_time: "<=5 seconds"
+
+    acceptance_criteria:
+      - given: "attendance data exists"
+        when: "report is requested"
+        then: "system calculates percentage accurately"
+      - given: "student attendance <75%"
+        when: "report is generated"
+        then: "student listed as defaulter"
+
+
+
+# =========================
+# NON-FUNCTIONAL REQUIREMENTS
+# =========================
+
+non_functional:
+
+  performance:
+    api_response_time: "<=2 seconds"
+    concurrent_users: ">=100 users"
+
+  security:
+    password_hashing: "required"
+    authentication: "token-based"
+    role_based_access: true
+
+  reliability:
+    uptime: ">=99%"
+
+  scalability:
+    multi_tenant_support: true
+
+  usability:
+    qr_scan_time: "<=3 seconds"
+
+
+
+# =========================
+# DATA MODEL REFERENCES
+# =========================
+
+entities:
+  - User(id, email, password, role)
+  - Course(id, name, teacher_id)
+  - Enrollment(id, student_id, course_id)
+  - AttendanceSession(id, course_id, start_time, expiry_time)
+  - QRToken(id, session_id, expiry_time)
+  - AttendanceRecord(id, student_id, session_id, timestamp)
+
+
+
+# =========================
+# IMPLEMENTATION STEPS
+# =========================
+
+implementation_plan:
+
+  - step: 1
+    name: "Project Setup"
+    actions:
+      - install django
+      - install djangorestframework
+      - create project and app
+
+  - step: 2
+    name: "Database Design"
+    actions:
+      - create models for all entities
+      - apply migrations
+
+  - step: 3
+    name: "API Development"
+    actions:
+      - implement login API
+      - implement session API
+      - implement attendance API
+
+  - step: 4
+    name: "QR Integration"
+    actions:
+      - generate QR code with session_id
+      - enforce 120-second expiry
+
+  - step: 5
+    name: "Mobile App"
+    actions:
+      - scan QR code
+      - implement offline storage
+      - implement sync mechanism
+
+  - step: 6
+    name: "Reporting Module"
+    actions:
+      - calculate attendance percentage
+      - generate defaulters list
+
+  - step: 7
+    name: "Docker Deployment"
+    actions:
+      - create Dockerfile
+      - create docker-compose.yml
+      - test deployment
+
+  - step: 8
+    name: "Testing"
+    actions:
+      - validate QR expiry
+      - test duplicate prevention
+      - test offline sync
