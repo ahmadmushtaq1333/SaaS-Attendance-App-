@@ -113,7 +113,7 @@ export default function Reports({ courseId, onBack }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <button onClick={onBack} className="btn-secondary" style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: "6px" }}>
           <ArrowLeft size={16} /> Back

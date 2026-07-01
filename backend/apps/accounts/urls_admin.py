@@ -6,11 +6,17 @@ from .views_admin import (
     AdminCourseViewSet,
     AdminEnrollmentViewSet,
     AdminSessionResetView,
-    AdminSessionViewSet
+    AdminSessionViewSet,
+    AdminDepartmentViewSet,
+    AdminSemesterViewSet,
+    AdminSectionViewSet
 )
 
 router = DefaultRouter()
 router.register("institutions", AdminInstitutionViewSet, basename="admin-institutions")
+router.register("departments", AdminDepartmentViewSet, basename="admin-departments")
+router.register("semesters", AdminSemesterViewSet, basename="admin-semesters")
+router.register("sections", AdminSectionViewSet, basename="admin-sections")
 router.register("users", AdminUserViewSet, basename="admin-users")
 router.register("courses", AdminCourseViewSet, basename="admin-courses")
 router.register("enrollments", AdminEnrollmentViewSet, basename="admin-enrollments")

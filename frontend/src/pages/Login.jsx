@@ -28,7 +28,7 @@ export default function Login({ onLoginSuccess }) {
 
   return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "90vh" }}>
-      <div className="glass-panel" style={{ padding: "40px", width: "100%", maxWidth: "400px" }}>
+      <div className="glass-panel animate-fade-in-up" style={{ padding: "40px", width: "100%", maxWidth: "400px" }}>
         <h2 style={{ textAlign: "center", marginBottom: "24px", color: "white" }}>Sign In</h2>
         {error && (
           <div style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid #ef4444", borderRadius: "8px", padding: "12px", color: "#f87171", marginBottom: "16px", fontSize: "0.9rem" }}>

@@ -76,7 +76,7 @@ export default function Dashboard({ user, onViewReports }) {
   }, [timeLeft, activeSession]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "700" }}>Teacher Dashboard</h1>

@@ -9,7 +9,7 @@ export default function AdminDashboard({ user }) {
   const [activeTab, setActiveTab] = useState("institutions"); // institutions, users, courses, sessions
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       <div>
         <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "700" }}>System Administrator Dashboard</h1>
         <p style={{ color: "#9ca3af", margin: "4px 0 0 0" }}>Logged in as: {user.email} (System Admin)</p>
@@ -48,7 +48,7 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* Dynamic module content */}
-      <div style={{ marginTop: "12px" }}>
+      <div key={activeTab} className="animate-fade-in" style={{ marginTop: "12px" }}>
         {activeTab === "institutions" && <InstitutionsPanel />}
         {activeTab === "users" && <UsersPanel />}
         {activeTab === "courses" && <CoursesPanel />}

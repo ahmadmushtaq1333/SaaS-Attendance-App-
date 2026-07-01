@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from apps.institutions.models import Institution
+from apps.institutions.models import Institution, Department, Semester, Section
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -28,6 +28,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
     institution = models.ForeignKey(
         Institution, on_delete=models.CASCADE, null=True, blank=True, related_name="users"
+    )
+    department = models.ForeignKey(
+        Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
+    )
+    semester = models.ForeignKey(
+        Semester, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
+    )
+    section = models.ForeignKey(
+        Section, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

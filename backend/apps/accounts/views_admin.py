@@ -2,7 +2,7 @@ from rest_framework import viewsets, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.accounts.permissions import IsAdminUser
-from apps.institutions.models import Institution
+from apps.institutions.models import Institution, Department, Semester, Section
 from apps.courses.models import Course, Enrollment
 from apps.attendance.models import AttendanceSession
 from django.contrib.auth import get_user_model
@@ -13,7 +13,10 @@ from .serializers_admin import (
     UserAdminSerializer,
     CourseAdminSerializer,
     EnrollmentAdminSerializer,
-    SessionAdminSerializer
+    SessionAdminSerializer,
+    DepartmentAdminSerializer,
+    SemesterAdminSerializer,
+    SectionAdminSerializer
 )
 
 User = get_user_model()
@@ -28,10 +31,49 @@ class AdminInstitutionViewSet(viewsets.ModelViewSet):
             course_count=Count("courses", distinct=True)
         )
 
+class AdminDepartmentViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = DepartmentAdminSerializer
+    
+    def get_queryset(self):
+        queryset = Department.objects.all()
+        inst_id = self.request.query_params.get("institution")
+        if inst_id:
+            queryset = queryset.filter(institution_id=inst_id)
+        return queryset
+
+class AdminSemesterViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = SemesterAdminSerializer
+    
+    def get_queryset(self):
+        queryset = Semester.objects.all()
+        dept_id = self.request.query_params.get("department")
+        if dept_id:
+            queryset = queryset.filter(department_id=dept_id)
+        return queryset
+
+class AdminSectionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    serializer_class = SectionAdminSerializer
+    
+    def get_queryset(self):
+        queryset = Section.objects.all()
+        sem_id = self.request.query_params.get("semester")
+        if sem_id:
+            queryset = queryset.filter(semester_id=sem_id)
+        return queryset
+
 class AdminUserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = UserAdminSerializer
-    queryset = User.objects.all()
+    
+    def get_queryset(self):
+        queryset = User.objects.all()
+        inst_id = self.request.query_params.get("institution")
+        if inst_id:
+            queryset = queryset.filter(institution_id=inst_id)
+        return queryset
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
