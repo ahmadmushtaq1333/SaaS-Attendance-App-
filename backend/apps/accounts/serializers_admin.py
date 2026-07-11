@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.institutions.models import Institution, Department, Semester, Section
-from apps.courses.models import Course, Enrollment
+from apps.courses.models import Course, Enrollment, CourseInstructor
 from apps.attendance.models import AttendanceSession
 from django.contrib.auth import get_user_model
 
@@ -40,15 +40,31 @@ class SectionAdminSerializer(serializers.ModelSerializer):
 
 class UserAdminSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
-    institution_name = serializers.CharField(source="institution.name", read_only=True)
-    department_name = serializers.CharField(source="department.name", read_only=True)
-    semester_number = serializers.CharField(source="semester.number", read_only=True)
+    institution_name = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    semester_number = serializers.SerializerMethodField()
     section_name = serializers.CharField(source="section.name", read_only=True)
 
     class Meta:
         model = User
-        fields = ("id", "email", "role", "institution", "institution_name", "department", "department_name", "semester", "semester_number", "section", "section_name", "is_active", "date_joined", "password")
+        fields = (
+            "id", "email", "role", "institution", "institution_name",
+            "department", "department_name", "semester_number",
+            "section", "section_name", "is_active", "date_joined", "password"
+        )
         read_only_fields = ("id", "date_joined")
+
+    def get_institution_name(self, obj):
+        inst = obj.get_institution
+        return inst.name if inst else None
+
+    def get_department_name(self, obj):
+        dept = obj.get_department
+        return dept.name if dept else None
+
+    def get_semester_number(self, obj):
+        sem = obj.get_semester
+        return sem.number if sem else None
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
@@ -69,14 +85,86 @@ class UserAdminSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class CourseAdminSerializer(serializers.ModelSerializer):
-    teacher_email = serializers.EmailField(source="teacher.email", read_only=True)
+
+class NestedInstructorSerializer(serializers.Serializer):
+    id = serializers.IntegerField(source="instructor.id", read_only=True)
+    email = serializers.EmailField(source="instructor.email", read_only=True)
+    is_primary = serializers.BooleanField(read_only=True)
+
+class NestedStudentSerializer(serializers.ModelSerializer):
+    enrollment_id = serializers.IntegerField(source="id", read_only=True)
+    student_id = serializers.IntegerField(source="student.id", read_only=True)
+    email = serializers.EmailField(source="student.email", read_only=True)
+
+    class Meta:
+        model = Enrollment
+        fields = ("enrollment_id", "student_id", "email")
+
+class CourseAdminReadSerializer(serializers.ModelSerializer):
+    institution = InstitutionAdminSerializer(read_only=True)
+    department = DepartmentAdminSerializer(read_only=True)
+    section = SectionAdminSerializer(read_only=True)
+    instructors = NestedInstructorSerializer(source="course_instructors", many=True, read_only=True)
     enrollment_count = serializers.IntegerField(read_only=True, default=0)
+    enrolled_students = NestedStudentSerializer(source="enrollments", many=True, read_only=True)
 
     class Meta:
         model = Course
-        fields = ("id", "name", "institution", "teacher", "teacher_email", "enrollment_count", "created_at")
-        read_only_fields = ("id", "teacher_email", "created_at")
+        fields = (
+            "id", "name", "institution", "department",
+            "section", "instructors", "enrollment_count", "enrolled_students", "created_at"
+        )
+        read_only_fields = ("id", "created_at")
+
+
+class CourseAdminWriteSerializer(serializers.ModelSerializer):
+    teacher_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
+
+    class Meta:
+        model = Course
+        fields = (
+            "id", "name", "institution", "department",
+            "section", "teacher_ids"
+        )
+
+    def create(self, validated_data):
+        teacher_ids = validated_data.pop("teacher_ids", [])
+        course = Course.objects.create(**validated_data)
+        for i, t_id in enumerate(teacher_ids):
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                teacher = User.objects.get(id=t_id, role="teacher")
+                CourseInstructor.objects.create(
+                    course=course,
+                    instructor=teacher,
+                    is_primary=(i == 0)
+                )
+            except User.DoesNotExist:
+                pass
+        return course
+
+    def update(self, instance, validated_data):
+        teacher_ids = validated_data.pop("teacher_ids", None)
+        instance = super().update(instance, validated_data)
+        if teacher_ids is not None:
+            instance.course_instructors.all().delete()
+            for i, t_id in enumerate(teacher_ids):
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                try:
+                    teacher = User.objects.get(id=t_id, role="teacher")
+                    CourseInstructor.objects.create(
+                        course=instance,
+                        instructor=teacher,
+                        is_primary=(i == 0)
+                    )
+                except User.DoesNotExist:
+                    pass
+        return instance
+
 
 class EnrollmentAdminSerializer(serializers.ModelSerializer):
     student_email = serializers.EmailField(source="student.email", read_only=True)

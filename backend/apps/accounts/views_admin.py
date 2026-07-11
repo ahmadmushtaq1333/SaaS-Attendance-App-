@@ -6,18 +6,21 @@ from apps.institutions.models import Institution, Department, Semester, Section
 from apps.courses.models import Course, Enrollment
 from apps.attendance.models import AttendanceSession
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count, Q
+from rest_framework.decorators import action
 from django.utils import timezone
 from .serializers_admin import (
     InstitutionAdminSerializer,
     UserAdminSerializer,
-    CourseAdminSerializer,
+    CourseAdminReadSerializer,
+    CourseAdminWriteSerializer,
     EnrollmentAdminSerializer,
     SessionAdminSerializer,
     DepartmentAdminSerializer,
     SemesterAdminSerializer,
     SectionAdminSerializer
 )
+from django_filters.rest_framework import DjangoFilterBackend
 
 User = get_user_model()
 
@@ -72,12 +75,94 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         queryset = User.objects.all()
         inst_id = self.request.query_params.get("institution")
         if inst_id:
-            queryset = queryset.filter(institution_id=inst_id)
+            queryset = queryset.filter(
+                Q(institution_id=inst_id) | 
+                Q(section__semester__department__institution_id=inst_id)
+            )
         return queryset
+
+    @action(detail=False, methods=["post"], url_path="bulk-generate")
+    def bulk_generate(self, request):
+        section_id = request.data.get("section_id")
+        count = request.data.get("count", 1)
+        prefix = request.data.get("prefix", "std_")
+        course_id = request.data.get("course_id")
+        
+        if not section_id:
+            return Response({"error": "section_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            section = Section.objects.get(id=section_id)
+        except Section.DoesNotExist:
+            return Response({"error": "Section not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        course = None
+        if course_id:
+            try:
+                course = Course.objects.get(id=course_id)
+            except Course.DoesNotExist:
+                return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        institution = section.semester.department.institution
+        domain = institution.slug or "uni"
+        
+        created_users = []
+        import string
+        import random
+        from django.db import transaction
+        
+        try:
+            with transaction.atomic():
+                for i in range(1, int(count) + 1):
+                    attempts = 0
+                    while attempts < 100:
+                        suffix = f"{i:03d}" if int(count) > 1 or attempts > 0 else f"{random.randint(100, 999)}"
+                        email = f"{prefix}{suffix}@{domain}.edu".lower()
+                        if not User.objects.filter(email=email).exists():
+                            break
+                        attempts += 1
+                        prefix = prefix + str(random.randint(0, 9))
+                    
+                    password_chars = string.ascii_letters + string.digits
+                    password = "".join(random.choice(password_chars) for _ in range(8))
+                    
+                    user = User.objects.create_user(
+                        email=email,
+                        password=password,
+                        role="student",
+                        section=section
+                    )
+                    
+                    if course:
+                        Enrollment.objects.create(
+                            student=user,
+                            course=course
+                        )
+
+                    created_users.append({
+                        "email": email,
+                        "password": password,
+                        "role": "student",
+                        "section_name": section.name,
+                        "semester_number": section.semester.number,
+                        "department_name": section.semester.department.name,
+                        "enrolled_course": course.name if course else None
+                    })
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return Response({"users": created_users, "message": f"Successfully generated {len(created_users)} students."}, status=status.HTTP_201_CREATED)
+
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = CourseAdminSerializer
+    serializer_class = CourseAdminReadSerializer
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return CourseAdminWriteSerializer
+        return CourseAdminReadSerializer
 
     def get_queryset(self):
         return Course.objects.all().annotate(
@@ -114,3 +199,5 @@ class AdminSessionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = SessionAdminSerializer
     queryset = AttendanceSession.objects.all().order_by("-start_time")
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["course"]

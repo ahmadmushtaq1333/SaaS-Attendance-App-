@@ -25,7 +25,7 @@ class AttendanceOverrideView(views.APIView):
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Security check: Ensure the teacher teaches this course
-        if session.course.teacher != request.user:
+        if not session.course.course_instructors.filter(instructor=request.user).exists():
             return Response({"error": "You do not have permission to manage this session's course"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -33,10 +33,16 @@ class AttendanceOverrideView(views.APIView):
         except User.DoesNotExist:
             return Response({"error": "Student account not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        from apps.courses.models import Enrollment
+        try:
+            enrollment = Enrollment.objects.get(student=student, course=session.course)
+        except Enrollment.DoesNotExist:
+            return Response({"error": "Student is not enrolled in this course"}, status=status.HTTP_400_BAD_REQUEST)
+
         if action == "present":
             # Mark the student present (create or update record)
             record, created = AttendanceRecord.objects.get_or_create(
-                student=student,
+                enrollment=enrollment,
                 session=session,
                 defaults={
                     "timestamp": timezone.now(),
@@ -47,7 +53,7 @@ class AttendanceOverrideView(views.APIView):
         
         elif action == "absent":
             # Remove attendance record to mark them absent
-            deleted_count, _ = AttendanceRecord.objects.filter(student=student, session=session).delete()
+            deleted_count, _ = AttendanceRecord.objects.filter(enrollment=enrollment, session=session).delete()
             return Response({"message": f"Successfully marked student {student.email} as absent.", "deleted": deleted_count > 0})
 
         else:

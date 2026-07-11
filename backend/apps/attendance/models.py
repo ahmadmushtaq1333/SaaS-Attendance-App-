@@ -19,15 +19,16 @@ class QRToken(models.Model):
     def __str__(self):
         return f"Token {self.token_uuid} for Session {self.session.id}"
 
+from apps.courses.models import Enrollment
+
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = (
         ("pending", "Pending"),
         ("synced", "Synced"),
     )
-    student = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+    enrollment = models.ForeignKey(
+        Enrollment,
         on_delete=models.CASCADE,
-        limit_choices_to={"role": "student"},
         related_name="attendance_records"
     )
     session = models.ForeignKey(AttendanceSession, on_delete=models.CASCADE, related_name="records")
@@ -35,7 +36,17 @@ class AttendanceRecord(models.Model):
     sync_status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="synced")
 
     class Meta:
-        unique_together = ("student", "session")
+        unique_together = ("enrollment", "session")
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.enrollment.course != self.session.course:
+            raise ValidationError("Student enrollment course must match the session course.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.student.email} - Session {self.session.id} ({self.sync_status})"
+        return f"{self.enrollment.student.email} - Session {self.session.id} ({self.sync_status})"
+

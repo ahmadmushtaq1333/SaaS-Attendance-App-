@@ -12,7 +12,10 @@ User = get_user_model()
 
 class AttendanceTestCase(APITestCase):
     def setUp(self):
+        from apps.institutions.models import Department
+        from apps.courses.models import CourseInstructor
         self.institution = Institution.objects.create(name="MIT", slug="mit")
+        self.department = Department.objects.create(name="Computer Science", institution=self.institution)
         self.teacher = User.objects.create_user(
             email="teacher@mit.edu", password="password123", role="teacher", institution=self.institution
         )
@@ -22,7 +25,8 @@ class AttendanceTestCase(APITestCase):
         self.student_unenrolled = User.objects.create_user(
             email="stranger@mit.edu", password="password123", role="student", institution=self.institution
         )
-        self.course = Course.objects.create(name="Web Dev", institution=self.institution, teacher=self.teacher)
+        self.course = Course.objects.create(name="Web Dev", institution=self.institution, department=self.department)
+        CourseInstructor.objects.create(course=self.course, instructor=self.teacher, is_primary=True)
         Enrollment.objects.create(student=self.student, course=self.course)
 
     def test_session_creation(self):

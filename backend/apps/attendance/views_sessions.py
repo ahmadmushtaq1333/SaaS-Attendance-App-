@@ -15,7 +15,7 @@ class AttendanceSessionCreateView(APIView):
 
     def get(self, request):
         # Allow teachers to retrieve all sessions they created
-        sessions = AttendanceSession.objects.filter(course__teacher=request.user).order_by("-start_time")
+        sessions = AttendanceSession.objects.filter(course__course_instructors__instructor=request.user).order_by("-start_time")
         serializer = AttendanceSessionSerializer(sessions, many=True)
         return Response(serializer.data)
 
@@ -25,7 +25,7 @@ class AttendanceSessionCreateView(APIView):
             return Response({"error": "course_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            course = Course.objects.get(id=course_id, teacher=request.user)
+            course = Course.objects.get(id=course_id, course_instructors__instructor=request.user)
         except Course.DoesNotExist:
             return Response({"error": "Course not found or you are not the teacher"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -49,7 +49,7 @@ class AttendanceSessionQRView(APIView):
 
     def get(self, request, pk):
         try:
-            session = AttendanceSession.objects.get(id=pk, course__teacher=request.user)
+            session = AttendanceSession.objects.get(id=pk, course__course_instructors__instructor=request.user)
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -61,7 +61,7 @@ class AttendanceSessionStopView(APIView):
 
     def post(self, request, pk):
         try:
-            session = AttendanceSession.objects.get(id=pk, course__teacher=request.user)
+            session = AttendanceSession.objects.get(id=pk, course__course_instructors__instructor=request.user)
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
         

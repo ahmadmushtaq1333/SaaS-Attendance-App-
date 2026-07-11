@@ -17,18 +17,9 @@ export default function Dashboard({ user, onViewReports }) {
   }, []);
 
   const fetchCourses = async () => {
-    // Fetch courses taught by this teacher from admin/courses endpoint (stub endpoint in urls.py is admin/courses but here we retrieve)
-    // We will query our Django base. In the final system we would get courses.
-    // Let's implement a quick mock fetch or default list if empty
     try {
-      // In this setup, we have institutional databases, so let's request courses.
-      // We will fallback to a state if not found.
-      const res = await API.get("/reports/course/1/").catch(() => null);
-      // Let's mock a couple of courses for full visual support
-      setCourses([
-        { id: 1, name: "Advanced Web Engineering" },
-        { id: 2, name: "Database Administration Systems" }
-      ]);
+      const res = await API.get("/auth/courses/");
+      setCourses(res.data);
     } catch (e) {
       setError("Failed to fetch courses");
     }

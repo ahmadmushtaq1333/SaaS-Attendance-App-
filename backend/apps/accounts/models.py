@@ -26,21 +26,42 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
+    
+    # Institution is direct for admin/teachers, and derived for students.
+    # To keep database constraints clean, we can make it nullable.
     institution = models.ForeignKey(
         Institution, on_delete=models.CASCADE, null=True, blank=True, related_name="users"
     )
+    # Department is direct for teachers, and derived for students.
     department = models.ForeignKey(
         Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
     )
-    semester = models.ForeignKey(
-        Semester, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
-    )
+    # Only students have a section. Semester and Department are derived from Section.
     section = models.ForeignKey(
         Section, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def get_institution(self):
+        if self.role == "student" and self.section:
+            return self.section.semester.department.institution
+        return self.institution
+
+    @property
+    def get_department(self):
+        if self.role == "student" and self.section:
+            return self.section.semester.department
+        return self.department
+
+    @property
+    def get_semester(self):
+        if self.role == "student" and self.section:
+            return self.section.semester
+        return None
+
 
     objects = CustomUserManager()
 

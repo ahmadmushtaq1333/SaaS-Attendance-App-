@@ -10,7 +10,7 @@ from datetime import timedelta
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ("id", "name", "institution", "teacher")
+        fields = ("id", "name", "institution")
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
     qr_code = serializers.SerializerMethodField()
@@ -43,5 +43,5 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
 class AttendanceRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceRecord
-        fields = ("id", "student", "session", "timestamp", "sync_status")
-        read_only_fields = ("id", "student")
+        fields = ("id", "enrollment", "session", "timestamp", "sync_status")
+        read_only_fields = ("id", "enrollment")

@@ -12,6 +12,7 @@ class QRTokenAdmin(admin.ModelAdmin):
 
 @admin.register(AttendanceRecord)
 class AttendanceRecordAdmin(admin.ModelAdmin):
-    list_display = ("student", "session", "timestamp", "sync_status")
+    list_display = ("enrollment", "session", "timestamp", "sync_status")
     list_filter = ("sync_status", "session__course")
-    search_fields = ("student__email",)
+    search_fields = ("enrollment__student__email",)
+

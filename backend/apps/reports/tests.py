@@ -11,7 +11,10 @@ User = get_user_model()
 
 class ReportsTestCase(APITestCase):
     def setUp(self):
+        from apps.institutions.models import Department
+        from apps.courses.models import CourseInstructor
         self.institution = Institution.objects.create(name="MIT", slug="mit")
+        self.department = Department.objects.create(name="Computer Science", institution=self.institution)
         self.teacher = User.objects.create_user(
             email="teacher@mit.edu", password="password123", role="teacher", institution=self.institution
         )
@@ -21,9 +24,10 @@ class ReportsTestCase(APITestCase):
         self.student2 = User.objects.create_user(
             email="student2@mit.edu", password="password123", role="student", institution=self.institution
         )
-        self.course = Course.objects.create(name="Web Dev", institution=self.institution, teacher=self.teacher)
-        Enrollment.objects.create(student=self.student1, course=self.course)
-        Enrollment.objects.create(student=self.student2, course=self.course)
+        self.course = Course.objects.create(name="Web Dev", institution=self.institution, department=self.department)
+        CourseInstructor.objects.create(course=self.course, instructor=self.teacher, is_primary=True)
+        self.enrollment1 = Enrollment.objects.create(student=self.student1, course=self.course)
+        self.enrollment2 = Enrollment.objects.create(student=self.student2, course=self.course)
 
     def test_reports_defaulter_calculation(self):
         now = timezone.now()
@@ -36,11 +40,11 @@ class ReportsTestCase(APITestCase):
         
         # student 1 attends 4/4 (100% -> Good)
         for s in [session1, session2, session3, session4]:
-            AttendanceRecord.objects.create(student=self.student1, session=s, timestamp=now)
+            AttendanceRecord.objects.create(enrollment=self.enrollment1, session=s, timestamp=now)
             
         # student 2 attends 2/4 (50% -> Defaulter < 75%)
         for s in [session1, session2]:
-            AttendanceRecord.objects.create(student=self.student2, session=s, timestamp=now)
+            AttendanceRecord.objects.create(enrollment=self.enrollment2, session=s, timestamp=now)
             
         self.client.force_authenticate(user=self.teacher)
         response = self.client.get(f"/api/reports/course/{self.course.id}/")

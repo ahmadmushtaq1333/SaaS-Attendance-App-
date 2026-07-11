@@ -11,7 +11,7 @@ class CourseReportView(APIView):
 
     def get(self, request, pk):
         try:
-            course = Course.objects.get(id=pk, teacher=request.user)
+            course = Course.objects.get(id=pk, course_instructors__instructor=request.user)
         except Course.DoesNotExist:
             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
         
@@ -28,7 +28,7 @@ class CourseReportView(APIView):
             student = enrollment.student
             # Count sessions attended by this student for this course
             attended_count = AttendanceRecord.objects.filter(
-                student=student,
+                enrollment=enrollment,
                 session__course=course
             ).count()
             

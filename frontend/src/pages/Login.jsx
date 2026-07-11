@@ -19,6 +19,8 @@ export default function Login({ onLoginSuccess }) {
       // Fetch user profile info
       const meRes = await API.get("/auth/me/");
       onLoginSuccess(meRes.data);
+      // Force a full reload to ensure all admin panels fetch fresh data with valid token
+      window.location.reload();
     } catch (err) {
       setError(err.response?.data?.detail || "Invalid email or password");
     } finally {

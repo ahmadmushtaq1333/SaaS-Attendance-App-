@@ -30,18 +30,19 @@ class MarkAttendanceView(APIView):
         course = session.course
         
         # 2. Check enrollment
-        enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
-        if not enrolled:
+        try:
+            enrollment = Enrollment.objects.get(student=request.user, course=course)
+        except Enrollment.DoesNotExist:
             return Response({"error": "Student not enrolled"}, status=status.HTTP_400_BAD_REQUEST)
         
         # 3. Check duplicate
-        exists = AttendanceRecord.objects.filter(student=request.user, session=session).exists()
+        exists = AttendanceRecord.objects.filter(enrollment=enrollment, session=session).exists()
         if exists:
             return Response({"error": "Attendance already recorded"}, status=status.HTTP_400_BAD_REQUEST)
         
         # 4. Create record
         record = AttendanceRecord.objects.create(
-            student=request.user,
+            enrollment=enrollment,
             session=session,
             timestamp=timezone.now(),
             sync_status="synced"
@@ -88,8 +89,9 @@ class SyncAttendanceView(APIView):
             session = token.session
             
             # Check Enrollment
-            enrolled = Enrollment.objects.filter(student=request.user, course=session.course).exists()
-            if not enrolled:
+            try:
+                enrollment = Enrollment.objects.get(student=request.user, course=session.course)
+            except Enrollment.DoesNotExist:
                 errors.append({"index": index, "token_uuid": token_uuid, "error": "Student not enrolled"})
                 continue
 
@@ -101,14 +103,14 @@ class SyncAttendanceView(APIView):
                 continue
             
             # Check Duplicate
-            exists = AttendanceRecord.objects.filter(student=request.user, session=session).exists()
+            exists = AttendanceRecord.objects.filter(enrollment=enrollment, session=session).exists()
             if exists:
                 skipped_count += 1
                 continue
             
             # Create synced record
             AttendanceRecord.objects.create(
-                student=request.user,
+                enrollment=enrollment,
                 session=session,
                 timestamp=timestamp,
                 sync_status="synced"
