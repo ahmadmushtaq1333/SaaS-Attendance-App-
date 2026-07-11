@@ -1,0 +1,52 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.tox/
+.cache/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+*.sqlite3
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Environment secrets — NEVER commit these
+.env
+backend/.env
+*.env.local
+
+# Django
+staticfiles/
+media/
+db.sqlite3
+
+# Node / React
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

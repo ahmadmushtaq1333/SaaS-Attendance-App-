@@ -1,6 +1,9 @@
 {
-  "cleanUrls": true,
+  "buildCommand": "npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm install",
+  "framework": "vite",
   "rewrites": [
-    { "source": "/((?!api/|assets/|static/).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|vite\\.svg|manifest\\.json).*)", "destination": "/index.html" }
   ]
 }
