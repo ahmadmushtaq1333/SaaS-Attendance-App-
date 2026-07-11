@@ -33,6 +33,7 @@ export default function UsersPanel() {
   const [editSem, setEditSem] = useState("");
   const [editSec, setEditSec] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editPassword, setEditPassword] = useState("");
 
   // Editing cascades
   const [editDepts, setEditDepts] = useState([]);
@@ -272,8 +273,12 @@ export default function UsersPanel() {
         section: editRole === "student" && editSec ? editSec : null,
         is_active: editIsActive
       };
+      if (editPassword) {
+        payload.password = editPassword;
+      }
       await API.put(`/admin/users/${id}/`, payload);
       setEditingId(null);
+      setEditPassword("");
       fetchUsers();
     } catch (err) {
       alert("Error updating user details");
@@ -636,6 +641,7 @@ export default function UsersPanel() {
                     <>
                       <td>
                         <input type="email" className="form-input" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} style={{ padding: "6px 12px" }} />
+                        <input type="password" className="form-input" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="New Password (optional)" style={{ padding: "4px 8px", fontSize: "0.8rem", marginTop: "4px" }} />
                       </td>
                       <td>
                         <select className="form-input" value={editRole} onChange={(e) => setEditRole(e.target.value)} style={{ padding: "6px 12px", appearance: "auto" }}>
@@ -738,6 +744,7 @@ export default function UsersPanel() {
                             setEditSem(u.semester || "");
                             setEditSec(u.section || "");
                             setEditIsActive(u.is_active);
+                            setEditPassword("");
                           }} className="btn-secondary" style={{ padding: "6px 10px", display: "flex", gap: "4px", alignItems: "center" }}>
                             <Edit size={12} /> Edit
                           </button>
