@@ -87,6 +87,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         count = request.data.get("count", 1)
         prefix = request.data.get("prefix", "std_")
         course_id = request.data.get("course_id")
+        custom_password = request.data.get("password")
         
         if not section_id:
             return Response({"error": "section_id is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -123,8 +124,11 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         attempts += 1
                         prefix = prefix + str(random.randint(0, 9))
                     
-                    password_chars = string.ascii_letters + string.digits
-                    password = "".join(random.choice(password_chars) for _ in range(8))
+                    if custom_password:
+                        password = custom_password
+                    else:
+                        password_chars = string.ascii_letters + string.digits
+                        password = "".join(random.choice(password_chars) for _ in range(8))
                     
                     user = User.objects.create_user(
                         email=email,

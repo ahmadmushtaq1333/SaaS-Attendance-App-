@@ -47,6 +47,7 @@ export default function UsersPanel() {
   const [bulkCourse, setBulkCourse] = useState("");
   const [bulkCount, setBulkCount] = useState(10);
   const [bulkPrefix, setBulkPrefix] = useState("std_");
+  const [bulkPassword, setBulkPassword] = useState("");
   const [bulkDepts, setBulkDepts] = useState([]);
   const [bulkSems, setBulkSems] = useState([]);
   const [bulkSecs, setBulkSecs] = useState([]);
@@ -300,11 +301,13 @@ export default function UsersPanel() {
         section_id: bulkSec,
         count: parseInt(bulkCount),
         prefix: bulkPrefix,
-        course_id: bulkCourse || null
+        course_id: bulkCourse || null,
+        password: bulkPassword || null
       };
       const res = await API.post("/admin/users/bulk-generate/", payload);
       setGeneratedAccounts(res.data.users || []);
       setBulkSuccessMsg(res.data.message || "Successfully generated student credentials.");
+      setBulkPassword("");
       fetchUsers();
     } catch (err) {
       setBulkError(err.response?.data?.error || "Error generating student credentials.");
@@ -515,6 +518,13 @@ export default function UsersPanel() {
                 <input type="text" className="form-input" value={bulkPrefix} onChange={(e) => setBulkPrefix(e.target.value)} placeholder="std_" required />
               </div>
               <div>
+                <label style={{ display: "block", marginBottom: "6px", color: "#9ca3af", fontSize: "0.85rem" }}>Common Password (Optional)</label>
+                <input type="text" className="form-input" value={bulkPassword} onChange={(e) => setBulkPassword(e.target.value)} placeholder="Leave blank to auto-generate" />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div>
                 <label style={{ display: "block", marginBottom: "6px", color: "#9ca3af", fontSize: "0.85rem" }}>Auto-Enroll to Course (Optional)</label>
                 <select className="form-input" value={bulkCourse} onChange={(e) => setBulkCourse(e.target.value)} style={{ appearance: "auto" }}>
                   <option value="">-- None (No Auto-Enrollment) --</option>
@@ -523,18 +533,16 @@ export default function UsersPanel() {
                   ))}
                 </select>
               </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <div>
                 <label style={{ display: "block", marginBottom: "6px", color: "#9ca3af", fontSize: "0.85rem" }}>Student Count</label>
                 <input type="number" className="form-input" min="1" max="100" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} required />
               </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
-                <button type="submit" className="btn-primary" style={{ background: "#10b981", borderColor: "#10b981", display: "flex", alignItems: "center", gap: "6px" }} disabled={bulkLoading || !bulkSec}>
-                  {bulkLoading ? "Generating..." : "Generate Accounts"}
-                </button>
-              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+              <button type="submit" className="btn-primary" style={{ background: "#10b981", borderColor: "#10b981", display: "flex", alignItems: "center", gap: "6px" }} disabled={bulkLoading || !bulkSec}>
+                {bulkLoading ? "Generating..." : "Generate Accounts"}
+              </button>
             </div>
           </form>
         </div>
