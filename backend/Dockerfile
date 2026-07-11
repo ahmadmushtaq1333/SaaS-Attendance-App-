@@ -1,5 +1,5 @@
 FROM python:3.11-slim
-
+ENV PYTHONUNBUFFERED=1
 # Install system dependencies (mysqlclient needs gcc + libmysqlclient)
 RUN apt-get update && apt-get install -y \
     gcc \
