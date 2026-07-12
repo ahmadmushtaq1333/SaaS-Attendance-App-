@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import API from "../services/api";
-import { ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, XCircle, Download, Trash2 } from "lucide-react";
 
 export default function Reports({ courseId, onBack }) {
   const [report, setReport] = useState(null);
@@ -17,15 +17,15 @@ export default function Reports({ courseId, onBack }) {
       const res = await API.get(`/reports/course/${courseId}/`);
       setReport(res.data);
       
-      // Fetch all sessions for this course
-      const sessionRes = await API.get("/sessions/");
-      // Filter sessions that belong to this course
-      const courseSessions = (sessionRes.data.results || sessionRes.data).filter(
-        (s) => s.course === parseInt(courseId)
-      );
+      // Use the session list provided by the new backend payload
+      const courseSessions = res.data.session_list || [];
       setSessions(courseSessions);
+      
+      // If we previously had a session selected, keep it, otherwise select the latest
       if (courseSessions.length > 0) {
-        setSelectedSessionId(courseSessions[0].id);
+        setSelectedSessionId(prev => prev || courseSessions[courseSessions.length - 1].id);
+      } else {
+        setSelectedSessionId("");
       }
     } catch (err) {
       setError("Failed to fetch reports. Database details could be empty.");
@@ -50,38 +50,18 @@ export default function Reports({ courseId, onBack }) {
     }
   };
 
-  const fetchSessionAttendance = async () => {
+  const fetchSessionAttendance = () => {
     if (!selectedSessionId || !report) return;
     
-    try {
-      // In this modular setup, we can fetch which student records are registered for this session
-      // To determine who is present, we request the records for this session, or check status.
-      // We will perform a lookup against report.students.
-      const res = await API.get("/admin/enrollments/"); // Get all enrollments
-      const courseEnrollments = (res.data.results || res.data).filter(e => e.course === parseInt(courseId));
-      
-      // Fetch attendance records for this session
-      // We fall back to checks. We can query.
-      // For visual testing we map it:
-      const presentRecords = await API.get("/admin/users/").then(uRes => {
-        // Let's stub or load live records
-        return [];
-      }).catch(() => []);
-      
-      // Let's construct a list of all students and their presence status in this session
-      const attendanceList = report.students.map(student => {
-        // In a real database we check if there's a record matching this student and session
-        // For now, we will mark them as present if their ID matches a mock list or real database records.
-        // We will fetch from API or toggle it locally.
-        return {
-          ...student,
-          isPresent: student.attended_count > 0 // Default mock check
-        };
-      });
-      setSessionAttendance(attendanceList);
-    } catch (e) {
-      console.error(e);
-    }
+    // Construct a list of all students and their presence status in this session
+    // using the 'sessions' dictionary returned from the updated backend.
+    const attendanceList = report.students.map(student => {
+      return {
+        ...student,
+        isPresent: student.sessions && student.sessions[selectedSessionId] === true
+      };
+    });
+    setSessionAttendance(attendanceList);
   };
 
   useEffect(() => {
@@ -105,22 +85,74 @@ export default function Reports({ courseId, onBack }) {
       
       // Update local state status instantly
       setSessionAttendance(prev => prev.map(s => s.id === studentId ? { ...s, isPresent: !currentStatus } : s));
-      // Refresh overall reports calculation
+      // Refresh overall reports calculation in background
       fetchReports();
     } catch (err) {
       alert("Failed to override attendance status");
     }
   };
 
+  const deleteSession = async () => {
+    if (!selectedSessionId) return;
+    if (!window.confirm("Are you sure you want to permanently delete this session? All associated attendance records will be lost.")) return;
+    
+    try {
+      await API.delete(`/sessions/${selectedSessionId}/`);
+      setSelectedSessionId(""); // Clear selection
+      fetchReports(); // Refresh data
+    } catch (err) {
+      alert("Failed to delete session.");
+    }
+  };
+
+  const downloadCSV = () => {
+    if (!report) return;
+    
+    // Header row
+    let csvContent = "Student Email,";
+    const sessionList = report.session_list || [];
+    
+    sessionList.forEach(session => {
+      csvContent += `Session ${session.id} (${new Date(session.start_time).toLocaleDateString()}),`;
+    });
+    csvContent += "Total Attended,Attendance %,Status\n";
+    
+    // Data rows
+    report.students.forEach(student => {
+      let row = `${student.email},`;
+      sessionList.forEach(session => {
+        row += (student.sessions && student.sessions[session.id]) ? "Present," : "Absent,";
+      });
+      row += `${student.attended_count},${student.attendance_percentage}%,`;
+      row += student.attendance_percentage < 75 ? "Defaulter\n" : "Good\n";
+      csvContent += row;
+    });
+    
+    // Trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `attendance_report_${courseId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <button onClick={onBack} className="btn-secondary" style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <ArrowLeft size={16} /> Back
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <button onClick={onBack} className="btn-secondary" style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h1 style={{ margin: 0, fontSize: "1.8rem", fontWeight: "700" }}>
+            Reports: {report ? report.course_name : "Course Summary"}
+          </h1>
+        </div>
+        <button onClick={downloadCSV} className="btn-primary" style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: "8px" }} disabled={loading || !report}>
+          <Download size={18} /> Export CSV
         </button>
-        <h1 style={{ margin: 0, fontSize: "1.8rem", fontWeight: "700" }}>
-          Reports: {report ? report.course_name : "Course Summary"}
-        </h1>
       </div>
 
       {loading ? (
@@ -164,11 +196,14 @@ export default function Reports({ courseId, onBack }) {
                 <h3 style={{ margin: 0 }}>Attendance Record Override (Per Session)</h3>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                   <label style={{ fontSize: "0.9rem", color: "#9ca3af" }}>Select Session:</label>
-                  <select className="form-input" value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} style={{ padding: "6px 12px", width: "auto", appearance: "auto" }}>
+                  <select className="form-input" value={selectedSessionId} onChange={(e) => setSelectedSessionId(parseInt(e.target.value))} style={{ padding: "6px 12px", width: "auto", appearance: "auto" }}>
                     {sessions.map((s) => (
                       <option key={s.id} value={s.id}>Session #{s.id} ({new Date(s.start_time).toLocaleDateString()})</option>
                     ))}
                   </select>
+                  <button onClick={deleteSession} className="btn-secondary" style={{ padding: "6px 10px", borderColor: "rgba(239,68,68,0.3)", color: "#f87171" }} title="Delete Session">
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
 

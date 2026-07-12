@@ -16,21 +16,35 @@ class CourseReportView(APIView):
             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
         
         # Calculate total sessions for this course
-        total_sessions = AttendanceSession.objects.filter(course=course).count()
+        sessions = AttendanceSession.objects.filter(course=course).order_by("start_time")
+        total_sessions = sessions.count()
+        session_list = [{"id": s.id, "start_time": s.start_time} for s in sessions]
         
         # Get all enrolled students
         enrollments = Enrollment.objects.filter(course=course).select_related("student")
+        
+        # Fetch all attendance records for this course at once for performance
+        records = AttendanceRecord.objects.filter(
+            session__course=course
+        ).values_list('enrollment_id', 'session_id')
+        
+        # Create a set for O(1) lookup
+        attendance_set = set(records)
         
         students_report = []
         defaulters_list = []
         
         for enrollment in enrollments:
             student = enrollment.student
-            # Count sessions attended by this student for this course
-            attended_count = AttendanceRecord.objects.filter(
-                enrollment=enrollment,
-                session__course=course
-            ).count()
+            
+            # Map out which specific sessions this student attended
+            student_sessions = {}
+            attended_count = 0
+            for session in sessions:
+                is_present = (enrollment.id, session.id) in attendance_set
+                student_sessions[session.id] = is_present
+                if is_present:
+                    attended_count += 1
             
             attendance_percentage = 0.0
             if total_sessions > 0:
@@ -40,7 +54,8 @@ class CourseReportView(APIView):
                 "id": student.id,
                 "email": student.email,
                 "attended_count": attended_count,
-                "attendance_percentage": round(attendance_percentage, 2)
+                "attendance_percentage": round(attendance_percentage, 2),
+                "sessions": student_sessions
             }
             
             students_report.append(student_data)
@@ -52,6 +67,7 @@ class CourseReportView(APIView):
         return Response({
             "course_name": course.name,
             "total_sessions": total_sessions,
+            "session_list": session_list,
             "students": students_report,
             "defaulters_list": defaulters_list
         })

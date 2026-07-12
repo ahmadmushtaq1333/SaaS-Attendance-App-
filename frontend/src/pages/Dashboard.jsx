@@ -12,9 +12,29 @@ export default function Dashboard({ user, onViewReports }) {
 
   // Setup sample courses for testing (since we are creating standard API routes, we query them)
   useEffect(() => {
-    // In production we would fetch courses, for now we will stub some default courses if API returns empty
     fetchCourses();
+    fetchActiveSession();
   }, []);
+
+  const fetchActiveSession = async () => {
+    try {
+      const res = await API.get("/sessions/");
+      if (res.data && res.data.length > 0) {
+        const latest = res.data[0];
+        const expiry = new Date(latest.expiry_time);
+        const now = new Date();
+        const diff = Math.floor((expiry - now) / 1000);
+        
+        if (diff > 0) {
+          setActiveSession(latest);
+          setQrCode(latest.qr_code);
+          setTimeLeft(diff);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to restore active session");
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -48,6 +68,18 @@ export default function Dashboard({ user, onViewReports }) {
       setTimeLeft(120);
     } catch (err) {
       setError("Failed to rotate QR token");
+    }
+  };
+
+  const stopSession = async () => {
+    if (!activeSession) return;
+    try {
+      await API.post(`/sessions/${activeSession.id}/stop/`);
+      setActiveSession(null);
+      setQrCode("");
+      setTimeLeft(0);
+    } catch (err) {
+      setError("Failed to stop session");
     }
   };
 
@@ -117,9 +149,14 @@ export default function Dashboard({ user, onViewReports }) {
                 <RefreshCw className={timeLeft < 15 ? "animate-spin" : ""} size={18} />
                 Regenerating in {timeLeft} seconds
               </div>
-              <button onClick={refreshQR} className="btn-secondary" style={{ marginTop: "16px", width: "100%", maxWidth: "200px" }}>
-                Force Rotate
-              </button>
+              <div style={{ display: "flex", gap: "12px", marginTop: "16px", width: "100%", maxWidth: "300px" }}>
+                <button onClick={refreshQR} className="btn-secondary" style={{ flex: 1 }}>
+                  Force Rotate
+                </button>
+                <button onClick={stopSession} className="btn-secondary" style={{ flex: 1, borderColor: "rgba(239,68,68,0.3)", color: "#f87171" }}>
+                  End Session
+                </button>
+              </div>
             </div>
           ) : (
             <div style={{ textAlign: "center", color: "#9ca3af" }}>

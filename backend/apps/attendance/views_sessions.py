@@ -10,6 +10,18 @@ from django.utils import timezone
 from datetime import timedelta
 import base64
 
+class AttendanceSessionDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def delete(self, request, pk):
+        try:
+            session = AttendanceSession.objects.get(id=pk, course__course_instructors__instructor=request.user)
+        except AttendanceSession.DoesNotExist:
+            return Response({"error": "Session not found or permission denied"}, status=status.HTTP_404_NOT_FOUND)
+        
+        session.delete()
+        return Response({"message": "Session deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
 class AttendanceSessionCreateView(APIView):
     permission_classes = [IsAuthenticated, IsTeacher]
 
@@ -38,7 +50,7 @@ class AttendanceSessionCreateView(APIView):
         # Pre-create first token
         QRToken.objects.create(
             session=session,
-            expiry_time=now + timedelta(seconds=120)
+            expiry_time=now + timedelta(seconds=120)  # Token rotates every 2 mins
         )
         
         serializer = AttendanceSessionSerializer(session)
