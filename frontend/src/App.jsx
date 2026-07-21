@@ -5,28 +5,34 @@ import Scanner from "./pages/Scanner";
 import Reports from "./pages/Reports";
 import AdminDashboard from "./pages/AdminDashboard";
 import API from "./services/api";
-import { LogOut, User, Activity } from "lucide-react";
+import { LogOut, Bell, Settings, Activity, BarChart2, Users, BookOpen, Clock, Home, Sun, Moon } from "lucide-react";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentView, setCurrentView] = useState("dashboard"); // dashboard, scanner, reports
+  const [currentView, setCurrentView] = useState("dashboard");
   const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [lightMode, setLightMode] = useState(() => localStorage.getItem("theme") === "light");
 
   useEffect(() => {
-    // Attempt login restoration
+    if (lightMode) {
+      document.documentElement.classList.add("light-mode");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.classList.remove("light-mode");
+      localStorage.setItem("theme", "dark");
+    }
+  }, [lightMode]);
+
+  useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (token) {
       API.get("/auth/me/")
         .then((res) => {
           setUser(res.data);
-          if (res.data.role === "student") {
-            setCurrentView("scanner");
-          } else if (res.data.role === "admin" || res.data.is_staff) {
-            setCurrentView("admin");
-          } else {
-            setCurrentView("dashboard");
-          }
+          if (res.data.role === "student") setCurrentView("scanner");
+          else if (res.data.role === "admin" || res.data.is_staff) setCurrentView("admin");
+          else setCurrentView("dashboard");
         })
         .catch(() => {
           localStorage.removeItem("access_token");
@@ -36,6 +42,14 @@ export default function App() {
     } else {
       setLoading(false);
     }
+
+    // Listen for irrecoverable 401 from api.js token refresh failure
+    const onLogout = () => {
+      setUser(null);
+      setLoading(false);
+    };
+    window.addEventListener("auth:logout", onLogout);
+    return () => window.removeEventListener("auth:logout", onLogout);
   }, []);
 
   const handleLogout = () => {
@@ -44,72 +58,139 @@ export default function App() {
     setUser(null);
   };
 
+  const getInitials = (email) => {
+    if (!email) return "?";
+    return email.split("@")[0].slice(0, 2).toUpperCase();
+  };
+
+  const teacherLinks = [
+    { id: "dashboard", label: "Overview", icon: <Home size={14} /> },
+    { id: "reports", label: "Reports", icon: <BarChart2 size={14} /> },
+  ];
+  const adminLinks = [
+    { id: "admin", label: "Dashboard", icon: <Home size={14} /> },
+  ];
+  const studentLinks = [
+    { id: "scanner", label: "Scanner", icon: <Activity size={14} /> },
+  ];
+
+  const navLinks =
+    !user ? [] :
+    user.role === "teacher" ? teacherLinks :
+    (user.role === "admin" || user.is_staff) ? adminLinks :
+    studentLinks;
+
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-        <h3 style={{ color: "#9ca3af" }}>Loading...</h3>
-      </div>
+      <>
+        <div className="app-bg">
+          <div className="blob blob-1" />
+          <div className="blob blob-2" />
+          <div className="blob blob-3" />
+        </div>
+        <div className="glass-spinner">
+          <div className="spinner-ring" />
+          <span style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading Attendance Management system…</span>
+        </div>
+      </>
     );
   }
 
   if (!user) {
     return <Login onLoginSuccess={(loggedInUser) => {
       setUser(loggedInUser);
-      if (loggedInUser.role === "student") {
-        setCurrentView("scanner");
-      } else if (loggedInUser.role === "admin" || loggedInUser.is_staff) {
-        setCurrentView("admin");
-      } else {
-        setCurrentView("dashboard");
-      }
-    }} />;
+      if (loggedInUser.role === "student") setCurrentView("scanner");
+      else if (loggedInUser.role === "admin" || loggedInUser.is_staff) setCurrentView("admin");
+      else setCurrentView("dashboard");
+    }} lightMode={lightMode} setLightMode={setLightMode} />;
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Navbar header */}
-      <header className="glass-panel" style={{ margin: "16px", padding: "16px 24px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Activity color="#6366f1" size={28} />
-          <span style={{ fontSize: "1.4rem", fontWeight: "800", background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            AttendanceSaaS
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.05)", padding: "6px 12px", borderRadius: "20px", fontSize: "0.9rem" }}>
-            <User size={16} />
-            {user.email} ({user.role})
-          </span>
-          <button onClick={handleLogout} className="btn-secondary" style={{ padding: "8px 12px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <LogOut size={16} /> Logout
-          </button>
-        </div>
-      </header>
+    <>
+      <div className="app-bg">
+        <div className="blob blob-1" />
+        <div className="blob blob-2" />
+        <div className="blob blob-3" />
+      </div>
 
-      {/* Primary body section */}
-      <main style={{ flex: 1, padding: "0 16px 32px 16px", maxWidth: "1200px", width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
-        {(user.role === "admin" || user.is_staff) && <AdminDashboard user={user} />}
-        {user.role === "student" && <Scanner user={user} />}
-        {user.role === "teacher" && (
-          <>
-            {currentView === "dashboard" && (
-              <Dashboard
-                user={user}
-                onViewReports={(courseId) => {
-                  setSelectedCourseId(courseId);
-                  setCurrentView("reports");
+      <div className="app-content">
+        <nav className="glass-nav" role="navigation" aria-label="Main navigation">
+          <div className="nav-brand">
+            <div className="nav-logo" style={{ background: "linear-gradient(135deg, var(--emerald), var(--cyan))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Activity size={15} color="#07111F" strokeWidth={2.5} />
+            </div>
+            <span className="nav-title">Attendance Management system</span>
+          </div>
+
+          <div className="nav-links">
+            {navLinks.map(link => (
+              <button
+                key={link.id}
+                className={`nav-link ${currentView === link.id ? "active" : ""}`}
+                onClick={() => {
+                  setCurrentView(link.id);
                 }}
-              />
-            )}
-            {currentView === "reports" && (
-              <Reports
-                courseId={selectedCourseId}
-                onBack={() => setCurrentView("dashboard")}
-              />
-            )}
-          </>
-        )}
-      </main>
-    </div>
+              >
+                {link.icon}
+                {link.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="nav-actions">
+            <button className="nav-icon-btn" onClick={() => setLightMode(!lightMode)} title={lightMode ? "Dark Mode" : "Light Mode"} aria-label="Theme toggle">
+              {lightMode ? <Moon size={15} /> : <Sun size={15} />}
+            </button>
+            <button className="nav-icon-btn" title="Notifications" aria-label="Notifications">
+              <Bell size={15} />
+            </button>
+            <button className="nav-icon-btn" title="Settings" aria-label="Settings">
+              <Settings size={15} />
+            </button>
+            <div
+              className="nav-avatar"
+              title={`${user.email} (${user.role})`}
+              aria-label={`User: ${user.email}`}
+            >
+              {getInitials(user.email)}
+            </div>
+            <button
+              className="btn-danger"
+              onClick={handleLogout}
+              style={{ padding: "8px 14px", fontSize: 13 }}
+              title="Logout"
+            >
+              <LogOut size={14} />
+              Logout
+            </button>
+          </div>
+        </nav>
+
+        {/* Page content with ultra-high 90+ FPS GPU acceleration */}
+        <main className="page-main page-enter" key={currentView} role="main">
+          {(user.role === "admin" || user.is_staff) && <AdminDashboard user={user} />}
+          {user.role === "student" && <Scanner user={user} />}
+          {user.role === "teacher" && (
+            <>
+              {currentView === "dashboard" && (
+                <Dashboard
+                  user={user}
+                  onViewReports={(courseId) => {
+                    setSelectedCourseId(courseId);
+                    setCurrentView("reports");
+                  }}
+                />
+              )}
+              {currentView === "reports" && (
+                <Reports
+                  courseId={selectedCourseId}
+                  onBack={() => setCurrentView("dashboard")}
+                />
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    </>
   );
 }

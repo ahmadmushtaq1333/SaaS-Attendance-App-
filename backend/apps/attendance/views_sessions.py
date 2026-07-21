@@ -33,6 +33,12 @@ class AttendanceSessionCreateView(APIView):
 
     def post(self, request):
         course_id = request.data.get("course_id")
+        duration_minutes = request.data.get("duration_minutes", 60)
+        try:
+            duration_minutes = int(duration_minutes)
+        except (ValueError, TypeError):
+            duration_minutes = 60
+
         if not course_id:
             return Response({"error": "course_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -44,13 +50,13 @@ class AttendanceSessionCreateView(APIView):
         now = timezone.now()
         session = AttendanceSession.objects.create(
             course=course,
-            expiry_time=now + timedelta(seconds=120)
+            expiry_time=now + timedelta(minutes=duration_minutes)
         )
         
-        # Pre-create first token
+        # Pre-create first token with 10-second rotation
         QRToken.objects.create(
             session=session,
-            expiry_time=now + timedelta(seconds=120)  # Token rotates every 2 mins
+            expiry_time=now + timedelta(seconds=10)
         )
         
         serializer = AttendanceSessionSerializer(session)

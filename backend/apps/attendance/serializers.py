@@ -26,7 +26,7 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         if not token:
             token = QRToken.objects.create(
                 session=obj,
-                expiry_time=timezone.now() + timedelta(seconds=120)
+                expiry_time=timezone.now() + timedelta(seconds=10)
             )
         
         # Generate QR code

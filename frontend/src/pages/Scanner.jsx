@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from "react";
 import jsQR from "jsqr";
 import API from "../services/api";
 import { saveScanOffline, getPendingScansCount, syncOfflineScans } from "../services/offline";
-import { Camera, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { Camera, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle, Info, ScanLine } from "lucide-react";
 
 export default function Scanner({ user }) {
   const videoRef = useRef(null);
@@ -14,20 +14,15 @@ export default function Scanner({ user }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [scanning, setScanning] = useState(false);
 
-  useEffect(() => {
-    // Monitor connection
-    const handleOnline = () => {
-      setIsOnline(true);
-      triggerSync();
-    };
-    const handleOffline = () => setIsOnline(false);
+  const firstName = user.email?.split("@")[0]?.split(".")[0];
+  const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "Student";
 
+  useEffect(() => {
+    const handleOnline = () => { setIsOnline(true); triggerSync(); };
+    const handleOffline = () => setIsOnline(false);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-
-    // Initial check of offline count
     getPendingScansCount().then(setOfflineCount);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -37,12 +32,12 @@ export default function Scanner({ user }) {
   const triggerSync = async () => {
     const count = await getPendingScansCount();
     if (count > 0) {
-      setStatusMsg({ text: "Syncing offline records...", type: "info" });
+      setStatusMsg({ text: "Syncing offline records…", type: "info" });
       try {
         const res = await syncOfflineScans();
         setStatusMsg({ text: `Successfully synced ${res.success_count} scans!`, type: "success" });
         setOfflineCount(0);
-      } catch (err) {
+      } catch {
         setStatusMsg({ text: "Sync failed. Will retry later.", type: "error" });
       }
     }
@@ -50,32 +45,23 @@ export default function Scanner({ user }) {
 
   const startScanning = async () => {
     try {
-      const constraints = {
-        video: {
-          facingMode: "environment",
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } }
+      });
       videoRef.current.srcObject = stream;
-      videoRef.current.setAttribute("playsinline", true); // required to tell iOS safari we don't want fullscreen
+      videoRef.current.setAttribute("playsinline", true);
       videoRef.current.play();
       setScanning(true);
       isScanningRef.current = true;
       requestAnimationFrame(tick);
     } catch (err) {
-      console.error("Camera access error:", err);
-      setStatusMsg({ 
-        text: `Error accessing camera: ${err.name} - ${err.message}. Please ensure permissions are granted and you are using a secure context or enabled chrome://flags.`, 
-        type: "error" 
-      });
+      setStatusMsg({ text: `Camera access error: ${err.message}. Please grant camera permission.`, type: "error" });
     }
   };
 
   const stopScanning = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+    if (videoRef.current?.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(t => t.stop());
     }
     setScanning(false);
     isScanningRef.current = false;
@@ -83,128 +69,155 @@ export default function Scanner({ user }) {
 
   const tick = () => {
     if (!isScanningRef.current) return;
-    
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+    if (videoRef.current?.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
       const canvas = canvasRef.current;
       if (canvas) {
-        const context = canvas.getContext("2d");
-        const width = videoRef.current.videoWidth;
-        const height = videoRef.current.videoHeight;
-        
-        if (width > 0 && height > 0) {
-          if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width;
-            canvas.height = height;
-          }
-          context.drawImage(videoRef.current, 0, 0, width, height);
-          
-          const imageData = context.getImageData(0, 0, width, height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: "dontInvert",
-          });
-
-          if (code) {
-            handleQRMark(code.data);
-            stopScanning();
-            return;
-          }
+        const ctx = canvas.getContext("2d");
+        const w = videoRef.current.videoWidth;
+        const h = videoRef.current.videoHeight;
+        if (w > 0 && h > 0) {
+          canvas.width = w; canvas.height = h;
+          ctx.drawImage(videoRef.current, 0, 0, w, h);
+          const imageData = ctx.getImageData(0, 0, w, h);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+          if (code) { handleQRMark(code.data); stopScanning(); return; }
         }
       }
     }
-    if (isScanningRef.current) {
-      requestAnimationFrame(tick);
-    }
+    if (isScanningRef.current) requestAnimationFrame(tick);
   };
 
   const handleQRMark = async (tokenUuid) => {
     setScanResult(tokenUuid);
-    setStatusMsg({ text: "Processing attendance scan...", type: "info" });
-
+    setStatusMsg({ text: "Processing attendance scan…", type: "info" });
     if (navigator.onLine) {
       try {
         await API.post("/attendance/mark/", { token_uuid: tokenUuid });
         setStatusMsg({ text: "Attendance marked successfully!", type: "success" });
       } catch (err) {
-        const errorDetail = err.response?.data?.error || "Error marking attendance";
-        setStatusMsg({ text: errorDetail, type: "error" });
+        setStatusMsg({ text: err.response?.data?.error || "Error marking attendance", type: "error" });
       }
     } else {
-      // Offline mode
       try {
         await saveScanOffline(tokenUuid);
-        setStatusMsg({ text: "Offline: Scan saved locally. Will sync once connected.", type: "info" });
+        setStatusMsg({ text: "Offline: Scan saved locally. Will sync when connected.", type: "info" });
         const count = await getPendingScansCount();
         setOfflineCount(count);
-      } catch (err) {
+      } catch {
         setStatusMsg({ text: "Failed to save scan locally.", type: "error" });
       }
     }
   };
 
+  const statusConfig = {
+    success: { cls: "alert-success", Icon: CheckCircle },
+    error:   { cls: "alert-danger",  Icon: AlertCircle },
+    info:    { cls: "alert-info",    Icon: Info },
+  };
+  const sc = statusConfig[statusMsg.type] || {};
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px", alignItems: "center" }}>
-      <div className="glass-panel" style={{ padding: "24px", width: "100%", maxWidth: "500px", textAlign: "center" }}>
-        <h2 style={{ margin: "0 0 8px 0" }}>QR Attendance Scanner</h2>
-        <p style={{ color: "#9ca3af", margin: "0 0 20px 0" }}>Logged in as student: {user.email}</p>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24, paddingTop: 12 }}>
 
-        {/* Connectivity indicator */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-          {isOnline ? (
-            <span className="badge-good" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <Wifi size={14} /> Online Mode
+      {/* Welcome */}
+      <div className="glass-a" style={{ width: "100%", maxWidth: 540, padding: "24px 28px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 22 }}>QR Scanner</h2>
+            <p className="text-meta" style={{ marginTop: 4 }}>Welcome back, {displayName}</p>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span className={`badge ${isOnline ? "badge-good" : "badge-defaulter"}`}>
+              {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {isOnline ? "Online" : "Offline"}
             </span>
-          ) : (
-            <span className="badge-defaulter" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <WifiOff size={14} /> Offline Mode
-            </span>
-          )}
-          {offlineCount > 0 && (
-            <span style={{ background: "rgba(245, 158, 11, 0.15)", color: "#fbbf24", padding: "4px 8px", borderRadius: "6px", fontSize: "0.85rem" }}>
-              {offlineCount} queued scan(s)
-            </span>
-          )}
+            {offlineCount > 0 && (
+              <span className="badge badge-warning">{offlineCount} queued</span>
+            )}
+          </div>
         </div>
+      </div>
 
-        {/* Status Messaging */}
+      {/* Scanner Card */}
+      <div className="glass-b" style={{ width: "100%", maxWidth: 540, padding: 28 }}>
+
+        {/* Status message */}
         {statusMsg.text && (
-          <div style={{
-            background: statusMsg.type === "success" ? "rgba(34, 197, 94, 0.1)" : statusMsg.type === "error" ? "rgba(239, 68, 68, 0.1)" : "rgba(99, 102, 241, 0.1)",
-            border: `1px solid ${statusMsg.type === "success" ? "#22c55e" : statusMsg.type === "error" ? "#ef4444" : "#6366f1"}`,
-            color: statusMsg.type === "success" ? "#4ade80" : statusMsg.type === "error" ? "#f87171" : "#818cf8",
-            borderRadius: "12px",
-            padding: "16px",
-            marginBottom: "20px",
-            textAlign: "left"
-          }}>
-            {statusMsg.text}
+          <div className={`alert ${sc.cls}`} style={{ marginBottom: 20 }}>
+            {sc.Icon && <sc.Icon size={16} style={{ flexShrink: 0, marginTop: 1 }} />}
+            <span>{statusMsg.text}</span>
           </div>
         )}
 
-        {/* Camera presentation view */}
-        <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: "#1f2937", borderRadius: "16px", overflow: "hidden", marginBottom: "20px" }}>
+        {/* Camera viewport */}
+        <div style={{
+          position: "relative",
+          width: "100%", aspectRatio: "4/3",
+          background: "rgba(7,17,31,0.8)",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.12)",
+          overflow: "hidden",
+          marginBottom: 20,
+        }}>
           <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           <canvas ref={canvasRef} style={{ display: "none" }} />
-          
+
+          {/* Scan frame overlay */}
+          {scanning && (
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+              <div style={{
+                width: 180, height: 180,
+                border: "2px solid var(--emerald)",
+                borderRadius: 12,
+                boxShadow: "0 0 24px rgba(57,217,138,0.4), inset 0 0 24px rgba(57,217,138,0.08)",
+                animation: "scanPulse 2s ease-in-out infinite",
+              }} />
+              <style>{`
+                @keyframes scanPulse {
+                  0%, 100% { box-shadow: 0 0 20px rgba(57,217,138,0.3), inset 0 0 20px rgba(57,217,138,0.06); }
+                  50% { box-shadow: 0 0 40px rgba(57,217,138,0.5), inset 0 0 30px rgba(57,217,138,0.12); }
+                }
+              `}</style>
+            </div>
+          )}
+
+          {/* Enable camera overlay */}
           {!scanning && (
-            <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <button onClick={startScanning} className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Camera size={18} /> Enable Camera
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "rgba(7,17,31,0.6)", backdropFilter: "blur(4px)" }}>
+              <div style={{
+                width: 60, height: 60,
+                background: "var(--emerald-dim)",
+                borderRadius: "50%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "1px solid rgba(57,217,138,0.3)",
+              }}>
+                <Camera size={26} color="var(--emerald)" />
+              </div>
+              <button onClick={startScanning} className="btn-primary" style={{ gap: 8 }}>
+                <ScanLine size={16} /> Enable Camera
               </button>
             </div>
           )}
         </div>
 
-        {scanning && (
-          <button onClick={stopScanning} className="btn-secondary" style={{ width: "100%" }}>
-            Cancel Scan
-          </button>
-        )}
+        {/* Controls */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {scanning && (
+            <button onClick={stopScanning} className="btn-secondary" style={{ width: "100%", justifyContent: "center" }}>
+              Cancel Scan
+            </button>
+          )}
+          {offlineCount > 0 && isOnline && (
+            <button onClick={triggerSync} className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+              <RefreshCw size={15} /> Sync {offlineCount} Offline Scan{offlineCount > 1 ? "s" : ""}
+            </button>
+          )}
+        </div>
 
-        {offlineCount > 0 && isOnline && (
-          <button onClick={triggerSync} className="btn-primary" style={{ width: "100%", marginTop: "12px" }}>
-            Manual Sync
-          </button>
-        )}
+        {/* Hint */}
+        <p className="text-meta" style={{ textAlign: "center", marginTop: 20, lineHeight: 1.6 }}>
+          Point your camera at the QR code displayed by your instructor. The code auto-rotates every 2 minutes.
+        </p>
       </div>
     </div>
   );

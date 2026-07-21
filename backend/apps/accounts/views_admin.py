@@ -29,10 +29,13 @@ class AdminInstitutionViewSet(viewsets.ModelViewSet):
     serializer_class = InstitutionAdminSerializer
 
     def get_queryset(self):
-        return Institution.objects.all().annotate(
+        qs = Institution.objects.all().annotate(
             user_count=Count("users", distinct=True),
             course_count=Count("courses", distinct=True)
         )
+        if not self.request.user.is_superuser and self.request.user.institution:
+            qs = qs.filter(id=self.request.user.institution.id)
+        return qs
 
 class AdminDepartmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -40,6 +43,12 @@ class AdminDepartmentViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Department.objects.all()
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(institution=self.request.user.institution)
+            if self.request.user.department:
+                queryset = queryset.filter(id=self.request.user.department.id)
+        
         inst_id = self.request.query_params.get("institution")
         if inst_id:
             queryset = queryset.filter(institution_id=inst_id)
@@ -51,6 +60,12 @@ class AdminSemesterViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Semester.objects.all()
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(department__institution=self.request.user.institution)
+            if self.request.user.department:
+                queryset = queryset.filter(department=self.request.user.department)
+        
         dept_id = self.request.query_params.get("department")
         if dept_id:
             queryset = queryset.filter(department_id=dept_id)
@@ -62,6 +77,12 @@ class AdminSectionViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = Section.objects.all()
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(semester__department__institution=self.request.user.institution)
+            if self.request.user.department:
+                queryset = queryset.filter(semester__department=self.request.user.department)
+        
         sem_id = self.request.query_params.get("semester")
         if sem_id:
             queryset = queryset.filter(semester_id=sem_id)
@@ -73,6 +94,19 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         queryset = User.objects.all()
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(
+                    Q(institution=self.request.user.institution) | 
+                    Q(section__semester__department__institution=self.request.user.institution) |
+                    Q(department__institution=self.request.user.institution)
+                )
+            if self.request.user.department:
+                queryset = queryset.filter(
+                    Q(department=self.request.user.department) |
+                    Q(section__semester__department=self.request.user.department)
+                )
+        
         inst_id = self.request.query_params.get("institution")
         if inst_id:
             queryset = queryset.filter(
@@ -103,6 +137,13 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 course = Course.objects.get(id=course_id)
             except Course.DoesNotExist:
                 return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check permissions for scoped admin
+        if not request.user.is_superuser:
+            if request.user.institution and section.semester.department.institution != request.user.institution:
+                return Response({"error": "Permission denied for this institution"}, status=status.HTTP_403_FORBIDDEN)
+            if request.user.department and section.semester.department != request.user.department:
+                return Response({"error": "Permission denied for this department"}, status=status.HTTP_403_FORBIDDEN)
 
         institution = section.semester.department.institution
         domain = institution.slug or "uni"
@@ -169,14 +210,28 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         return CourseAdminReadSerializer
 
     def get_queryset(self):
-        return Course.objects.all().annotate(
+        queryset = Course.objects.all().annotate(
             enrollment_count=Count("enrollments", distinct=True)
         )
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(institution=self.request.user.institution)
+            if self.request.user.department:
+                queryset = queryset.filter(department=self.request.user.department)
+        return queryset
 
 class AdminEnrollmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = EnrollmentAdminSerializer
-    queryset = Enrollment.objects.all()
+    
+    def get_queryset(self):
+        queryset = Enrollment.objects.all()
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(course__institution=self.request.user.institution)
+            if self.request.user.department:
+                queryset = queryset.filter(course__department=self.request.user.department)
+        return queryset
 
 class AdminSessionResetView(views.APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -188,13 +243,15 @@ class AdminSessionResetView(views.APIView):
         
         try:
             session = AttendanceSession.objects.get(id=session_id)
-            # Terminate session immediately by setting expiry time to now
+            if not request.user.is_superuser:
+                if request.user.institution and session.course.institution != request.user.institution:
+                    return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+                if request.user.department and session.course.department != request.user.department:
+                    return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+            
             session.expiry_time = timezone.now()
             session.save()
-            
-            # Invalidate all active tokens mapped to this session
             session.qr_tokens.all().update(expiry_time=timezone.now())
-            
             return Response({"message": f"Session {session_id} has been reset and expired successfully."})
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -202,6 +259,14 @@ class AdminSessionResetView(views.APIView):
 class AdminSessionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = SessionAdminSerializer
-    queryset = AttendanceSession.objects.all().order_by("-start_time")
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["course"]
+
+    def get_queryset(self):
+        queryset = AttendanceSession.objects.all().order_by("-start_time")
+        if not self.request.user.is_superuser:
+            if self.request.user.institution:
+                queryset = queryset.filter(course__institution=self.request.user.institution)
+            if self.request.user.department:
+                queryset = queryset.filter(course__department=self.request.user.department)
+        return queryset

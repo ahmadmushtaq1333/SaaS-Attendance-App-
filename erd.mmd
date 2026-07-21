@@ -1,0 +1,109 @@
+%%{init: {'theme': 'neutral'}}%%
+erDiagram
+    INSTITUTION {
+        int id PK
+        varchar name
+        varchar slug UK
+        datetime created_at
+    }
+
+    DEPARTMENT {
+        int id PK
+        varchar name
+        int institution_id FK
+        datetime created_at
+    }
+
+    SEMESTER {
+        int id PK
+        varchar number
+        int department_id FK
+        datetime created_at
+    }
+
+    SECTION {
+        int id PK
+        varchar name
+        int semester_id FK
+        datetime created_at
+    }
+
+    CUSTOMUSER {
+        int id PK
+        varchar email UK
+        varchar password
+        varchar role
+        int institution_id FK "nullable"
+        int department_id FK "nullable"
+        int section_id FK "nullable"
+        boolean is_active
+        boolean is_staff
+        datetime date_joined
+    }
+
+    COURSE {
+        int id PK
+        varchar name
+        int institution_id FK
+        int department_id FK
+        int section_id FK "nullable"
+        datetime created_at
+    }
+
+    COURSE_INSTRUCTOR {
+        int id PK
+        int course_id FK
+        int instructor_id FK
+        boolean is_primary
+        datetime assigned_at
+    }
+
+    ENROLLMENT {
+        int id PK
+        int student_id FK
+        int course_id FK
+        datetime enrolled_at
+    }
+
+    ATTENDANCE_SESSION {
+        int id PK
+        int course_id FK
+        datetime start_time
+        datetime expiry_time
+    }
+
+    QR_TOKEN {
+        int id PK
+        int session_id FK
+        uuid token_uuid UK
+        datetime expiry_time
+    }
+
+    ATTENDANCE_RECORD {
+        int id PK
+        int enrollment_id FK
+        int session_id FK
+        datetime timestamp
+        varchar sync_status
+    }
+
+    INSTITUTION ||--o{ DEPARTMENT : "has"
+    DEPARTMENT ||--o{ SEMESTER : "contains"
+    SEMESTER ||--o{ SECTION : "splits into"
+
+    INSTITUTION ||--o{ CUSTOMUSER : "employs"
+    SECTION ||--o{ CUSTOMUSER : "places"
+
+    INSTITUTION ||--o{ COURSE : "owns"
+    DEPARTMENT ||--o{ COURSE : "belongs to"
+
+    COURSE ||--o{ COURSE_INSTRUCTOR : "assigned via"
+    CUSTOMUSER ||--o{ COURSE_INSTRUCTOR : "teaches"
+
+    COURSE ||--o{ ENROLLMENT : "enrolled via"
+    CUSTOMUSER ||--o{ ENROLLMENT : "enrolled as student"
+
+    COURSE ||--o{ ATTENDANCE_SESSION : "runs"
+    ATTENDANCE_SESSION ||--o{ QR_TOKEN : "generates"
+    ATTENDANCE_SESSION ||--o{ ATTENDANCE_RECORD : "records"
+    ENROLLMENT ||--o{ ATTENDANCE_RECORD : "tied to"

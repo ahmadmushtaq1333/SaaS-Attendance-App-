@@ -111,10 +111,14 @@ SPECTACULAR_SETTINGS = {
 
 # ── JWT Settings ───────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Access token lasts 8 hours (full school/work day - no mid-session expiry)
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    # Refresh token lasts 30 days (persistent login across sessions)
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    # Rotate refresh tokens but do NOT blacklist old ones
+    # Blacklisting caused race-condition permanent lockouts
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
+    "BLACKLIST_AFTER_ROTATION": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
