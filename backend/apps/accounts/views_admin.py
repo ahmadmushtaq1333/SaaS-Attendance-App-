@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from apps.accounts.permissions import IsAdminUser
+from apps.accounts.permissions import IsAdminUser, IsGlobalAdmin
 from apps.institutions.models import Institution, Department, Semester, Section
 from apps.courses.models import Course, Enrollment
 from apps.attendance.models import AttendanceSession
@@ -28,11 +28,18 @@ class AdminInstitutionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
     serializer_class = InstitutionAdminSerializer
 
+    def get_permissions(self):
+        # Only Global Super Admins can create, edit, or delete institutions
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsGlobalAdmin()]
+        return [IsAuthenticated(), IsAdminUser()]
+
     def get_queryset(self):
         qs = Institution.objects.all().annotate(
             user_count=Count("users", distinct=True),
             course_count=Count("courses", distinct=True)
         )
+        # Institution-specific admins are scoped to their assigned institution
         if not self.request.user.is_superuser and self.request.user.institution:
             qs = qs.filter(id=self.request.user.institution.id)
         return qs

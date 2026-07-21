@@ -233,10 +233,10 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
             </div>
           )}
         </div>
-        {!editing && (
+        {!editing && (onEdit || onDelete) && (
           <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setEditing(true)} className="btn-secondary" style={{ padding: "6px 10px", fontSize: 12 }}><Edit size={13} /> Edit</button>
-            <button onClick={() => onDelete(inst.id)} className="btn-danger" style={{ padding: "6px 10px", fontSize: 12 }}><Trash size={13} /> Delete</button>
+            {onEdit && <button onClick={() => setEditing(true)} className="btn-secondary" style={{ padding: "6px 10px", fontSize: 12 }}><Edit size={13} /> Edit</button>}
+            {onDelete && <button onClick={() => onDelete(inst.id)} className="btn-danger" style={{ padding: "6px 10px", fontSize: 12 }}><Trash size={13} /> Delete</button>}
           </div>
         )}
       </div>
@@ -277,22 +277,24 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
 }
 
 /* ── Main panel ── */
-export default function InstitutionsPanel() {
+export default function InstitutionsPanel({ user }) {
   const [institutions, setInstitutions] = useState([]);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const fetchInstitutions = async () => {
+  const isSuper = user?.is_superuser;
+
+  const fetchInstitutions = useCallback(async () => {
     try {
       const res = await API.get("/admin/institutions/");
       const data = res.data.results || res.data;
       setInstitutions(data.sort((a, b) => a.name.localeCompare(b.name)));
     } catch { setError("Failed to fetch institutions"); }
-  };
+  }, []);
 
-  useEffect(() => { fetchInstitutions(); }, []);
+  useEffect(() => { fetchInstitutions(); }, [fetchInstitutions]);
 
   const handleCreate = async (e) => {
     e.preventDefault(); setError(""); setLoading(true);
@@ -318,27 +320,29 @@ export default function InstitutionsPanel() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Create form */}
-      <div className="glass-b" style={{ padding: 24, maxWidth: 560 }}>
-        <h3 style={{ margin: "0 0 18px 0", display: "flex", alignItems: "center", gap: 8 }}>
-          <School size={18} color="var(--emerald)" /> Create New Institution
-        </h3>
-        {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
-        <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label>Institution Name</label>
-            <input type="text" className="form-input" value={name}
-              onChange={(e) => { setName(e.target.value); setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
-              placeholder="e.g. COMSATS University" required />
-          </div>
-          <div>
-            <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-generated)</span></label>
-            <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
-          </div>
-          <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}>
-            <Plus size={16} /> {loading ? "Creating…" : "Add Institution"}
-          </button>
-        </form>
-      </div>
+      {isSuper && (
+        <div className="glass-b" style={{ padding: 24, maxWidth: 560 }}>
+          <h3 style={{ margin: "0 0 18px 0", display: "flex", alignItems: "center", gap: 8 }}>
+            <School size={18} color="var(--emerald)" /> Create New Institution
+          </h3>
+          {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+          <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label>Institution Name</label>
+              <input type="text" className="form-input" value={name}
+                onChange={(e) => { setName(e.target.value); setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
+                placeholder="e.g. COMSATS University" required />
+            </div>
+            <div>
+              <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-generated)</span></label>
+              <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
+            </div>
+            <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}>
+              <Plus size={16} /> {loading ? "Creating…" : "Add Institution"}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Institution list */}
       <div className="glass-b" style={{ padding: 24 }}>
@@ -352,7 +356,12 @@ export default function InstitutionsPanel() {
           <p className="text-meta" style={{ textAlign: "center", padding: "32px 0" }}>No institutions yet. Create one above.</p>
         ) : (
           institutions.map(inst => (
-            <InstitutionBlock key={inst.id} inst={inst} onDelete={handleDelete} onEdit={handleEdit} onRefresh={fetchInstitutions} />
+            <InstitutionBlock 
+              key={inst.id} 
+              inst={inst} 
+              onDelete={isSuper ? handleDelete : null} 
+              onEdit={isSuper ? handleEdit : null} 
+            />
           ))
         )}
       </div>

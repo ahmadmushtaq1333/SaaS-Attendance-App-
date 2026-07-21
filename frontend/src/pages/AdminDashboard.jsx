@@ -34,7 +34,15 @@ export default function AdminDashboard({ user }) {
           <div>
             <h1 style={{ margin: 0, fontSize: 24 }}>System Administration</h1>
             <p className="text-meta" style={{ marginTop: 3 }}>
-              {user.email} · Platform Administrator
+              {user.email} · {user.is_superuser ? (
+                <span className="badge badge-good" style={{ display: "inline-flex", fontSize: 11, padding: "2px 8px" }}>
+                  Global Super Admin
+                </span>
+              ) : (
+                <span className="badge badge-warning" style={{ display: "inline-flex", fontSize: 11, padding: "2px 8px" }}>
+                  Institution Admin ({user.institution_name || "Assigned Institution"})
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -57,10 +65,10 @@ export default function AdminDashboard({ user }) {
 
       {/* Panel content */}
       <div key={activeTab}>
-        {activeTab === "institutions" && <InstitutionsPanel />}
-        {activeTab === "users"        && <UsersPanel />}
-        {activeTab === "courses"      && <CoursesPanel />}
-        {activeTab === "sessions"     && <SessionsPanel />}
+        {activeTab === "institutions" && <InstitutionsPanel user={user} />}
+        {activeTab === "users"        && <UsersPanel user={user} />}
+        {activeTab === "courses"      && <CoursesPanel user={user} />}
+        {activeTab === "sessions"     && <SessionsPanel user={user} />}
       </div>
     </div>
   );

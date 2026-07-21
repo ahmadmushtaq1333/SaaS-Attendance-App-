@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import API from "../../services/api";
 import { Plus, UserPlus, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle } from "lucide-react";
 
-export default function UsersPanel() {
+export default function UsersPanel({ user }) {
   const [users, setUsers] = useState([]);
   const [institutions, setInstitutions] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -143,7 +143,11 @@ export default function UsersPanel() {
       const ri = await API.get("/admin/institutions/");
       const insts = ri.data.results || ri.data;
       setInstitutions(insts);
-      if (insts.length > 0) {
+      
+      if (!user?.is_superuser && user?.institution) {
+        setSelectedInst(String(user.institution));
+        setBulkInst(String(user.institution));
+      } else if (insts.length > 0) {
         setSelectedInst(String(insts[0].id));
         setBulkInst(String(insts[0].id));
       }
@@ -161,7 +165,7 @@ export default function UsersPanel() {
     try {
       await API.post("/admin/users/", {
         email, password, role,
-        institution: role !== "admin" ? (selectedInst ? parseInt(selectedInst) : null) : null,
+        institution: selectedInst ? parseInt(selectedInst) : null,
         department: (role === "student" || role === "teacher") && selectedDept ? parseInt(selectedDept) : null,
         section: role === "student" && selectedSec ? parseInt(selectedSec) : null
       });
@@ -211,7 +215,7 @@ export default function UsersPanel() {
     try {
       const payload = {
         email: editEmail, role: editRole,
-        institution: editRole !== "admin" ? (editInst ? parseInt(editInst) : null) : null,
+        institution: editInst ? parseInt(editInst) : null,
         department: (editRole === "student" || editRole === "teacher") && editDept ? parseInt(editDept) : null,
         section: editRole === "student" && editSec ? parseInt(editSec) : null,
         is_active: editIsActive
@@ -261,9 +265,17 @@ export default function UsersPanel() {
                 </select>
               </div>
               <div><label>Institution</label>
-                <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)} disabled={role === "admin"}>
-                  <option value="">-- Select --</option>
-                  {institutions.map(i => <option key={i.id} value={String(i.id)}>{i.name}</option>)}
+                <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)} disabled={!user?.is_superuser}>
+                  {user?.is_superuser ? (
+                    <>
+                      <option value="">-- Global (No Institution) --</option>
+                      {institutions.map(i => <option key={i.id} value={String(i.id)}>{i.name}</option>)}
+                    </>
+                  ) : (
+                    institutions.filter(i => i.id === user.institution).map(i => (
+                      <option key={i.id} value={String(i.id)}>{i.name}</option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
@@ -433,7 +445,7 @@ export default function UsersPanel() {
                     <>
                       <td><input type="email" className="form-input" value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ padding: "6px 10px", marginBottom: 4 }} /><input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} /></td>
                       <td><select className="form-input" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ padding: "6px 10px" }}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></td>
-                      <td><select className="form-input" value={editInst} onChange={e => setEditInst(e.target.value)} disabled={editRole === "admin"} style={{ padding: "6px 10px" }}><option value="">None</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
+                      <td><select className="form-input" value={editInst} onChange={e => setEditInst(e.target.value)} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
                       <td>
                         {editRole === "student" && <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                           <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
