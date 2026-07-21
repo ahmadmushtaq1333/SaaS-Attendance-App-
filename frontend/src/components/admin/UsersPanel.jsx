@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, UserPlus, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle } from "lucide-react";
+import { Plus, UserPlus, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle, Users } from "lucide-react";
+import AccordionSection from "../AccordionSection";
 
 export default function UsersPanel({ user }) {
   const [users, setUsers] = useState([]);
@@ -59,7 +60,7 @@ export default function UsersPanel({ user }) {
 
   useEffect(() => { fetchUsers(); fetchInitialData(); }, []);
 
-  // Creation cascades (auto-selecting first item to prevent empty cascade bugs)
+  // Creation cascades
   useEffect(() => {
     if (selectedInst) {
       API.get(`/admin/departments/?institution=${selectedInst}`).then(r => {
@@ -68,9 +69,7 @@ export default function UsersPanel({ user }) {
         if (data.length > 0) setSelectedDept(String(data[0].id));
         else setSelectedDept("");
       });
-    } else {
-      setDepartments([]); setSelectedDept("");
-    }
+    } else { setDepartments([]); setSelectedDept(""); }
   }, [selectedInst]);
 
   useEffect(() => {
@@ -81,9 +80,7 @@ export default function UsersPanel({ user }) {
         if (data.length > 0) setSelectedSem(String(data[0].id));
         else setSelectedSem("");
       });
-    } else {
-      setSemesters([]); setSelectedSem("");
-    }
+    } else { setSemesters([]); setSelectedSem(""); }
   }, [selectedDept]);
 
   useEffect(() => {
@@ -94,9 +91,7 @@ export default function UsersPanel({ user }) {
         if (data.length > 0) setSelectedSec(String(data[0].id));
         else setSelectedSec("");
       });
-    } else {
-      setSections([]); setSelectedSec("");
-    }
+    } else { setSections([]); setSelectedSec(""); }
   }, [selectedSem]);
 
   // Bulk cascades
@@ -143,7 +138,6 @@ export default function UsersPanel({ user }) {
       const ri = await API.get("/admin/institutions/");
       const insts = ri.data.results || ri.data;
       setInstitutions(insts);
-      
       if (!user?.is_superuser && user?.institution) {
         setSelectedInst(String(user.institution));
         setBulkInst(String(user.institution));
@@ -178,7 +172,6 @@ export default function UsersPanel({ user }) {
   const handleBulkGenerate = async (e) => {
     e.preventDefault(); setBulkError(""); setBulkSuccessMsg(""); setBulkLoading(true);
     try {
-      // Correct Django URL endpoint: /admin/users/bulk-generate/
       const res = await API.post("/admin/users/bulk-generate/", {
         section_id: parseInt(bulkSec),
         count: parseInt(bulkCount),
@@ -243,14 +236,100 @@ export default function UsersPanel({ user }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-        {/* Register User */}
-        <div className="glass-b" style={{ padding: 24 }}>
-          <h3 style={{ margin: "0 0 18px 0", display: "flex", alignItems: "center", gap: 8 }}>
-            <UserPlus size={18} color="var(--emerald)" /> Add User Account
-          </h3>
+      {/* ── SECTION 1: USER DIRECTORY ── */}
+      <AccordionSection
+        title="User Directory"
+        subtitle={`(${sortedUsers.length} users)`}
+        icon={<Users size={18} color="var(--purple)" />}
+        iconBg="rgba(123,97,255,0.15)"
+        defaultOpen={true}
+      >
+        <div style={{ marginTop: 16 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <Filter size={14} color="var(--text-muted)" />
+                <select className="form-input" value={universityFilter} onChange={e => setUniversityFilter(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
+                  <option value="all">All Universities</option>
+                  {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <ArrowUpDown size={14} color="var(--text-muted)" />
+                <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
+                  <option value="email">Sort by Email</option>
+                  <option value="role">Sort by Role</option>
+                  <option value="university">Sort by University</option>
+                  <option value="status">Sort by Status</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table>
+              <thead><tr><th>Email</th><th>Role</th><th>Institution</th><th>Dept / Sem / Sec</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>
+                {sortedUsers.map(u => (
+                  <tr key={u.id}>
+                    {editingId === u.id ? (
+                      <>
+                        <td><input type="email" className="form-input" value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ padding: "6px 10px", marginBottom: 4 }} /><input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} /></td>
+                        <td><select className="form-input" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ padding: "6px 10px" }}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></td>
+                        <td><select className="form-input" value={editInst} onChange={e => setEditInst(e.target.value)} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
+                        <td>
+                          {editRole === "student" && <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                            <select className="form-input" value={editSem} onChange={e => setEditSem(e.target.value)} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
+                            <select className="form-input" value={editSec} onChange={e => setEditSec(e.target.value)} disabled={!editSem} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sec</option>{editSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                          </div>}
+                          {editRole === "teacher" && <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>}
+                          {editRole === "admin" && <span style={{ color: "var(--text-muted)" }}>—</span>}
+                        </td>
+                        <td><select className="form-input" value={editIsActive ? "active" : "disabled"} onChange={e => setEditIsActive(e.target.value === "active")} style={{ padding: "6px 10px" }}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
+                        <td><div style={{ display: "flex", gap: 8 }}>
+                          <button onClick={() => handleSaveEdit(u.id)} className="btn-primary" style={{ padding: "7px 10px" }}><Check size={14} /></button>
+                          <button onClick={() => setEditingId(null)} className="btn-secondary" style={{ padding: "7px 10px" }}><X size={14} /></button>
+                        </div></td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ fontWeight: 600 }}>{u.email}</td>
+                        <td>{roleBadge(u.role)}</td>
+                        <td style={{ fontSize: 13 }}>{u.institution_name || <span style={{ color: "var(--text-muted)" }}>Global Admin</span>}</td>
+                        <td>
+                          {u.role === "student" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}><div>Dept: {u.department_name || "—"}</div><div>Sem: {u.semester_number || "—"}</div><div>Sec: {u.section_name || "—"}</div></div>
+                           : u.role === "teacher" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Dept: {u.department_name || "—"}</div>
+                           : <span style={{ color: "var(--text-muted)" }}>—</span>}
+                        </td>
+                        <td><span className={`badge ${u.is_active ? "badge-good" : "badge-defaulter"}`}>{u.is_active ? "Active" : "Disabled"}</span></td>
+                        <td>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => { setEditingId(u.id); setEditEmail(u.email); setEditRole(u.role); setEditInst(u.institution || ""); setEditDept(u.department || ""); setEditSem(u.semester || ""); setEditSec(u.section || ""); setEditIsActive(u.is_active); setEditPassword(""); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
+                            <button onClick={() => handleDelete(u.id)} className="btn-danger" style={{ padding: "6px 12px", fontSize: 13 }}><Trash size={12} /> Delete</button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {users.length === 0 && <tr><td colSpan="6" style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>No users found.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </AccordionSection>
+
+      {/* ── SECTION 2: REGISTER NEW USER ACCOUNT ── */}
+      <AccordionSection
+        title="Register New User Account"
+        icon={<UserPlus size={18} color="var(--emerald)" />}
+        iconBg="rgba(57,217,138,0.15)"
+        defaultOpen={false}
+      >
+        <div style={{ marginTop: 16 }}>
           <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div><label>Email</label><input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@mit.edu" required /></div>
@@ -319,12 +398,16 @@ export default function UsersPanel({ user }) {
             </div>
           </form>
         </div>
+      </AccordionSection>
 
-        {/* Bulk Generate */}
-        <div className="glass-b" style={{ padding: 24 }}>
-          <h3 style={{ margin: "0 0 18px 0", display: "flex", alignItems: "center", gap: 8 }}>
-            <UserPlus size={18} color="var(--cyan)" /> Bulk Generate Students
-          </h3>
+      {/* ── SECTION 3: BULK GENERATE STUDENTS ── */}
+      <AccordionSection
+        title="Bulk Generate Student Accounts"
+        icon={<Plus size={18} color="var(--cyan)" />}
+        iconBg="rgba(46,230,255,0.15)"
+        defaultOpen={false}
+      >
+        <div style={{ marginTop: 16 }}>
           {bulkSuccessMsg && <div className="alert alert-success" style={{ marginBottom: 12 }}>{bulkSuccessMsg}</div>}
           {bulkError && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{bulkError}</div>}
           <form onSubmit={handleBulkGenerate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -375,118 +458,41 @@ export default function UsersPanel({ user }) {
               </button>
             </div>
           </form>
+
+          {/* Generated credentials table */}
+          {generatedAccounts.length > 0 && (
+            <div style={{ marginTop: 20, padding: 20, background: "rgba(57,217,138,0.06)", border: "1px solid rgba(57,217,138,0.25)", borderRadius: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h4 style={{ margin: 0, color: "var(--emerald)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Check size={18} /> Generated Credentials ({generatedAccounts.length})
+                </h4>
+                <button className="btn-secondary" style={{ padding: "7px 14px", fontSize: 13 }} onClick={downloadCredentialsAsCSV}>
+                  <Download size={14} /> Download CSV
+                </button>
+              </div>
+              <div className="table-container" style={{ maxHeight: 260, overflowY: "auto" }}>
+                <table>
+                  <thead><tr><th>Email</th><th>Password</th><th>Department</th><th>Semester</th><th>Section</th><th>Enrolled Course</th></tr></thead>
+                  <tbody>
+                    {generatedAccounts.map((acc, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 600 }}>{acc.email}</td>
+                        <td><code style={{ background: "rgba(57,217,138,0.08)", color: "var(--emerald)", padding: "2px 7px", borderRadius: 5, fontSize: 12, border: "1px solid rgba(57,217,138,0.2)" }}>{acc.password}</code></td>
+                        <td>{acc.department_name}</td>
+                        <td>{acc.semester_number}</td>
+                        <td>{acc.section_name}</td>
+                        <td>{acc.enrolled_course || "None"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </AccordionSection>
 
       {error && <div className="alert alert-danger">{error}</div>}
-
-      {/* Generated credentials */}
-      {generatedAccounts.length > 0 && (
-        <div className="glass-b" style={{ padding: 24, borderColor: "rgba(57,217,138,0.30)", boxShadow: "0 0 32px rgba(57,217,138,0.10)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h4 style={{ margin: 0, color: "var(--emerald)", display: "flex", alignItems: "center", gap: 8 }}>
-              <Check size={18} /> Generated Credentials ({generatedAccounts.length})
-            </h4>
-            <button className="btn-secondary" style={{ padding: "7px 14px", fontSize: 13 }} onClick={downloadCredentialsAsCSV}>
-              <Download size={14} /> Download CSV
-            </button>
-          </div>
-          <div className="table-container" style={{ maxHeight: 260, overflowY: "auto" }}>
-            <table>
-              <thead><tr><th>Email</th><th>Password</th><th>Department</th><th>Semester</th><th>Section</th><th>Enrolled Course</th></tr></thead>
-              <tbody>
-                {generatedAccounts.map((acc, idx) => (
-                  <tr key={idx}>
-                    <td style={{ fontWeight: 600 }}>{acc.email}</td>
-                    <td><code style={{ background: "rgba(57,217,138,0.08)", color: "var(--emerald)", padding: "2px 7px", borderRadius: 5, fontSize: 12, border: "1px solid rgba(57,217,138,0.2)" }}>{acc.password}</code></td>
-                    <td>{acc.department_name}</td>
-                    <td>{acc.semester_number}</td>
-                    <td>{acc.section_name}</td>
-                    <td>{acc.enrolled_course || "None"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* User Directory */}
-      <div className="glass-b" style={{ padding: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
-          <h3 style={{ margin: 0 }}>User Directory <span style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 400 }}>({sortedUsers.length} users)</span></h3>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <Filter size={14} color="var(--text-muted)" />
-              <select className="form-input" value={universityFilter} onChange={e => setUniversityFilter(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
-                <option value="all">All Universities</option>
-                {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <ArrowUpDown size={14} color="var(--text-muted)" />
-              <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
-                <option value="email">Sort by Email</option>
-                <option value="role">Sort by Role</option>
-                <option value="university">Sort by University</option>
-                <option value="status">Sort by Status</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="table-container">
-          <table>
-            <thead><tr><th>Email</th><th>Role</th><th>Institution</th><th>Dept / Sem / Sec</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              {sortedUsers.map(u => (
-                <tr key={u.id}>
-                  {editingId === u.id ? (
-                    <>
-                      <td><input type="email" className="form-input" value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ padding: "6px 10px", marginBottom: 4 }} /><input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} /></td>
-                      <td><select className="form-input" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ padding: "6px 10px" }}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></td>
-                      <td><select className="form-input" value={editInst} onChange={e => setEditInst(e.target.value)} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
-                      <td>
-                        {editRole === "student" && <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                          <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
-                          <select className="form-input" value={editSem} onChange={e => setEditSem(e.target.value)} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
-                          <select className="form-input" value={editSec} onChange={e => setEditSec(e.target.value)} disabled={!editSem} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sec</option>{editSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                        </div>}
-                        {editRole === "teacher" && <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>}
-                        {editRole === "admin" && <span style={{ color: "var(--text-muted)" }}>—</span>}
-                      </td>
-                      <td><select className="form-input" value={editIsActive ? "active" : "disabled"} onChange={e => setEditIsActive(e.target.value === "active")} style={{ padding: "6px 10px" }}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
-                      <td><div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => handleSaveEdit(u.id)} className="btn-primary" style={{ padding: "7px 10px" }}><Check size={14} /></button>
-                        <button onClick={() => setEditingId(null)} className="btn-secondary" style={{ padding: "7px 10px" }}><X size={14} /></button>
-                      </div></td>
-                    </>
-                  ) : (
-                    <>
-                      <td style={{ fontWeight: 600 }}>{u.email}</td>
-                      <td>{roleBadge(u.role)}</td>
-                      <td style={{ fontSize: 13 }}>{u.institution_name || <span style={{ color: "var(--text-muted)" }}>Global Admin</span>}</td>
-                      <td>
-                        {u.role === "student" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}><div>Dept: {u.department_name || "—"}</div><div>Sem: {u.semester_number || "—"}</div><div>Sec: {u.section_name || "—"}</div></div>
-                         : u.role === "teacher" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Dept: {u.department_name || "—"}</div>
-                         : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                      </td>
-                      <td><span className={`badge ${u.is_active ? "badge-good" : "badge-defaulter"}`}>{u.is_active ? "Active" : "Disabled"}</span></td>
-                      <td>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => { setEditingId(u.id); setEditEmail(u.email); setEditRole(u.role); setEditInst(u.institution || ""); setEditDept(u.department || ""); setEditSem(u.semester || ""); setEditSec(u.section || ""); setEditIsActive(u.is_active); setEditPassword(""); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
-                          <button onClick={() => handleDelete(u.id)} className="btn-danger" style={{ padding: "6px 12px", fontSize: 13 }}><Trash size={12} /> Delete</button>
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-              {users.length === 0 && <tr><td colSpan="6" style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>No users found.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import API from "../services/api";
 import {
   Plus, RefreshCw, Eye, ShieldCheck, Clock, Zap, BookOpen,
-  Maximize2, X, Users, AlertTriangle, Send, CheckCircle2, Play
+  Maximize2, X, Users, AlertTriangle, Send, CheckCircle2, Play, ChevronDown
 } from "lucide-react";
 
 export default function Dashboard({ user, onViewReports }) {
@@ -269,16 +269,20 @@ export default function Dashboard({ user, onViewReports }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
           {/* QR Code Presentation Panel */}
-          <div className="glass-b" style={{ padding: 28 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-              <Zap size={18} color="var(--emerald)" />
-              <h2 style={{ margin: 0, fontSize: 18 }}>Live Attendance Presentation</h2>
+          <details className="acc-panel" open>
+            <summary>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Zap size={18} color="var(--emerald)" />
+              </div>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Live Attendance Presentation</h2>
               {activeSession && (
-                <span className="badge badge-good" style={{ marginLeft: "auto" }}>
+                <span className="badge badge-good" style={{ marginLeft: 8 }}>
                   <div className="pulse-dot" style={{ width: 6, height: 6 }} /> Live ({formatTime(sessionTimeLeft)})
                 </span>
               )}
-            </div>
+              <ChevronDown size={18} className="acc-panel-chevron" />
+            </summary>
+            <div className="acc-panel-body">
 
             {activeSession ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
@@ -389,158 +393,177 @@ export default function Dashboard({ user, onViewReports }) {
                 </p>
               </div>
             )}
-          </div>
+            </div>
+          </details>
 
           {/* Assigned Courses List + Custom Duration Config */}
-          <div className="glass-b" style={{ padding: 28 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <details className="acc-panel" open>
+            <summary>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(46,230,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <BookOpen size={18} color="var(--cyan)" />
-                <h2 style={{ margin: 0, fontSize: 18 }}>Your Courses</h2>
               </div>
-
-              {/* Feature: Manual Custom Duration Control */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <Clock size={14} color="var(--emerald)" />
-                <span className="text-meta" style={{ fontWeight: 600 }}>Session Length:</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input
-                    type="number"
-                    min="1"
-                    max="480"
-                    className="form-input"
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(Math.max(1, parseInt(e.target.value) || 1))}
-                    style={{ width: 72, padding: "6px 10px", textAlign: "center", fontWeight: 700 }}
-                  />
-                  <span className="text-meta" style={{ fontSize: 13 }}>Minutes</span>
-                </div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  {[15, 30, 60, 90, 120].map(mins => (
-                    <button
-                      key={mins}
-                      type="button"
-                      onClick={() => setDurationMinutes(mins)}
-                      className={durationMinutes === mins ? "btn-primary" : "btn-secondary"}
-                      style={{ padding: "4px 8px", fontSize: 11, borderRadius: 6 }}
-                    >
-                      {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {courses.map((course, i) => (
-                <div key={course.id} className="glass-c" style={{
-                  padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: 10,
-                      background: `linear-gradient(135deg, ${["rgba(57,217,138,0.2)", "rgba(46,230,255,0.2)", "rgba(123,97,255,0.2)"][i % 3]}, transparent)`,
-                      border: `1px solid ${["rgba(57,217,138,0.3)", "rgba(46,230,255,0.3)", "rgba(123,97,255,0.3)"][i % 3]}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 14, fontWeight: 700,
-                      color: ["var(--emerald)", "var(--cyan)", "var(--purple)"][i % 3],
-                    }}>
-                      {course.name?.charAt(0)?.toUpperCase() || "C"}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 15 }}>{course.name}</div>
-                      <div className="text-meta">{course.institution}{course.department ? ` · ${course.department}` : ""}</div>
-                    </div>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Your Courses</h2>
+              <span style={{ marginLeft: 6, fontSize: 12, color: "var(--text-muted)" }}>({courses.length} assigned)</span>
+              <ChevronDown size={18} className="acc-panel-chevron" />
+            </summary>
+            <div className="acc-panel-body">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+                {/* Feature: Manual Custom Duration Control */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <Clock size={14} color="var(--emerald)" />
+                  <span className="text-meta" style={{ fontWeight: 600 }}>Session Length:</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="number"
+                      min="1"
+                      max="480"
+                      className="form-input"
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(Math.max(1, parseInt(e.target.value) || 1))}
+                      style={{ width: 72, padding: "6px 10px", textAlign: "center", fontWeight: 700 }}
+                    />
+                    <span className="text-meta" style={{ fontSize: 13 }}>Minutes</span>
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => onViewReports(course.id)} className="btn-secondary" style={{ padding: "7px 14px", fontSize: 13 }}>
-                      <Eye size={13} /> Reports
-                    </button>
-                    <button onClick={() => createSession(course.id)} className="btn-primary" style={{ padding: "7px 14px", fontSize: 13 }} disabled={loading}>
-                      <Play size={13} /> Start ({durationMinutes}m)
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {courses.length === 0 && (
-                <p className="text-meta" style={{ textAlign: "center", padding: "20px 0" }}>No courses assigned to your account.</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column (Feature 3, 4, 5 Widgets) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-          {/* Feature 3 & 5: Low Attendance Defaulter Alerts & Notification Trigger */}
-          <div className="glass-b" style={{ padding: 22 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <AlertTriangle size={16} color="var(--danger)" />
-              <h3 style={{ margin: 0, fontSize: 15 }}>Students At Risk (&lt;75%)</h3>
-            </div>
-            {allDefaulters.length === 0 ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--emerald)", fontSize: 13 }}>
-                <CheckCircle2 size={16} /> All students meet attendance criteria.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflowY: "auto" }}>
-                {allDefaulters.map(std => (
-                  <div key={`${std.course_id}-${std.id}`} style={{
-                    padding: 10, background: "rgba(255,90,90,0.06)", border: "1px solid rgba(255,90,90,0.18)",
-                    borderRadius: 8, display: "flex", flexDirection: "column", gap: 6
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{std.email}</span>
-                      <span className="badge badge-defaulter">{std.attendance_percentage}%</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-muted)" }}>
-                      <span>{std.course_name}</span>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[15, 30, 60, 90, 120].map(mins => (
                       <button
-                        onClick={() => sendWarningNotice(std.id, std.email)}
-                        className="btn-secondary"
-                        style={{ padding: "3px 8px", fontSize: 11, gap: 4 }}
-                        disabled={notifiedStudents[std.id]}
+                        key={mins}
+                        type="button"
+                        onClick={() => setDurationMinutes(mins)}
+                        className={durationMinutes === mins ? "btn-primary" : "btn-secondary"}
+                        style={{ padding: "4px 8px", fontSize: 11, borderRadius: 6 }}
                       >
-                        <Send size={10} />
-                        {notifiedStudents[std.id] ? "Notice Sent" : "Send Notice"}
+                        {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {courses.map((course, i) => (
+                  <div key={course.id} className="glass-c" style={{
+                    padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <div style={{
+                        width: 38, height: 38, borderRadius: 10,
+                        background: `linear-gradient(135deg, ${["rgba(57,217,138,0.2)", "rgba(46,230,255,0.2)", "rgba(123,97,255,0.2)"][i % 3]}, transparent)`,
+                        border: `1px solid ${["rgba(57,217,138,0.3)", "rgba(46,230,255,0.3)", "rgba(123,97,255,0.3)"][i % 3]}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 14, fontWeight: 700,
+                        color: ["var(--emerald)", "var(--cyan)", "var(--purple)"][i % 3],
+                      }}>
+                        {course.name?.charAt(0)?.toUpperCase() || "C"}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 15 }}>{course.name}</div>
+                        <div className="text-meta">{course.institution}{course.department ? ` · ${course.department}` : ""}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => onViewReports(course.id)} className="btn-secondary" style={{ padding: "7px 14px", fontSize: 13 }}>
+                        <Eye size={13} /> Reports
+                      </button>
+                      <button onClick={() => createSession(course.id)} className="btn-primary" style={{ padding: "7px 14px", fontSize: 13 }} disabled={loading}>
+                        <Play size={13} /> Start ({durationMinutes}m)
                       </button>
                     </div>
                   </div>
                 ))}
+                {courses.length === 0 && (
+                  <p className="text-meta" style={{ textAlign: "center", padding: "20px 0" }}>No courses assigned to your account.</p>
+                )}
               </div>
-            )}
-          </div>
-
-          {/* Feature 4: Recent Session History */}
-          <div className="glass-b" style={{ padding: 22 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-              <Clock size={16} color="var(--cyan)" />
-              <h3 style={{ margin: 0, fontSize: 15 }}>Recent Sessions History</h3>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {recentSessions.map(s => {
-                const isPast = new Date(s.expiry_time) < new Date();
-                return (
-                  <div key={s.id} style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.06)"
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>Session #{s.id}</div>
-                      <div className="text-meta">{new Date(s.start_time).toLocaleString()}</div>
+          </details>
+        </div>
+
+        {/* Right Column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Feature 3 & 5: Low Attendance Defaulter Alerts & Notification Trigger */}
+          <details className="acc-panel" open>
+            <summary>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,90,90,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AlertTriangle size={16} color="var(--danger)" />
+              </div>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Students At Risk (&lt;75%)</h3>
+              {allDefaulters.length > 0 && (
+                <span className="badge badge-defaulter" style={{ marginLeft: 6 }}>{allDefaulters.length}</span>
+              )}
+              <ChevronDown size={18} className="acc-panel-chevron" />
+            </summary>
+            <div className="acc-panel-body">
+              {allDefaulters.length === 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--emerald)", fontSize: 13, paddingTop: 8 }}>
+                  <CheckCircle2 size={16} /> All students meet attendance criteria.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflowY: "auto", paddingTop: 8 }}>
+                  {allDefaulters.map(std => (
+                    <div key={`${std.course_id}-${std.id}`} style={{
+                      padding: 10, background: "rgba(255,90,90,0.06)", border: "1px solid rgba(255,90,90,0.18)",
+                      borderRadius: 8, display: "flex", flexDirection: "column", gap: 6
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{std.email}</span>
+                        <span className="badge badge-defaulter">{std.attendance_percentage}%</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--text-muted)" }}>
+                        <span>{std.course_name}</span>
+                        <button
+                          onClick={() => sendWarningNotice(std.id, std.email)}
+                          className="btn-secondary"
+                          style={{ padding: "3px 8px", fontSize: 11, gap: 4 }}
+                          disabled={notifiedStudents[std.id]}
+                        >
+                          <Send size={10} />
+                          {notifiedStudents[std.id] ? "Notice Sent" : "Send Notice"}
+                        </button>
+                      </div>
                     </div>
-                    <span className={`badge ${isPast ? "badge-defaulter" : "badge-good"}`}>
-                      {isPast ? "Ended" : "Active"}
-                    </span>
-                  </div>
-                );
-              })}
-              {recentSessions.length === 0 && (
-                <p className="text-meta" style={{ textAlign: "center", margin: 0 }}>No past sessions found.</p>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
+          </details>
+
+          {/* Feature 4: Recent Session History */}
+          <details className="acc-panel" open>
+            <summary>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(46,230,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Clock size={16} color="var(--cyan)" />
+              </div>
+              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Recent Sessions History</h3>
+              <ChevronDown size={18} className="acc-panel-chevron" />
+            </summary>
+            <div className="acc-panel-body">
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 8 }}>
+                {recentSessions.map(s => {
+                  const isPast = new Date(s.expiry_time) < new Date();
+                  return (
+                    <div key={s.id} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "10px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 8,
+                      border: "1px solid rgba(255,255,255,0.06)"
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>Session #{s.id}</div>
+                        <div className="text-meta">{new Date(s.start_time).toLocaleString()}</div>
+                      </div>
+                      <span className={`badge ${isPast ? "badge-defaulter" : "badge-good"}`}>
+                        {isPast ? "Ended" : "Active"}
+                      </span>
+                    </div>
+                  );
+                })}
+                {recentSessions.length === 0 && (
+                  <p className="text-meta" style={{ textAlign: "center", margin: 0 }}>No past sessions found.</p>
+                )}
+              </div>
+            </div>
+          </details>
 
         </div>
       </div>

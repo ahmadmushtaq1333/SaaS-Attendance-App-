@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import API from "../../services/api";
 import { Plus, School, Edit, Trash, Check, X, ChevronDown, ChevronRight, BookOpen, Layers, Layout, AlertTriangle } from "lucide-react";
+import AccordionSection from "../AccordionSection";
 
 /* ── Inline editor ── */
 function InlineEdit({ value, onChange, onSave, onCancel, placeholder }) {
@@ -318,53 +319,63 @@ export default function InstitutionsPanel({ user }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Create form */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* ── Create Institution (Global Admin Only) ── */}
       {isSuper && (
-        <div className="glass-b" style={{ padding: 24, maxWidth: 560 }}>
-          <h3 style={{ margin: "0 0 18px 0", display: "flex", alignItems: "center", gap: 8 }}>
-            <School size={18} color="var(--emerald)" /> Create New Institution
-          </h3>
-          {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
-          <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label>Institution Name</label>
-              <input type="text" className="form-input" value={name}
-                onChange={(e) => { setName(e.target.value); setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
-                placeholder="e.g. COMSATS University" required />
-            </div>
-            <div>
-              <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-generated)</span></label>
-              <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
-            </div>
-            <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}>
-              <Plus size={16} /> {loading ? "Creating…" : "Add Institution"}
-            </button>
-          </form>
-        </div>
+        <AccordionSection
+          title="Create New Institution"
+          icon={<School size={18} color="var(--emerald)" />}
+          iconBg="rgba(57,217,138,0.15)"
+          defaultOpen={false}
+        >
+          <div style={{ marginTop: 16, maxWidth: 520 }}>
+            {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+            <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label>Institution Name</label>
+                <input type="text" className="form-input" value={name}
+                  onChange={(e) => { setName(e.target.value); setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
+                  placeholder="e.g. COMSATS University" required />
+              </div>
+              <div>
+                <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-generated)</span></label>
+                <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
+              </div>
+              <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}>
+                <Plus size={16} /> {loading ? "Creating…" : "Add Institution"}
+              </button>
+            </form>
+          </div>
+        </AccordionSection>
       )}
 
-      {/* Institution list */}
-      <div className="glass-b" style={{ padding: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-          <Layout size={18} color="var(--purple)" />
-          <h3 style={{ margin: 0 }}>Institutions &amp; Academic Hierarchy</h3>
-          <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>Click to expand departments</span>
+      {/* ── Institution List & Academic Hierarchy ── */}
+      <AccordionSection
+        title="Institutions & Academic Hierarchy"
+        subtitle={`(${institutions.length} institutions)`}
+        icon={<Layout size={18} color="var(--purple)" />}
+        iconBg="rgba(123,97,255,0.15)"
+        defaultOpen={true}
+      >
+        <div style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Click any institution to expand departments, semesters, and sections.</p>
+          {institutions.length === 0 ? (
+            <p className="text-meta" style={{ textAlign: "center", padding: "32px 0" }}>No institutions yet.{isSuper ? " Create one above." : " Contact your global admin."}</p>
+          ) : (
+            institutions.map(inst => (
+              <InstitutionBlock
+                key={inst.id}
+                inst={inst}
+                onDelete={isSuper ? handleDelete : null}
+                onEdit={isSuper ? handleEdit : null}
+              />
+            ))
+          )}
         </div>
+      </AccordionSection>
 
-        {institutions.length === 0 ? (
-          <p className="text-meta" style={{ textAlign: "center", padding: "32px 0" }}>No institutions yet. Create one above.</p>
-        ) : (
-          institutions.map(inst => (
-            <InstitutionBlock 
-              key={inst.id} 
-              inst={inst} 
-              onDelete={isSuper ? handleDelete : null} 
-              onEdit={isSuper ? handleEdit : null} 
-            />
-          ))
-        )}
-      </div>
+      {!isSuper && error && <div className="alert alert-danger">{error}</div>}
     </div>
   );
 }
