@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, UserPlus, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle, Users } from "lucide-react";
+import { Plus, UserPlus, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle, Users, FileSpreadsheet } from "lucide-react";
 import AccordionSection from "../AccordionSection";
+import ExcelImportPanel from "./ExcelImportPanel";
 
 export default function UsersPanel({ user }) {
   const [users, setUsers] = useState([]);
@@ -11,6 +12,7 @@ export default function UsersPanel({ user }) {
   // Creation form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
   const [role, setRole] = useState("student");
   const [selectedInst, setSelectedInst] = useState("");
   const [departments, setDepartments] = useState([]);
@@ -45,6 +47,8 @@ export default function UsersPanel({ user }) {
   const [editingId, setEditingId] = useState(null);
   const [editEmail, setEditEmail] = useState("");
   const [editPassword, setEditPassword] = useState("");
+  const [editRegNum, setEditRegNum] = useState("");
+  const [editIsEmailVerified, setEditIsEmailVerified] = useState(false);
   const [editRole, setEditRole] = useState("student");
   const [editInst, setEditInst] = useState("");
   const [editDept, setEditDept] = useState("");
@@ -159,11 +163,12 @@ export default function UsersPanel({ user }) {
     try {
       await API.post("/admin/users/", {
         email, password, role,
+        registration_number: registrationNumber.trim() || null,
         institution: selectedInst ? parseInt(selectedInst) : null,
         department: (role === "student" || role === "teacher") && selectedDept ? parseInt(selectedDept) : null,
         section: role === "student" && selectedSec ? parseInt(selectedSec) : null
       });
-      setEmail(""); setPassword("");
+      setEmail(""); setPassword(""); setRegistrationNumber("");
       fetchUsers();
     } catch (err) { setError(err.response?.data?.email?.[0] || err.response?.data?.error || "Registration error occurred"); }
     finally { setLoading(false); }
@@ -208,6 +213,8 @@ export default function UsersPanel({ user }) {
     try {
       const payload = {
         email: editEmail, role: editRole,
+        registration_number: editRegNum.trim() || null,
+        is_email_verified: editIsEmailVerified,
         institution: editInst ? parseInt(editInst) : null,
         department: (editRole === "student" || editRole === "teacher") && editDept ? parseInt(editDept) : null,
         section: editRole === "student" && editSec ? parseInt(editSec) : null,
@@ -270,13 +277,17 @@ export default function UsersPanel({ user }) {
 
           <div className="table-container">
             <table>
-              <thead><tr><th>Email</th><th>Role</th><th>Institution</th><th>Dept / Sem / Sec</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Email / Reg No</th><th>Role</th><th>Institution</th><th>Dept / Sem / Sec</th><th>Status</th><th>Verification</th><th>Actions</th></tr></thead>
               <tbody>
                 {sortedUsers.map(u => (
                   <tr key={u.id}>
                     {editingId === u.id ? (
                       <>
-                        <td><input type="email" className="form-input" value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ padding: "6px 10px", marginBottom: 4 }} /><input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} /></td>
+                        <td>
+                          <input type="email" className="form-input" value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ padding: "6px 10px", marginBottom: 4 }} />
+                          <input type="text" className="form-input" value={editRegNum} onChange={e => setEditRegNum(e.target.value)} placeholder="Reg Number" style={{ padding: "5px 10px", fontSize: 12, marginBottom: 4 }} />
+                          <input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} />
+                        </td>
                         <td><select className="form-input" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ padding: "6px 10px" }}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></td>
                         <td><select className="form-input" value={editInst} onChange={e => setEditInst(e.target.value)} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
                         <td>
@@ -289,6 +300,7 @@ export default function UsersPanel({ user }) {
                           {editRole === "admin" && <span style={{ color: "var(--text-muted)" }}>—</span>}
                         </td>
                         <td><select className="form-input" value={editIsActive ? "active" : "disabled"} onChange={e => setEditIsActive(e.target.value === "active")} style={{ padding: "6px 10px" }}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
+                        <td><select className="form-input" value={editIsEmailVerified ? "verified" : "pending"} onChange={e => setEditIsEmailVerified(e.target.value === "verified")} style={{ padding: "6px 10px" }}><option value="verified">Verified</option><option value="pending">Pending OTP</option></select></td>
                         <td><div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => handleSaveEdit(u.id)} className="btn-primary" style={{ padding: "7px 10px" }}><Check size={14} /></button>
                           <button onClick={() => setEditingId(null)} className="btn-secondary" style={{ padding: "7px 10px" }}><X size={14} /></button>
@@ -296,7 +308,14 @@ export default function UsersPanel({ user }) {
                       </>
                     ) : (
                       <>
-                        <td style={{ fontWeight: 600 }}>{u.email}</td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{u.email}</div>
+                          {u.registration_number && (
+                            <div style={{ fontSize: 11, color: "var(--cyan)", marginTop: 2, fontFamily: "monospace" }}>
+                              Reg: {u.registration_number}
+                            </div>
+                          )}
+                        </td>
                         <td>{roleBadge(u.role)}</td>
                         <td style={{ fontSize: 13 }}>{u.institution_name || <span style={{ color: "var(--text-muted)" }}>Global Admin</span>}</td>
                         <td>
@@ -306,8 +325,13 @@ export default function UsersPanel({ user }) {
                         </td>
                         <td><span className={`badge ${u.is_active ? "badge-good" : "badge-defaulter"}`}>{u.is_active ? "Active" : "Disabled"}</span></td>
                         <td>
+                          <span className={`badge ${u.is_email_verified ? "badge-good" : "badge-defaulter"}`}>
+                            {u.is_email_verified ? "Verified" : "Pending OTP"}
+                          </span>
+                        </td>
+                        <td>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => { setEditingId(u.id); setEditEmail(u.email); setEditRole(u.role); setEditInst(u.institution || ""); setEditDept(u.department || ""); setEditSem(u.semester || ""); setEditSec(u.section || ""); setEditIsActive(u.is_active); setEditPassword(""); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
+                            <button onClick={() => { setEditingId(u.id); setEditEmail(u.email); setEditRole(u.role); setEditInst(u.institution || ""); setEditDept(u.department || ""); setEditSem(u.semester || ""); setEditSec(u.section || ""); setEditIsActive(u.is_active); setEditPassword(""); setEditRegNum(u.registration_number || ""); setEditIsEmailVerified(u.is_email_verified); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
                             <button onClick={() => handleDelete(u.id)} className="btn-danger" style={{ padding: "6px 12px", fontSize: 13 }}><Trash size={12} /> Delete</button>
                           </div>
                         </td>
@@ -315,7 +339,7 @@ export default function UsersPanel({ user }) {
                     )}
                   </tr>
                 ))}
-                {users.length === 0 && <tr><td colSpan="6" style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>No users found.</td></tr>}
+                {users.length === 0 && <tr><td colSpan="7" style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>No users found.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -331,8 +355,9 @@ export default function UsersPanel({ user }) {
       >
         <div style={{ marginTop: 16 }}>
           <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div><label>Email</label><input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@mit.edu" required /></div>
+              <div><label>Registration Number</label><input type="text" className="form-input" value={registrationNumber} onChange={e => setRegistrationNumber(e.target.value)} placeholder="e.g. CS-2026-105" /></div>
               <div><label>Password</label><input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} placeholder="password123" required /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -489,6 +514,18 @@ export default function UsersPanel({ user }) {
               </div>
             </div>
           )}
+        </div>
+      </AccordionSection>
+
+      {/* ── SECTION 4: EXCEL/CSV BATCH IMPORT ── */}
+      <AccordionSection
+        title="Excel / CSV Batch Import"
+        icon={<FileSpreadsheet size={18} color="var(--emerald)" />}
+        iconBg="rgba(57,217,138,0.15)"
+        defaultOpen={false}
+      >
+        <div style={{ marginTop: 16 }}>
+          <ExcelImportPanel user={user} onImportComplete={fetchUsers} />
         </div>
       </AccordionSection>
 

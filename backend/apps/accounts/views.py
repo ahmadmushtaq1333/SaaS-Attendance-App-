@@ -36,3 +36,134 @@ class UserCoursesView(APIView):
                 "department": c.department.name if c.department else None,
             })
         return Response(data)
+
+
+import random
+import string
+from django.utils import timezone
+from datetime import timedelta
+from django.core.mail import send_mail
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
+from .models import CustomUser, EmailVerificationCode
+
+
+def generate_and_send_otp(user, purpose="verify"):
+    # Generate 6-digit numeric OTP
+    code = "".join(random.choices(string.digits, k=6))
+    expires_at = timezone.now() + timedelta(minutes=15)
+    
+    # Save code to DB
+    EmailVerificationCode.objects.filter(user=user, purpose=purpose).delete()
+    EmailVerificationCode.objects.create(
+        user=user,
+        code=code,
+        purpose=purpose,
+        expires_at=expires_at
+    )
+    
+    subject = "Attend AI Activation Code" if purpose == "verify" else "Attend AI Password Reset Code"
+    message = f"Your verification code is: {code}. It expires in 15 minutes."
+    
+    # Send or Log
+    print(f"\n======================================================\n[EMAIL LOG - {purpose.upper()}] To: {user.email}\nSubject: {subject}\nMessage: {message}\n======================================================\n")
+    try:
+        send_mail(
+            subject,
+            message,
+            "noreply@attendai.com",
+            [user.email],
+            fail_silently=True
+        )
+    except Exception as e:
+        print(f"SMTP send failed: {e}")
+    return code
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
+
+class SendVerificationCodeView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = CustomUser.objects.get(email=email.strip().lower())
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        if user.is_email_verified:
+            return Response({"message": "Email is already verified"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        generate_and_send_otp(user, purpose="verify")
+        return Response({"message": "Verification code sent to your email."})
+
+
+class VerifyEmailView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        code = request.data.get("code")
+        if not email or not code:
+            return Response({"error": "Email and code are required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = CustomUser.objects.get(email=email.strip().lower())
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            record = EmailVerificationCode.objects.get(user=user, code=code.strip(), purpose="verify")
+            if record.expires_at < timezone.now():
+                return Response({"error": "Code has expired"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            user.is_email_verified = True
+            user.save()
+            record.delete()
+            return Response({"message": "Email verified successfully. You can now log in."})
+        except EmailVerificationCode.DoesNotExist:
+            return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RequestPasswordResetView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = CustomUser.objects.get(email=email.strip().lower())
+            generate_and_send_otp(user, purpose="reset")
+        except CustomUser.DoesNotExist:
+            pass
+            
+        return Response({"message": "If the email exists, a password reset code has been sent."})
+
+
+class ConfirmPasswordResetView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        code = request.data.get("code")
+        new_password = request.data.get("password")
+        if not email or not code or not new_password:
+            return Response({"error": "Email, code, and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = CustomUser.objects.get(email=email.strip().lower())
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            record = EmailVerificationCode.objects.get(user=user, code=code.strip(), purpose="reset")
+            if record.expires_at < timezone.now():
+                return Response({"error": "Code has expired"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            user.set_password(new_password)
+            user.is_email_verified = True  # Auto-verify email on successful password reset OTP confirmation
+            user.save()
+            record.delete()
+            return Response({"message": "Password reset successfully. You can now log in."})
+        except EmailVerificationCode.DoesNotExist:
+            return Response({"error": "Invalid password reset code"}, status=status.HTTP_400_BAD_REQUEST)
+

@@ -26,6 +26,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
+    registration_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
+    is_email_verified = models.BooleanField(default=False)
     
     # Institution is direct for admin/teachers, and derived for students.
     # To keep database constraints clean, we can make it nullable.
@@ -70,3 +72,19 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email} ({self.role})"
+
+
+class EmailVerificationCode(models.Model):
+    PURPOSE_CHOICES = (
+        ("verify", "Verification"),
+        ("reset", "Password Reset"),
+    )
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="verification_codes")
+    code = models.CharField(max_length=6)
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default="verify")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.user.email} - {self.code} ({self.purpose})"
+

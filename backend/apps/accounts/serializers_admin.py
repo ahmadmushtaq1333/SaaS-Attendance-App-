@@ -12,7 +12,7 @@ class InstitutionAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Institution
-        fields = ("id", "name", "slug", "created_at", "user_count", "course_count")
+        fields = ("id", "name", "slug", "domain", "created_at", "user_count", "course_count")
         read_only_fields = ("id", "created_at")
 
 class DepartmentAdminSerializer(serializers.ModelSerializer):
@@ -50,7 +50,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
         fields = (
             "id", "email", "role", "institution", "institution_name",
             "department", "department_name", "semester_number",
-            "section", "section_name", "is_active", "date_joined", "password"
+            "section", "section_name", "is_active", "date_joined", "password",
+            "registration_number", "is_email_verified"
         )
         read_only_fields = ("id", "date_joined")
 
@@ -65,6 +66,34 @@ class UserAdminSerializer(serializers.ModelSerializer):
     def get_semester_number(self, obj):
         sem = obj.get_semester
         return sem.number if sem else None
+
+    def validate(self, attrs):
+        role = attrs.get("role", getattr(self.instance, 'role', 'student'))
+        email = attrs.get("email", getattr(self.instance, 'email', None))
+        institution = attrs.get("institution", getattr(self.instance, 'institution', None))
+        section = attrs.get("section", getattr(self.instance, 'section', None))
+
+        if role == "student" and section:
+            institution = section.semester.department.institution
+
+        # Block personal email addresses for students
+        if role == "student" and email:
+            if not institution:
+                raise serializers.ValidationError({"email": "Students must be assigned to a section or institution to validate domain."})
+            
+            domain_suffix = institution.domain
+            if not domain_suffix:
+                domain_suffix = f"{institution.slug}.edu"
+            
+            domain_suffix = domain_suffix.strip().lower()
+            email_val = email.strip().lower()
+            
+            if not email_val.endswith(f"@{domain_suffix}") and not email_val.endswith(f".{domain_suffix}"):
+                raise serializers.ValidationError({
+                    "email": f"Personal emails are not permitted. Students must use their institutional email address ending with '@{domain_suffix}'."
+                })
+
+        return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)

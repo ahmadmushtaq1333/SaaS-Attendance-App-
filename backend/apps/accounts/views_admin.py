@@ -206,6 +206,240 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             
         return Response({"users": created_users, "message": f"Successfully generated {len(created_users)} students."}, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=["post"], url_path="import-file")
+    def import_file(self, request):
+        import csv
+        import json
+        import openpyxl
+        from django.db import transaction
+        from apps.accounts.views import generate_and_send_otp
+
+        file_obj = request.FILES.get("file")
+        dry_run = request.data.get("dry_run", "false").lower() == "true"
+        auto_create_structure = request.data.get("auto_create_structure", "false").lower() == "true"
+        password_strategy = request.data.get("password_strategy", "auto") # auto, reg_no, custom
+        custom_password = request.data.get("custom_password", "")
+        course_id = request.data.get("course_id")
+        
+        column_mapping_str = request.data.get("column_mapping", "{}")
+        try:
+            column_mapping = json.loads(column_mapping_str)
+        except Exception:
+            column_mapping = {}
+
+        if not file_obj:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+        filename = file_obj.name.lower()
+        rows = []
+        headers = []
+
+        try:
+            if filename.endswith(".csv"):
+                decoded_file = file_obj.read().decode("utf-8").splitlines()
+                reader = csv.reader(decoded_file)
+                headers = [h.strip() for h in next(reader, [])]
+                for r in reader:
+                    if any(r):
+                        rows.append([cell.strip() for cell in r])
+            elif filename.endswith((".xlsx", ".xls")):
+                wb = openpyxl.load_workbook(file_obj, read_only=True)
+                ws = wb.active
+                iter_rows = ws.iter_rows(values_only=True)
+                headers = [str(h).strip() if h is not None else "" for h in next(iter_rows, [])]
+                for r in iter_rows:
+                    if any(r):
+                        rows.append([str(cell).strip() if cell is not None else "" for cell in r])
+            else:
+                return Response({"error": "Unsupported file format. Please upload a CSV or Excel file."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Failed to parse file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not headers:
+            return Response({"error": "File is empty or contains no headers"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if request.query_params.get("get_preview") == "true":
+            preview_rows = rows[:5]
+            return Response({
+                "headers": headers,
+                "preview_rows": preview_rows,
+                "total_rows": len(rows)
+            })
+
+        idx_email = headers.index(column_mapping.get("email")) if column_mapping.get("email") in headers else -1
+        idx_reg = headers.index(column_mapping.get("registration_number")) if column_mapping.get("registration_number") in headers else -1
+        idx_role = headers.index(column_mapping.get("role")) if column_mapping.get("role") in headers else -1
+        idx_dept = headers.index(column_mapping.get("department")) if column_mapping.get("department") in headers else -1
+        idx_sem = headers.index(column_mapping.get("semester")) if column_mapping.get("semester") in headers else -1
+        idx_sec = headers.index(column_mapping.get("section")) if column_mapping.get("section") in headers else -1
+
+        if idx_email == -1:
+            return Response({"error": "Email column mapping is required and must match a header in the file."}, status=status.HTTP_400_BAD_REQUEST)
+
+        admin_institution = None if request.user.is_superuser else request.user.institution
+
+        success_list = []
+        error_list = []
+        
+        target_course = None
+        if course_id:
+            try:
+                target_course = Course.objects.get(id=course_id)
+                if not request.user.is_superuser and target_course.institution != admin_institution:
+                    return Response({"error": "Access denied for target enrollment course."}, status=status.HTTP_403_FORBIDDEN)
+            except Course.DoesNotExist:
+                return Response({"error": "Selected enrollment course not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        import random
+        import string
+        from django.core.exceptions import ValidationError
+        from django.core.validators import validate_email
+
+        try:
+            with transaction.atomic():
+                for row_num, row in enumerate(rows, start=2):
+                    if len(row) <= idx_email:
+                        error_list.append({"row": row_num, "error": "Row is truncated or email cell is missing."})
+                        continue
+
+                    email_val = row[idx_email].strip()
+                    reg_val = row[idx_reg].strip() if idx_reg != -1 and len(row) > idx_reg else ""
+                    role_val = row[idx_role].strip().lower() if idx_role != -1 and len(row) > idx_role else "student"
+                    dept_val = row[idx_dept].strip() if idx_dept != -1 and len(row) > idx_dept else ""
+                    sem_val = row[idx_sem].strip() if idx_sem != -1 and len(row) > idx_sem else ""
+                    sec_val = row[idx_sec].strip() if idx_sec != -1 and len(row) > idx_sec else ""
+
+                    if not role_val or role_val not in ["student", "teacher", "admin"]:
+                        role_val = "student"
+
+                    if not email_val:
+                        error_list.append({"row": row_num, "error": "Email is empty."})
+                        continue
+                    try:
+                        validate_email(email_val)
+                    except ValidationError:
+                        error_list.append({"row": row_num, "error": f"Invalid email format: '{email_val}'."})
+                        continue
+
+                    row_inst = admin_institution
+                    if not row_inst:
+                        email_domain = email_val.split("@")[-1].lower()
+                        inst_query = Institution.objects.filter(Q(domain__iexact=email_domain) | Q(slug__iexact=email_domain.split(".")[0]))
+                        if inst_query.exists():
+                            row_inst = inst_query.first()
+                        else:
+                            error_list.append({"row": row_num, "error": f"Could not determine Institution for email '{email_val}'."})
+                            continue
+
+                    if role_val == "student":
+                        inst_domain = row_inst.domain
+                        if not inst_domain:
+                            inst_domain = f"{row_inst.slug}.edu"
+                        
+                        inst_domain = inst_domain.strip().lower()
+                        email_lower = email_val.lower()
+                        if not email_lower.endswith(f"@{inst_domain}") and not email_lower.endswith(f".{inst_domain}"):
+                            error_list.append({
+                                "row": row_num, 
+                                "error": f"Student email '{email_val}' must end with institutional domain '@{inst_domain}'."
+                            })
+                            continue
+
+                    if User.objects.filter(email__iexact=email_val).exists():
+                        error_list.append({"row": row_num, "error": f"A user with email '{email_val}' already exists."})
+                        continue
+
+                    if reg_val and User.objects.filter(registration_number__iexact=reg_val).exists():
+                        error_list.append({"row": row_num, "error": f"Registration number '{reg_val}' already exists."})
+                        continue
+
+                    row_dept = None
+                    row_sec = None
+                    if role_val in ["student", "teacher"] and (dept_val or auto_create_structure):
+                        if dept_val:
+                            dept_qs = Department.objects.filter(name__iexact=dept_val, institution=row_inst)
+                            if dept_qs.exists():
+                                row_dept = dept_qs.first()
+                            elif auto_create_structure:
+                                row_dept = Department.objects.create(name=dept_val, institution=row_inst)
+                            else:
+                                error_list.append({"row": row_num, "error": f"Department '{dept_val}' does not exist."})
+                                continue
+
+                        if role_val == "student" and (sem_val or sec_val or auto_create_structure):
+                            row_sem = None
+                            if sem_val and row_dept:
+                                sem_qs = Semester.objects.filter(number__iexact=sem_val, department=row_dept)
+                                if sem_qs.exists():
+                                    row_sem = sem_qs.first()
+                                elif auto_create_structure:
+                                    row_sem = Semester.objects.create(number=sem_val, department=row_dept)
+                                else:
+                                    error_list.append({"row": row_num, "error": f"Semester '{sem_val}' does not exist in department '{dept_val}'."})
+                                    continue
+
+                            if sec_val and row_sem:
+                                sec_qs = Section.objects.filter(name__iexact=sec_val, semester=row_sem)
+                                if sec_qs.exists():
+                                    row_sec = sec_qs.first()
+                                elif auto_create_structure:
+                                    row_sec = Section.objects.create(name=sec_val, semester=row_sem)
+                                else:
+                                    error_list.append({"row": row_num, "error": f"Section '{sec_val}' does not exist in Semester '{sem_val}'."})
+                                    continue
+
+                    password = ""
+                    if password_strategy == "reg_no" and reg_val:
+                        password = reg_val
+                    elif password_strategy == "custom" and custom_password:
+                        password = custom_password
+                    else:
+                        password_chars = string.ascii_letters + string.digits
+                        password = "".join(random.choice(password_chars) for _ in range(8))
+
+                    if not dry_run:
+                        user = User.objects.create_user(
+                            email=email_val.lower(),
+                            password=password,
+                            role=role_val,
+                            institution=row_inst if role_val != "student" else None,
+                            department=row_dept if role_val == "teacher" else None,
+                            section=row_sec if role_val == "student" else None,
+                            registration_number=reg_val or None,
+                            is_email_verified=False
+                        )
+
+                        if role_val == "student" and target_course:
+                            Enrollment.objects.create(student=user, course=target_course)
+
+                        generate_and_send_otp(user, purpose="verify")
+
+                    success_list.append({
+                        "email": email_val,
+                        "password": password,
+                        "role": role_val,
+                        "registration_number": reg_val,
+                        "institution": row_inst.name,
+                        "department": row_dept.name if row_dept else "",
+                        "section": row_sec.name if row_sec else "",
+                    })
+
+                if dry_run:
+                    raise transaction.TransactionManagementError("Dry run roll back")
+
+        except transaction.TransactionManagementError:
+            pass
+        except Exception as e:
+            return Response({"error": f"An unexpected database error occurred during import: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "dry_run": dry_run,
+            "success_count": len(success_list),
+            "error_count": len(error_list),
+            "errors": error_list,
+            "imported_users": success_list
+        }, status=status.HTTP_200_OK)
+
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]

@@ -190,6 +190,7 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(inst.name);
   const [editSlug, setEditSlug] = useState(inst.slug);
+  const [editDomain, setEditDomain] = useState(inst.domain || "");
 
   const loadDepts = useCallback(async () => {
     const res = await API.get(`/admin/departments/?institution=${inst.id}`);
@@ -208,7 +209,7 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
     await API.delete(`/admin/departments/${id}/`); loadDepts();
   };
   const editDept = async (id, name) => { await API.patch(`/admin/departments/${id}/`, { name }); loadDepts(); };
-  const saveInstEdit = async () => { await onEdit(inst.id, editName, editSlug); setEditing(false); };
+  const saveInstEdit = async () => { await onEdit(inst.id, editName, editSlug, editDomain); setEditing(false); };
 
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
@@ -220,16 +221,17 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
           <School size={18} color="var(--emerald)" />
           {editing ? (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
-              <input className="form-input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Institution name" style={{ padding: "6px 12px", width: 220 }} autoFocus />
-              <input className="form-input" value={editSlug} onChange={(e) => setEditSlug(e.target.value)} placeholder="slug" style={{ padding: "6px 12px", width: 120 }} />
+              <input className="form-input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Institution name" style={{ padding: "6px 12px", width: 180 }} autoFocus />
+              <input className="form-input" value={editSlug} onChange={(e) => setEditSlug(e.target.value)} placeholder="slug" style={{ padding: "6px 12px", width: 100 }} />
+              <input className="form-input" value={editDomain} onChange={(e) => setEditDomain(e.target.value)} placeholder="Domain (e.g. mit.edu)" style={{ padding: "6px 12px", width: 160 }} />
               <button onClick={saveInstEdit} className="btn-primary" style={{ padding: "6px 10px" }}><Check size={14} /></button>
-              <button onClick={() => { setEditing(false); setEditName(inst.name); setEditSlug(inst.slug); }} className="btn-secondary" style={{ padding: "6px 10px" }}><X size={14} /></button>
+              <button onClick={() => { setEditing(false); setEditName(inst.name); setEditSlug(inst.slug); setEditDomain(inst.domain || ""); }} className="btn-secondary" style={{ padding: "6px 10px" }}><X size={14} /></button>
             </div>
           ) : (
             <div>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{inst.name}</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                <code style={{ color: "var(--cyan)", fontSize: 11 }}>{inst.slug}</code> · {inst.user_count} users · {inst.course_count} courses
+                <code style={{ color: "var(--cyan)", fontSize: 11 }}>{inst.slug}</code> · Domain: <code style={{ color: "var(--purple)", fontSize: 11 }}>{inst.domain || `${inst.slug}.edu`}</code> · {inst.user_count} users · {inst.course_count} courses
               </div>
             </div>
           )}
@@ -282,6 +284,7 @@ export default function InstitutionsPanel({ user }) {
   const [institutions, setInstitutions] = useState([]);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [domain, setDomain] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -300,15 +303,15 @@ export default function InstitutionsPanel({ user }) {
   const handleCreate = async (e) => {
     e.preventDefault(); setError(""); setLoading(true);
     try {
-      await API.post("/admin/institutions/", { name, slug: slug.toLowerCase() });
-      setName(""); setSlug(""); fetchInstitutions();
+      await API.post("/admin/institutions/", { name, slug: slug.toLowerCase(), domain: domain.trim().toLowerCase() || `${slug.toLowerCase()}.edu` });
+      setName(""); setSlug(""); setDomain(""); fetchInstitutions();
     } catch (err) {
       setError(err.response?.data?.slug?.[0] || err.response?.data?.name?.[0] || "Error creating institution");
     } finally { setLoading(false); }
   };
 
-  const handleEdit = async (id, newName, newSlug) => {
-    await API.put(`/admin/institutions/${id}/`, { name: newName, slug: newSlug.toLowerCase() });
+  const handleEdit = async (id, newName, newSlug, newDomain) => {
+    await API.put(`/admin/institutions/${id}/`, { name: newName, slug: newSlug.toLowerCase(), domain: newDomain.trim().toLowerCase() });
     fetchInstitutions();
   };
 
@@ -338,9 +341,15 @@ export default function InstitutionsPanel({ user }) {
                   onChange={(e) => { setName(e.target.value); setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
                   placeholder="e.g. COMSATS University" required />
               </div>
-              <div>
-                <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-generated)</span></label>
-                <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-gen)</span></label>
+                  <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
+                </div>
+                <div>
+                  <label>Email Domain <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span></label>
+                  <input type="text" className="form-input" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="e.g. comsats.edu.pk" />
+                </div>
               </div>
               <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}>
                 <Plus size={16} /> {loading ? "Creating…" : "Add Institution"}
