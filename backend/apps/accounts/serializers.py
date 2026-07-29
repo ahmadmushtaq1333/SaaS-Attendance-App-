@@ -16,8 +16,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Check authentication first
         data = super().validate(attrs)
         
-        # Enforce email verification on login
-        if not self.user.is_email_verified:
+        # Enforce email verification on login (exempting superusers and administrators)
+        if not self.user.is_superuser and self.user.role != "admin" and not self.user.is_email_verified:
             raise serializers.ValidationError({
                 "email_unverified": True,
                 "detail": "Email address not verified yet. Please check your inbox for the activation OTP code."
