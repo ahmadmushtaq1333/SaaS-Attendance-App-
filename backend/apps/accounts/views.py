@@ -71,9 +71,9 @@ def generate_and_send_otp(user, purpose="verify"):
         send_mail(
             subject,
             message,
-            "noreply@attendai.com",
+            None,
             [user.email],
-            fail_silently=True
+            fail_silently=False
         )
     except Exception as e:
         print(f"SMTP send failed: {e}")
