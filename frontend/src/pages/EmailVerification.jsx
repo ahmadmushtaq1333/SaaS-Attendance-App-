@@ -27,7 +27,7 @@ export default function EmailVerification({ email, onVerificationSuccess, onCanc
         onVerificationSuccess();
       }, 1500);
     } catch (err) {
-      setError(err.response?.data?.error || "Invalid or expired activation code.");
+      setError(err.response?.data?.detail || err.response?.data?.error || err.message || "Invalid or expired activation code.");
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export default function EmailVerification({ email, onVerificationSuccess, onCanc
       const res = await API.post("/auth/send-otp/", { email: email.trim().toLowerCase() });
       setMessage(res.data.message || "A new verification code has been generated.");
     } catch (err) {
-      setError(err.response?.data?.error || "Unable to resend OTP.");
+      setError(err.response?.data?.detail || err.response?.data?.error || err.message || "Unable to resend OTP.");
     } finally {
       setResending(false);
     }

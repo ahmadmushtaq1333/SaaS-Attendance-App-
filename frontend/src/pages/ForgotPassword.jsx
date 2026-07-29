@@ -22,7 +22,7 @@ export default function ForgotPassword({ onBackToLogin }) {
       setMessage(res.data.message || "A verification OTP has been logged/sent to your email.");
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.error || "Unable to request password reset.");
+      setError(err.response?.data?.detail || err.response?.data?.error || err.message || "Unable to request password reset.");
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ export default function ForgotPassword({ onBackToLogin }) {
       setMessage(res.data.message || "Password updated successfully!");
       setStep(3); // success state
     } catch (err) {
-      setError(err.response?.data?.error || "Reset failed. Please verify your OTP code.");
+      setError(err.response?.data?.detail || err.response?.data?.error || err.message || "Reset failed. Please verify your OTP code.");
     } finally {
       setLoading(false);
     }
