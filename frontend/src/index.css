@@ -6,7 +6,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 :root {
   /* Background */
@@ -200,7 +207,10 @@ html, body {
   filter: blur(45px);
   opacity: 0.22;
   will-change: transform;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform-style: preserve-3d;
   animation: blobFloat 14s ease-in-out infinite;
 }
 
@@ -239,7 +249,7 @@ html, body {
   display: flex;
   flex-direction: column;
   will-change: transform, opacity;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
 }
 
 /* ── Glass Card Components (GPU Accelerated) ── */
@@ -250,7 +260,9 @@ html, body {
   border: 1px solid var(--glass-border);
   border-radius: var(--r-lg);
   box-shadow: 0 4px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.1);
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
   contain: content;
 }
 
@@ -261,7 +273,9 @@ html, body {
   border: 1px solid var(--glass-border);
   border-radius: var(--r-md);
   box-shadow: 0 2px 16px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.07);
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
   contain: content;
 }
 
@@ -272,7 +286,9 @@ html, body {
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: var(--r-sm);
   box-shadow: 0 1px 10px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.05);
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* Alias for legacy .card usage */
