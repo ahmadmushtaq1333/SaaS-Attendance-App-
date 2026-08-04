@@ -12,3 +12,5 @@ drf-spectacular>=0.28
 django-filter>=24.0
 whitenoise>=6.7
 openpyxl>=3.1.0
+django-anymail[resend]>=10.0
+

@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
+    "anymail",
     # Local apps
     "apps.accounts",
     "apps.institutions",
@@ -145,27 +146,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # ── Email Settings ─────────────────────────────────────────────────────────────
-EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = config("EMAIL_HOST", default="")
-EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
-EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
-EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
-
-# Port 465 requires SSL instead of TLS
-if EMAIL_PORT == 465:
-    EMAIL_USE_SSL = True
-    EMAIL_USE_TLS = False
-
-if EMAIL_USE_SSL:
-    EMAIL_USE_TLS = False
-
-EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=5, cast=int)
-default_from = f"Attend AI <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Attend AI <noreply@attendai.com>"
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default=default_from)
-
-# Fallback to console backend if no SMTP host is configured (shows emails in terminal/logs)
-if not EMAIL_HOST:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Dev fallback: print emails to console. Overridden in prod.py via Resend HTTP API.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "Attend AI <onboarding@resend.dev>"
 
