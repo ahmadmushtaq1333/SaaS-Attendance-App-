@@ -62,4 +62,25 @@ if VERCEL_DOMAIN:
     if vercel_https not in _cors_origins:
         _cors_origins.append(vercel_https)
 
-CORS_ALLOWED_ORIGINS = _cors_origins
+# ── Email Settings ─────────────────────────────────────────────────────────────
+EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="muhammadahmadmushtaq11@gmail.com")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="eartviefrjhzoger")
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
+
+if EMAIL_PORT == 465:
+    EMAIL_USE_SSL = True
+    EMAIL_USE_TLS = False
+
+if EMAIL_USE_SSL:
+    EMAIL_USE_TLS = False
+
+default_from = f"Attend AI <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Attend AI <noreply@attendai.com>"
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default=default_from)
+
+if not EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+

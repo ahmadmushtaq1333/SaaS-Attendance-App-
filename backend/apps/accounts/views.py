@@ -49,6 +49,8 @@ from .serializers import CustomTokenObtainPairSerializer
 from .models import CustomUser, EmailVerificationCode
 
 
+from django.conf import settings
+
 def generate_and_send_otp(user, purpose="verify"):
     # Generate 6-digit numeric OTP
     code = "".join(random.choices(string.digits, k=6))
@@ -69,16 +71,18 @@ def generate_and_send_otp(user, purpose="verify"):
     # Send or Log
     print(f"\n======================================================\n[EMAIL LOG - {purpose.upper()}] To: {user.email}\nSubject: {subject}\nMessage: {message}\n======================================================\n")
     try:
+        from_addr = getattr(settings, "DEFAULT_FROM_EMAIL", user.email)
         send_mail(
             subject,
             message,
-            None,
+            from_addr,
             [user.email],
             fail_silently=False
         )
+        return True, None
     except Exception as e:
         print(f"SMTP send failed: {e}")
-    return code
+        return False, str(e)
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -100,7 +104,9 @@ class SendVerificationCodeView(APIView):
         if user.is_email_verified:
             return Response({"message": "Email is already verified"}, status=status.HTTP_400_BAD_REQUEST)
             
-        generate_and_send_otp(user, purpose="verify")
+        success, err_msg = generate_and_send_otp(user, purpose="verify")
+        if not success:
+            return Response({"error": f"SMTP email delivery failed: {err_msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response({"message": "Verification code sent to your email."})
 
 
@@ -141,7 +147,9 @@ class RequestPasswordResetView(APIView):
             
         try:
             user = CustomUser.objects.get(email=email.strip().lower())
-            generate_and_send_otp(user, purpose="reset")
+            success, err_msg = generate_and_send_otp(user, purpose="reset")
+            if not success:
+                return Response({"error": f"SMTP email delivery failed: {err_msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except CustomUser.DoesNotExist:
             pass
             
