@@ -44,6 +44,11 @@ class UserAdminSerializer(serializers.ModelSerializer):
     department_name = serializers.SerializerMethodField()
     semester_number = serializers.SerializerMethodField()
     section_name = serializers.CharField(source="section.name", read_only=True)
+    
+    # Computed ID fields for clean frontend cascade population
+    computed_institution = serializers.SerializerMethodField()
+    computed_department = serializers.SerializerMethodField()
+    computed_semester = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -51,9 +56,22 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "id", "email", "role", "institution", "institution_name",
             "department", "department_name", "semester_number",
             "section", "section_name", "is_active", "date_joined", "password",
-            "registration_number", "is_email_verified"
+            "registration_number", "is_email_verified",
+            "computed_institution", "computed_department", "computed_semester"
         )
         read_only_fields = ("id", "date_joined")
+
+    def get_computed_institution(self, obj):
+        inst = obj.get_institution
+        return inst.id if inst else None
+
+    def get_computed_department(self, obj):
+        dept = obj.get_department
+        return dept.id if dept else None
+
+    def get_computed_semester(self, obj):
+        sem = obj.get_semester
+        return sem.id if sem else None
 
     def get_institution_name(self, obj):
         inst = obj.get_institution
@@ -75,6 +93,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
         if role == "student" and section:
             institution = section.semester.department.institution
+            attrs["institution"] = None
+            attrs["department"] = None
 
         # Block personal email addresses for students
         if role == "student" and email:

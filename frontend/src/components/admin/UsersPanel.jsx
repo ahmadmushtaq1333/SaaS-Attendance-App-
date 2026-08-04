@@ -223,8 +223,22 @@ export default function UsersPanel({ user }) {
       if (editPassword.trim()) payload.password = editPassword.trim();
       await API.put(`/admin/users/${id}/`, payload);
       setEditingId(null); fetchUsers();
-    } catch (err) { setError(err.response?.data?.error || "Failed to save user modifications"); }
-    finally { setLoading(false); }
+    } catch (err) {
+      const data = err.response?.data;
+      let msg = "Failed to save user modifications";
+      if (data) {
+        if (typeof data === "string") msg = data;
+        else if (data.error) msg = data.error;
+        else if (data.detail) msg = data.detail;
+        else {
+          const keys = Object.keys(data);
+          if (keys.length > 0) {
+            msg = keys.map(k => `${k}: ${Array.isArray(data[k]) ? data[k].join(", ") : data[k]}`).join(" | ");
+          }
+        }
+      }
+      setError(msg);
+    } finally { setLoading(false); }
   };
 
   const filteredUsers = users.filter(u => universityFilter === "all" || u.institution === parseInt(universityFilter) || u.institution_name === institutions.find(i => i.id === parseInt(universityFilter))?.name);
@@ -301,9 +315,13 @@ export default function UsersPanel({ user }) {
                         </td>
                         <td><select className="form-input" value={editIsActive ? "active" : "disabled"} onChange={e => setEditIsActive(e.target.value === "active")} style={{ padding: "6px 10px" }}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
                         <td><select className="form-input" value={editIsEmailVerified ? "verified" : "pending"} onChange={e => setEditIsEmailVerified(e.target.value === "verified")} style={{ padding: "6px 10px" }}><option value="verified">Verified</option><option value="pending">Pending OTP</option></select></td>
-                        <td><div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => handleSaveEdit(u.id)} className="btn-primary" style={{ padding: "7px 10px" }}><Check size={14} /></button>
-                          <button onClick={() => setEditingId(null)} className="btn-secondary" style={{ padding: "7px 10px" }}><X size={14} /></button>
+                        <td><div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 120 }}>
+                          <button onClick={() => handleSaveEdit(u.id)} disabled={loading} className="btn-primary" style={{ padding: "6px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }} title="Confirm Changes">
+                            <Check size={13} /> {loading ? "Saving…" : "Confirm Changes"}
+                          </button>
+                          <button onClick={() => setEditingId(null)} disabled={loading} className="btn-secondary" style={{ padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }} title="Cancel">
+                            <X size={13} /> Cancel
+                          </button>
                         </div></td>
                       </>
                     ) : (
@@ -331,7 +349,23 @@ export default function UsersPanel({ user }) {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => { setEditingId(u.id); setEditEmail(u.email); setEditRole(u.role); setEditInst(u.institution || ""); setEditDept(u.department || ""); setEditSem(u.semester || ""); setEditSec(u.section || ""); setEditIsActive(u.is_active); setEditPassword(""); setEditRegNum(u.registration_number || ""); setEditIsEmailVerified(u.is_email_verified); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
+                            <button onClick={() => {
+                              setEditingId(u.id);
+                              setEditEmail(u.email);
+                              setEditRole(u.role);
+                              const instId = u.institution || u.computed_institution || "";
+                              const deptId = u.department || u.computed_department || "";
+                              const semId = u.semester || u.computed_semester || "";
+                              const secId = u.section || "";
+                              setEditInst(instId ? String(instId) : "");
+                              setEditDept(deptId ? String(deptId) : "");
+                              setEditSem(semId ? String(semId) : "");
+                              setEditSec(secId ? String(secId) : "");
+                              setEditIsActive(u.is_active);
+                              setEditPassword("");
+                              setEditRegNum(u.registration_number || "");
+                              setEditIsEmailVerified(u.is_email_verified);
+                            }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
                             <button onClick={() => handleDelete(u.id)} className="btn-danger" style={{ padding: "6px 12px", fontSize: 13 }}><Trash size={12} /> Delete</button>
                           </div>
                         </td>

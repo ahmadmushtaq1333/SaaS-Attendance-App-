@@ -8,9 +8,15 @@ function InlineEdit({ value, onChange, onSave, onCancel, placeholder }) {
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
       <input type="text" className="form-input" value={value} onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSave();
+          if (e.key === "Escape") onCancel();
+        }}
         placeholder={placeholder} style={{ padding: "5px 10px", fontSize: 13 }} autoFocus />
-      <button onClick={onSave} className="btn-primary" style={{ padding: "5px 9px" }}><Check size={13} /></button>
-      <button onClick={onCancel} className="btn-secondary" style={{ padding: "5px 9px" }}><X size={13} /></button>
+      <button onClick={onSave} className="btn-primary" style={{ padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }} title="Confirm Changes">
+        <Check size={13} /> Confirm
+      </button>
+      <button onClick={onCancel} className="btn-secondary" style={{ padding: "5px 9px" }} title="Cancel"><X size={13} /></button>
     </div>
   );
 }
@@ -209,10 +215,37 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
     await API.delete(`/admin/departments/${id}/`); loadDepts();
   };
   const editDept = async (id, name) => { await API.patch(`/admin/departments/${id}/`, { name }); loadDepts(); };
-  const saveInstEdit = async () => { await onEdit(inst.id, editName, editSlug, editDomain); setEditing(false); };
+  const [savingInst, setSavingInst] = useState(false);
+  const [instError, setInstError] = useState("");
+
+  const saveInstEdit = async () => {
+    setInstError("");
+    setSavingInst(true);
+    try {
+      await onEdit(inst.id, editName, editSlug, editDomain);
+      setEditing(false);
+    } catch (err) {
+      const data = err.response?.data;
+      let msg = "Failed to update institution";
+      if (data) {
+        if (typeof data === "string") msg = data;
+        else if (data.detail) msg = data.detail;
+        else if (data.slug) msg = `Slug error: ${Array.isArray(data.slug) ? data.slug.join(", ") : data.slug}`;
+        else if (data.name) msg = `Name error: ${Array.isArray(data.name) ? data.name.join(", ") : data.name}`;
+      }
+      setInstError(msg);
+    } finally {
+      setSavingInst(false);
+    }
+  };
 
   return (
     <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, overflow: "hidden", marginBottom: 16 }}>
+      {instError && (
+        <div className="alert alert-danger" style={{ margin: "10px 14px 0 14px", padding: "8px 12px", fontSize: 13 }}>
+          {instError}
+        </div>
+      )}
       {/* Institution header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", background: "rgba(255,255,255,0.07)", cursor: "pointer" }}
         onClick={() => !editing && setOpen(!open)}>
@@ -220,12 +253,16 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
           {open ? <ChevronDown size={17} color="var(--emerald)" /> : <ChevronRight size={17} color="var(--emerald)" />}
           <School size={18} color="var(--emerald)" />
           {editing ? (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
               <input className="form-input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Institution name" style={{ padding: "6px 12px", width: 180 }} autoFocus />
               <input className="form-input" value={editSlug} onChange={(e) => setEditSlug(e.target.value)} placeholder="slug" style={{ padding: "6px 12px", width: 100 }} />
               <input className="form-input" value={editDomain} onChange={(e) => setEditDomain(e.target.value)} placeholder="Domain (e.g. mit.edu)" style={{ padding: "6px 12px", width: 160 }} />
-              <button onClick={saveInstEdit} className="btn-primary" style={{ padding: "6px 10px" }}><Check size={14} /></button>
-              <button onClick={() => { setEditing(false); setEditName(inst.name); setEditSlug(inst.slug); setEditDomain(inst.domain || ""); }} className="btn-secondary" style={{ padding: "6px 10px" }}><X size={14} /></button>
+              <button onClick={saveInstEdit} disabled={savingInst} className="btn-primary" style={{ padding: "6px 14px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Check size={14} /> {savingInst ? "Saving…" : "Confirm Changes"}
+              </button>
+              <button onClick={() => { setEditing(false); setEditName(inst.name); setEditSlug(inst.slug); setEditDomain(inst.domain || ""); setInstError(""); }} className="btn-secondary" style={{ padding: "6px 10px" }} title="Cancel">
+                <X size={14} />
+              </button>
             </div>
           ) : (
             <div>
