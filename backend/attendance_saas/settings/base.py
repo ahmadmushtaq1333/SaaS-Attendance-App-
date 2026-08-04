@@ -152,7 +152,9 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 EMAIL_USE_SSL = config("EMAIL_USE_SSL", default=False, cast=bool)
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Attend AI <noreply@attendai.com>")
+
+default_from = f"Attend AI <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Attend AI <noreply@attendai.com>"
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default=default_from)
 
 # Fallback to console backend if no SMTP host is configured (shows emails in terminal/logs)
 if not EMAIL_HOST:
