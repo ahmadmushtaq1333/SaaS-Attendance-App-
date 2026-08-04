@@ -148,5 +148,5 @@ CORS_ALLOW_HEADERS = [
 # ── Email Settings ─────────────────────────────────────────────────────────────
 # Dev fallback: print emails to console. Overridden in prod.py via Resend HTTP API.
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "Attend AI <onboarding@resend.dev>"
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Attend AI <muhammadahmadmushtaq11@gmail.com>")
 

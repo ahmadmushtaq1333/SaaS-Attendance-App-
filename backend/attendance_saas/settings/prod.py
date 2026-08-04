@@ -62,10 +62,11 @@ if VERCEL_DOMAIN:
     if vercel_https not in _cors_origins:
         _cors_origins.append(vercel_https)
 
-# ── Email: Resend HTTP API via django-anymail ─────────────────────────────────
-# Uses HTTPS port 443 — immune to Railway's raw SMTP port blocks (25/465/587).
-EMAIL_BACKEND = "anymail.backends.resend.EmailBackend"
+# ── Email: Brevo HTTP API via django-anymail ──────────────────────────────────
+# Uses HTTPS port 443 — immune to Railway's raw SMTP port blocks.
+# Allows sending to arbitrary recipients on free tier.
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
 ANYMAIL = {
-    "RESEND_API_KEY": config("RESEND_API_KEY", default=""),
+    "BREVO_API_KEY": config("BREVO_API_KEY", default=""),
 }
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Attend AI <onboarding@resend.dev>")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Attend AI <muhammadahmadmushtaq11@gmail.com>")
