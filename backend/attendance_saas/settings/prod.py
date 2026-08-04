@@ -78,6 +78,7 @@ if EMAIL_PORT == 465:
 if EMAIL_USE_SSL:
     EMAIL_USE_TLS = False
 
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=5, cast=int)
 default_from = f"Attend AI <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "Attend AI <noreply@attendai.com>"
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default=default_from)
 

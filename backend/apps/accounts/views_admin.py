@@ -100,7 +100,14 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     serializer_class = UserAdminSerializer
     
     def get_queryset(self):
-        queryset = User.objects.all()
+        queryset = User.objects.select_related(
+            "institution",
+            "department",
+            "section",
+            "section__semester",
+            "section__semester__department",
+            "section__semester__department__institution"
+        ).all()
         if not self.request.user.is_superuser:
             if self.request.user.institution:
                 queryset = queryset.filter(

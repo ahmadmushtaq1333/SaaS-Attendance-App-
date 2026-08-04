@@ -49,7 +49,21 @@ from .serializers import CustomTokenObtainPairSerializer
 from .models import CustomUser, EmailVerificationCode
 
 
+import threading
 from django.conf import settings
+
+def _send_mail_in_background(subject, message, from_addr, recipient_list):
+    try:
+        send_mail(
+            subject,
+            message,
+            from_addr,
+            recipient_list,
+            fail_silently=False
+        )
+        print(f"[ASYNC EMAIL SENT] To: {recipient_list}")
+    except Exception as e:
+        print(f"[ASYNC EMAIL FAILED]: {e}")
 
 def generate_and_send_otp(user, purpose="verify"):
     # Generate 6-digit numeric OTP
@@ -70,19 +84,16 @@ def generate_and_send_otp(user, purpose="verify"):
     
     # Send or Log
     print(f"\n======================================================\n[EMAIL LOG - {purpose.upper()}] To: {user.email}\nSubject: {subject}\nMessage: {message}\n======================================================\n")
-    try:
-        from_addr = getattr(settings, "DEFAULT_FROM_EMAIL", user.email)
-        send_mail(
-            subject,
-            message,
-            from_addr,
-            [user.email],
-            fail_silently=False
-        )
-        return True, None
-    except Exception as e:
-        print(f"SMTP send failed: {e}")
-        return False, str(e)
+    from_addr = getattr(settings, "DEFAULT_FROM_EMAIL", user.email)
+    
+    # Dispatch email sending to background thread so HTTP response returns instantly
+    threading.Thread(
+        target=_send_mail_in_background,
+        args=(subject, message, from_addr, [user.email]),
+        daemon=True
+    ).start()
+    
+    return True, None
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
