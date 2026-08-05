@@ -101,6 +101,10 @@ class SyncAttendanceView(APIView):
             if timestamp > token.expiry_time:
                 errors.append({"index": index, "token_uuid": token_uuid, "error": "QR code was expired at the time of scan"})
                 continue
+
+            if timestamp < session.start_time:
+                errors.append({"index": index, "token_uuid": token_uuid, "error": "Scan timestamp is prior to session start time"})
+                continue
             
             # Check Duplicate
             exists = AttendanceRecord.objects.filter(enrollment=enrollment, session=session).exists()

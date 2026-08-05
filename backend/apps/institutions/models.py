@@ -14,6 +14,9 @@ class Department(models.Model):
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE, related_name="departments")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ("name", "institution")
+
     def __str__(self):
         return f"{self.name} ({self.institution.name})"
 
@@ -22,6 +25,9 @@ class Semester(models.Model):
     department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="semesters")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ("number", "department")
+
     def __str__(self):
         return f"{self.number} - {self.department.name}"
 
@@ -29,6 +35,9 @@ class Section(models.Model):
     name = models.CharField(max_length=50) # e.g. "Section A", "Section B"
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name="sections")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("name", "semester")
 
     def __str__(self):
         return f"{self.name} ({self.semester.number})"

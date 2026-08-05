@@ -18,6 +18,13 @@ class CourseReportView(APIView):
     def get(self, request, pk):
         user = request.user
 
+        # Immediate role verification to prevent unauthorized resource enumeration
+        if user.role not in ["admin", "teacher"] and not user.is_staff:
+            return Response(
+                {"error": "You do not have permission to view this report"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Admins can see any course; teachers only see their own
         if user.is_staff or user.role == "admin":
             try:

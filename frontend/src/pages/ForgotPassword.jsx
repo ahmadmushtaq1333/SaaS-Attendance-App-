@@ -58,93 +58,118 @@ export default function ForgotPassword({ onBackToLogin }) {
   };
 
   return (
-    <div className="login-card glass-a">
-      <div className="login-header">
-        <div className="login-logo" style={{ background: "linear-gradient(135deg, var(--purple), var(--cyan))" }}>
-          <Key size={20} color="#07111F" strokeWidth={2.5} />
+    <div className="glass-a" style={{
+      width: "100%", maxWidth: 440, padding: "44px 36px",
+      display: "flex", flexDirection: "column", gap: 28,
+      boxShadow: "0 24px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+    }}>
+      {/* Logo & Header */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 12 }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: 16,
+          background: "linear-gradient(135deg, var(--purple), var(--cyan))",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 0 24px var(--purple-glow)",
+        }}>
+          <Key size={24} color="#07111F" strokeWidth={2.5} />
         </div>
-        <h2>{step === 1 ? "Forgot Password" : step === 2 ? "Set New Password" : "Password Updated"}</h2>
-        <p className="login-subtitle">
-          {step === 1 
-            ? "Enter your email to receive a password reset OTP" 
-            : step === 2 
-            ? `Enter the 6-digit code sent to ${email}` 
-            : "Your account credentials have been successfully updated."}
-        </p>
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+            {step === 1 ? "Forgot Password" : step === 2 ? "New Password" : "Password Updated"}
+          </h1>
+          <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
+            {step === 1 
+              ? "Enter your email to receive a password reset OTP" 
+              : step === 2 
+              ? `Enter the 6-digit code sent to ${email}` 
+              : "Your account credentials have been successfully updated."}
+          </p>
+        </div>
       </div>
 
-      {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}><AlertCircle size={15} />{error}</div>}
-      {message && step !== 3 && <div className="alert alert-success" style={{ marginBottom: 16 }}><CheckCircle2 size={15} />{message}</div>}
+      {/* Messages */}
+      {error && (
+        <div className="alert alert-danger" style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <AlertCircle size={15} /> {error}
+        </div>
+      )}
+      {message && step !== 3 && (
+        <div className="alert alert-success" style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <CheckCircle2 size={15} /> {message}
+        </div>
+      )}
 
       {step === 1 && (
-        <form onSubmit={handleRequestReset} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="input-group">
-            <label>Email Address</label>
-            <div className="input-wrapper">
-              <Mail className="input-icon" size={16} />
-              <input 
-                type="email" 
-                className="form-input" 
-                placeholder="you@school.edu" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required 
-              />
-            </div>
+        <form onSubmit={handleRequestReset} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 12 }}>
+              <Mail size={13} color="var(--purple)" /> Email Address
+            </label>
+            <input 
+              type="email" 
+              className="form-input" 
+              placeholder="you@school.edu" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
           </div>
-          <button type="submit" className="btn-primary" disabled={loading} style={{ justifyContent: "center" }}>
+          <button type="submit" className="btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "12px 20px", fontSize: 15 }}>
             {loading ? "Sending..." : "Request Reset OTP"}
           </button>
         </form>
       )}
 
       {step === 2 && (
-        <form onSubmit={handleConfirmReset} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="input-group">
-            <label>6-Digit OTP Code</label>
-            <div className="input-wrapper">
-              <ShieldCheck className="input-icon" size={16} />
-              <input 
-                type="text" 
-                maxLength="6"
-                className="form-input" 
-                placeholder="123456" 
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                style={{ letterSpacing: "0.2em", textAlign: "center", fontWeight: "bold" }}
-                required 
-              />
-            </div>
+        <form onSubmit={handleConfirmReset} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12 }}>6-Digit OTP Code</label>
+            <input 
+              type="text" 
+              maxLength="6"
+              className="form-input" 
+              placeholder="000000" 
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              style={{
+                letterSpacing: "0.35em",
+                textAlign: "center",
+                fontWeight: "800",
+                fontSize: 20,
+                fontFamily: "monospace",
+                paddingLeft: "0.35em",
+                height: 44
+              }}
+              required 
+            />
           </div>
-          <div className="input-group">
-            <label>New Password</label>
-            <div className="input-wrapper">
-              <Lock className="input-icon" size={16} />
-              <input 
-                type="password" 
-                className="form-input" 
-                placeholder="Min 8 characters" 
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required 
-              />
-            </div>
+          <div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 12 }}>
+              <Lock size={13} color="var(--purple)" /> New Password
+            </label>
+            <input 
+              type="password" 
+              className="form-input" 
+              placeholder="Min 8 characters" 
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required 
+            />
           </div>
-          <div className="input-group">
-            <label>Confirm Password</label>
-            <div className="input-wrapper">
-              <Lock className="input-icon" size={16} />
-              <input 
-                type="password" 
-                className="form-input" 
-                placeholder="Confirm password" 
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required 
-              />
-            </div>
+          <div>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 12 }}>
+              <Lock size={13} color="var(--cyan)" /> Confirm Password
+            </label>
+            <input 
+              type="password" 
+              className="form-input" 
+              placeholder="Confirm new password" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required 
+            />
           </div>
-          <button type="submit" className="btn-primary" disabled={loading} style={{ justifyContent: "center" }}>
+          <button type="submit" className="btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "12px 20px", fontSize: 15, marginTop: 6 }}>
             {loading ? "Saving..." : "Change Password"}
           </button>
         </form>
@@ -152,13 +177,13 @@ export default function ForgotPassword({ onBackToLogin }) {
 
       {step === 3 && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center", padding: "12px 0" }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--emerald)" }}>
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--emerald)" }}>
             <CheckCircle2 size={24} />
           </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-            Your password has been reset successfully. You can now use your new password to sign in.
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.5 }}>
+            Your password has been reset successfully. You can now use your new credentials to sign in.
           </p>
-          <button onClick={onBackToLogin} className="btn-primary" style={{ width: "100%", justifyContent: "center" }}>
+          <button onClick={onBackToLogin} className="btn-primary" style={{ width: "100%", justifyContent: "center", padding: "12px 20px", fontSize: 15 }}>
             Return to Login
           </button>
         </div>
@@ -168,7 +193,11 @@ export default function ForgotPassword({ onBackToLogin }) {
         <button 
           onClick={onBackToLogin} 
           className="btn-secondary" 
-          style={{ width: "100%", justifyContent: "center", marginTop: 16, gap: 8 }}
+          style={{
+            width: "100%", justifyContent: "center", marginTop: 8, gap: 8, padding: "10px", fontSize: 13,
+            borderTop: "1px solid var(--glass-inner)", borderRadius: 0, borderLeft: "none", borderRight: "none", borderBottom: "none",
+            paddingTop: 20
+          }}
         >
           <ArrowLeft size={14} /> Back to Login
         </button>

@@ -500,7 +500,9 @@ class AdminSessionResetView(views.APIView):
             session.expiry_time = timezone.now()
             session.save()
             session.qr_tokens.all().update(expiry_time=timezone.now())
-            return Response({"message": f"Session {session_id} has been reset and expired successfully."})
+            # Clean up all attendance records associated with this session to fully reset it
+            deleted_count, _ = session.records.all().delete()
+            return Response({"message": f"Session {session_id} has been reset successfully. All {deleted_count} marked records have been cleared."})
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
 

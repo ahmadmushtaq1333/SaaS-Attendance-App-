@@ -24,7 +24,12 @@ class UserCoursesView(APIView):
         elif user.role == "student":
             courses = Course.objects.filter(enrollments__student=user)
         elif user.is_staff or user.role == "admin":
-            courses = Course.objects.all()
+            if getattr(user, 'is_superuser', False):
+                courses = Course.objects.all()
+            elif getattr(user, 'institution', None):
+                courses = Course.objects.filter(institution=user.institution)
+            else:
+                courses = Course.objects.none()
         else:
             courses = Course.objects.none()
         
