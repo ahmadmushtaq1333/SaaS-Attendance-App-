@@ -87,7 +87,7 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 # ── Django REST Framework ──────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.authentication.CookieJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -112,14 +112,13 @@ SPECTACULAR_SETTINGS = {
 
 # ── JWT Settings ───────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
-    # Access token lasts 8 hours (full school/work day - no mid-session expiry)
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
-    # Refresh token lasts 30 days (persistent login across sessions)
+    # Access token short-lived; refreshed silently via HTTPOnly cookie
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    # Refresh token lasts 30 days (persistent login)
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
-    # Rotate refresh tokens but do NOT blacklist old ones
-    # Blacklisting caused race-condition permanent lockouts
+    # Rotate refresh tokens AND blacklist old ones (Flaw #6 fix)
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",

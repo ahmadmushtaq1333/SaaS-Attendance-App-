@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import API from "../services/api";
 import { ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, XCircle, Download, Trash2, BarChart2 } from "lucide-react";
+import { formatLocalDate } from "../utils/date";
 
 export default function Reports({ courseId: initialCourseId, onBack }) {
   const [courses, setCourses] = useState([]);
@@ -91,7 +92,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
     if (!report) return;
     let csv = "Student Email,";
     const sl = report.session_list || [];
-    sl.forEach(s => { csv += `Session ${s.id} (${new Date(s.start_time).toLocaleDateString()}),`; });
+    sl.forEach(s => { csv += `Session ${s.id} (${formatLocalDate(s.start_time, false)}),`; });
     csv += "Total Attended,Attendance %,Status\n";
     report.students.forEach(student => {
       let row = `${student.email},`;
@@ -214,7 +215,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
                   >
                     {sessions.map(s => (
                       <option key={s.id} value={s.id}>
-                        Session #{s.id} · {new Date(s.start_time).toLocaleDateString()}
+                        Session #{s.id} · {formatLocalDate(s.start_time, false)}
                       </option>
                     ))}
                   </select>

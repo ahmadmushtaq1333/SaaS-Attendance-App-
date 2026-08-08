@@ -27,6 +27,7 @@ class UserCoursesView(APIView):
             if getattr(user, 'is_superuser', False):
                 courses = Course.objects.all()
             elif getattr(user, 'institution', None):
+                # Scoped admin: only courses within their institution (Flaw #10 fix)
                 courses = Course.objects.filter(institution=user.institution)
             else:
                 courses = Course.objects.none()
@@ -49,13 +50,51 @@ import string
 from django.utils import timezone
 from datetime import timedelta
 from django.core.mail import send_mail
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .serializers import CustomTokenObtainPairSerializer
 from .models import CustomUser, EmailVerificationCode
 
 
 import threading
 from django.conf import settings
+from django.utils.decorators import method_decorator
+from django.core.cache import cache
+from functools import wraps
+from django.http import JsonResponse
+
+
+def simple_ratelimit(rate='5/m', key='ip'):
+    """
+    Simple IP-based rate limiter using Django cache.
+    rate format: 'N/m' (per minute) or 'N/h' (per hour)
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, request, *args, **kwargs):
+            parts = rate.split('/')
+            limit = int(parts[0])
+            period = 60 if parts[1].startswith('m') else 3600
+
+            ip = (
+                request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+                or request.META.get('REMOTE_ADDR', 'unknown')
+            )
+            cache_key = f"ratelimit:{func.__qualname__}:{ip}"
+            count = cache.get(cache_key, 0)
+            if count >= limit:
+                return JsonResponse(
+                    {'error': 'Too many requests. Please try again later.'},
+                    status=429
+                )
+            # Increment counter; set expiry only on first hit
+            if count == 0:
+                cache.set(cache_key, 1, timeout=period)
+            else:
+                cache.set(cache_key, count + 1, timeout=period)
+            return func(self, request, *args, **kwargs)
+        return wrapper
+    return decorator
+
 
 def _send_mail_in_background(subject, message, from_addr, recipient_list, html_message=None):
     try:
@@ -182,31 +221,90 @@ def generate_and_send_otp(user, purpose="verify"):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+    @simple_ratelimit(rate='10/m')
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            access_token = response.data.get('access')
+            refresh_token = response.data.get('refresh')
+            if access_token:
+                response.set_cookie(
+                    'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                )
+            if refresh_token:
+                response.set_cookie(
+                    'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                )
+            response.data['access'] = "set-in-cookie"
+            response.data['refresh'] = "set-in-cookie"
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    @simple_ratelimit(rate='10/m')
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refresh_token')
+        if refresh_token:
+            request.data['refresh'] = refresh_token
+        
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            access_token = response.data.get('access')
+            if access_token:
+                response.set_cookie(
+                    'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                )
+            response.data['access'] = "set-in-cookie"
+            
+            new_refresh_token = response.data.get('refresh')
+            if new_refresh_token:
+                response.set_cookie(
+                    'refresh_token', new_refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                )
+                response.data['refresh'] = "set-in-cookie"
+        return response
+
+
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        response = Response({"message": "Successfully logged out."})
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response
+
 
 class SendVerificationCodeView(APIView):
     permission_classes = [AllowAny]
 
+    @simple_ratelimit(rate='5/m')
     def post(self, request):
         email = request.data.get("email")
         if not email:
             return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             user = CustomUser.objects.get(email=email.strip().lower())
+            if user.is_email_verified:
+                # Return generic message to prevent enumeration
+                return Response({"message": "If the email is unverified and exists, a code has been sent."})
+                
+            success, err_msg = generate_and_send_otp(user, purpose="verify")
+            if not success:
+                return Response({"error": f"SMTP email delivery failed: {err_msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            pass # Neutral response to prevent email enumeration
             
-        if user.is_email_verified:
-            return Response({"message": "Email is already verified"}, status=status.HTTP_400_BAD_REQUEST)
-            
-        success, err_msg = generate_and_send_otp(user, purpose="verify")
-        if not success:
-            return Response({"error": f"SMTP email delivery failed: {err_msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response({"message": "Verification code sent to your email."})
+        return Response({"message": "If the email is unverified and exists, a code has been sent."})
 
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
 
+    @simple_ratelimit(rate='10/m')
     def post(self, request):
         email = request.data.get("email")
         code = request.data.get("code")
@@ -216,24 +314,31 @@ class VerifyEmailView(APIView):
         try:
             user = CustomUser.objects.get(email=email.strip().lower())
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
-            record = EmailVerificationCode.objects.get(user=user, code=code.strip(), purpose="verify")
+            record = EmailVerificationCode.objects.get(user=user, purpose="verify")
+            if record.failed_attempts >= 5:
+                return Response({"error": "Too many failed attempts. Request a new code."}, status=status.HTTP_400_BAD_REQUEST)
             if record.expires_at < timezone.now():
                 return Response({"error": "Code has expired"}, status=status.HTTP_400_BAD_REQUEST)
+            if record.code != code.strip():
+                record.failed_attempts += 1
+                record.save()
+                return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
             
             user.is_email_verified = True
             user.save()
             record.delete()
             return Response({"message": "Email verified successfully. You can now log in."})
         except EmailVerificationCode.DoesNotExist:
-            return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RequestPasswordResetView(APIView):
     permission_classes = [AllowAny]
 
+    @simple_ratelimit(rate='5/m')
     def post(self, request):
         email = request.data.get("email")
         if not email:
@@ -253,6 +358,7 @@ class RequestPasswordResetView(APIView):
 class ConfirmPasswordResetView(APIView):
     permission_classes = [AllowAny]
 
+    @simple_ratelimit(rate='10/m')
     def post(self, request):
         email = request.data.get("email")
         code = request.data.get("code")
@@ -263,12 +369,18 @@ class ConfirmPasswordResetView(APIView):
         try:
             user = CustomUser.objects.get(email=email.strip().lower())
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
             
         try:
-            record = EmailVerificationCode.objects.get(user=user, code=code.strip(), purpose="reset")
+            record = EmailVerificationCode.objects.get(user=user, purpose="reset")
+            if record.failed_attempts >= 5:
+                return Response({"error": "Too many failed attempts. Request a new code."}, status=status.HTTP_400_BAD_REQUEST)
             if record.expires_at < timezone.now():
                 return Response({"error": "Code has expired"}, status=status.HTTP_400_BAD_REQUEST)
+            if record.code != code.strip():
+                record.failed_attempts += 1
+                record.save()
+                return Response({"error": "Invalid password reset code"}, status=status.HTTP_400_BAD_REQUEST)
                 
             user.set_password(new_password)
             user.is_email_verified = True  # Auto-verify email on successful password reset OTP confirmation
@@ -276,5 +388,5 @@ class ConfirmPasswordResetView(APIView):
             record.delete()
             return Response({"message": "Password reset successfully. You can now log in."})
         except EmailVerificationCode.DoesNotExist:
-            return Response({"error": "Invalid password reset code"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 

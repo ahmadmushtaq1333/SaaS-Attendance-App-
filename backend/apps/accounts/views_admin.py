@@ -171,13 +171,14 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 for i in range(1, int(count) + 1):
                     attempts = 0
+                    current_prefix = prefix
                     while attempts < 100:
                         suffix = f"{i:03d}" if int(count) > 1 or attempts > 0 else f"{random.randint(100, 999)}"
-                        email = f"{prefix}{suffix}@{domain}.edu".lower()
+                        email = f"{current_prefix}{suffix}@{domain}.edu".lower()
                         if not User.objects.filter(email=email).exists():
                             break
                         attempts += 1
-                        prefix = prefix + str(random.randint(0, 9))
+                        current_prefix = prefix + str(random.randint(0, 9))
                     
                     if custom_password:
                         password = custom_password
@@ -223,10 +224,16 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
         file_obj = request.FILES.get("file")
         dry_run = request.data.get("dry_run", "false").lower() == "true"
-        auto_create_structure = request.data.get("auto_create_structure", "false").lower() == "true"
+        auto_create_structure = request.data.get("auto_create_structure", "true").lower() == "true"
         password_strategy = request.data.get("password_strategy", "auto") # auto, reg_no, custom
         custom_password = request.data.get("custom_password", "")
         course_id = request.data.get("course_id")
+        
+        global_role = request.data.get("global_role", "student").strip().lower()
+        global_institution_id = request.data.get("global_institution", "").strip()
+        global_department_id = request.data.get("global_department_id", "").strip()
+        global_semester_id = request.data.get("global_semester_id", "").strip()
+        global_section_id = request.data.get("global_section_id", "").strip()
         
         column_mapping_str = request.data.get("column_mapping", "{}")
         try:
@@ -275,13 +282,35 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
         idx_email = headers.index(column_mapping.get("email")) if column_mapping.get("email") in headers else -1
         idx_reg = headers.index(column_mapping.get("registration_number")) if column_mapping.get("registration_number") in headers else -1
-        idx_role = headers.index(column_mapping.get("role")) if column_mapping.get("role") in headers else -1
-        idx_dept = headers.index(column_mapping.get("department")) if column_mapping.get("department") in headers else -1
-        idx_sem = headers.index(column_mapping.get("semester")) if column_mapping.get("semester") in headers else -1
-        idx_sec = headers.index(column_mapping.get("section")) if column_mapping.get("section") in headers else -1
 
         if idx_email == -1:
             return Response({"error": "Email column mapping is required and must match a header in the file."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Resolve global structure from IDs upfront (fast path)
+        global_inst_obj = None
+        global_dept_obj = None
+        global_sec_obj = None
+        if global_institution_id:
+            try:
+                global_inst_obj = Institution.objects.get(id=int(global_institution_id))
+            except (Institution.DoesNotExist, ValueError):
+                return Response({"error": "Selected institution not found."}, status=status.HTTP_400_BAD_REQUEST)
+        if global_department_id:
+            try:
+                global_dept_obj = Department.objects.get(id=int(global_department_id))
+            except (Department.DoesNotExist, ValueError):
+                return Response({"error": "Selected department not found."}, status=status.HTTP_400_BAD_REQUEST)
+        if global_section_id:
+            try:
+                global_sec_obj = Section.objects.get(id=int(global_section_id))
+            except (Section.DoesNotExist, ValueError):
+                return Response({"error": "Selected section not found."}, status=status.HTTP_400_BAD_REQUEST)
+        elif global_semester_id:
+            # semester chosen but no section — students will be assigned to dept/sem only
+            try:
+                Semester.objects.get(id=int(global_semester_id))
+            except (Semester.DoesNotExist, ValueError):
+                return Response({"error": "Selected semester not found."}, status=status.HTTP_400_BAD_REQUEST)
 
         admin_institution = None if request.user.is_superuser else request.user.institution
 
@@ -311,13 +340,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
                     email_val = row[idx_email].strip()
                     reg_val = row[idx_reg].strip() if idx_reg != -1 and len(row) > idx_reg else ""
-                    role_val = row[idx_role].strip().lower() if idx_role != -1 and len(row) > idx_role else "student"
-                    dept_val = row[idx_dept].strip() if idx_dept != -1 and len(row) > idx_dept else ""
-                    sem_val = row[idx_sem].strip() if idx_sem != -1 and len(row) > idx_sem else ""
-                    sec_val = row[idx_sec].strip() if idx_sec != -1 and len(row) > idx_sec else ""
+                    role_val = global_role
 
                     if not role_val or role_val not in ["student", "teacher", "admin"]:
                         role_val = "student"
+
+                    # Flaw #4 fix: only superusers can import admin-role accounts
+                    if role_val == "admin" and not request.user.is_superuser:
+                        error_list.append({"row": row_num, "error": "Only superusers can import admin-role accounts."})
+                        continue
 
                     if not email_val:
                         error_list.append({"row": row_num, "error": "Email is empty."})
@@ -328,21 +359,21 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         error_list.append({"row": row_num, "error": f"Invalid email format: '{email_val}'."})
                         continue
 
-                    row_inst = admin_institution
+                    row_inst = admin_institution or global_inst_obj
                     if not row_inst:
                         email_domain = email_val.split("@")[-1].lower()
                         inst_query = Institution.objects.filter(Q(domain__iexact=email_domain) | Q(slug__iexact=email_domain.split(".")[0]))
                         if inst_query.exists():
                             row_inst = inst_query.first()
                         else:
-                            error_list.append({"row": row_num, "error": f"Could not determine Institution for email '{email_val}'."})
+                            error_list.append({"row": row_num, "error": f"Could not determine Institution for email '{email_val}'. Please select an Institution in Batch Assignment."})
                             continue
 
-                    if role_val == "student":
+                    # Only enforce domain check when no explicit structure is provided
+                    if role_val == "student" and not global_sec_obj and not global_section_id:
                         inst_domain = row_inst.domain
                         if not inst_domain:
                             inst_domain = f"{row_inst.slug}.edu"
-                        
                         inst_domain = inst_domain.strip().lower()
                         email_lower = email_val.lower()
                         if not email_lower.endswith(f"@{inst_domain}") and not email_lower.endswith(f".{inst_domain}"):
@@ -360,9 +391,13 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         error_list.append({"row": row_num, "error": f"Registration number '{reg_val}' already exists."})
                         continue
 
-                    row_dept = None
-                    row_sec = None
-                    if role_val in ["student", "teacher"] and (dept_val or auto_create_structure):
+                    # Use pre-resolved global structure if IDs were provided
+                    row_dept = global_dept_obj
+                    row_sec = global_sec_obj
+
+                    # Fallback: legacy name-based resolution (only if no IDs given)
+                    if not row_dept and role_val in ["student", "teacher"]:
+                        dept_val = request.data.get("global_department", "").strip()
                         if dept_val:
                             dept_qs = Department.objects.filter(name__iexact=dept_val, institution=row_inst)
                             if dept_qs.exists():
@@ -370,30 +405,8 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                             elif auto_create_structure:
                                 row_dept = Department.objects.create(name=dept_val, institution=row_inst)
                             else:
-                                error_list.append({"row": row_num, "error": f"Department '{dept_val}' does not exist."})
+                                error_list.append({"row": row_num, "error": f"Department '{dept_val}' not found."})
                                 continue
-
-                        if role_val == "student" and (sem_val or sec_val or auto_create_structure):
-                            row_sem = None
-                            if sem_val and row_dept:
-                                sem_qs = Semester.objects.filter(number__iexact=sem_val, department=row_dept)
-                                if sem_qs.exists():
-                                    row_sem = sem_qs.first()
-                                elif auto_create_structure:
-                                    row_sem = Semester.objects.create(number=sem_val, department=row_dept)
-                                else:
-                                    error_list.append({"row": row_num, "error": f"Semester '{sem_val}' does not exist in department '{dept_val}'."})
-                                    continue
-
-                            if sec_val and row_sem:
-                                sec_qs = Section.objects.filter(name__iexact=sec_val, semester=row_sem)
-                                if sec_qs.exists():
-                                    row_sec = sec_qs.first()
-                                elif auto_create_structure:
-                                    row_sec = Section.objects.create(name=sec_val, semester=row_sem)
-                                else:
-                                    error_list.append({"row": row_num, "error": f"Section '{sec_val}' does not exist in Semester '{sem_val}'."})
-                                    continue
 
                     password = ""
                     if password_strategy == "reg_no" and reg_val:
@@ -421,14 +434,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
                         generate_and_send_otp(user, purpose="verify")
 
+                    # Flaw #5 fix: never include plaintext passwords in API response
                     success_list.append({
                         "email": email_val,
-                        "password": password,
                         "role": role_val,
                         "registration_number": reg_val,
                         "institution": row_inst.name,
                         "department": row_dept.name if row_dept else "",
                         "section": row_sec.name if row_sec else "",
+                        "note": "Verification email sent. Password communicated securely.",
                     })
 
                 if dry_run:

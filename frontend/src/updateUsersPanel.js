@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from "react";
-import API from "../../services/api";
-import { Plus, UserPlus, ArrowLeft, ArrowRight, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle, Users, FileSpreadsheet } from "lucide-react";
-import AccordionSection from "../AccordionSection";
-import ExcelImportPanel from "./ExcelImportPanel";
+const fs = require('fs');
+const path = './src/components/admin/UsersPanel.jsx';
+let content = fs.readFileSync(path, 'utf8');
 
+content = content.replace(
+  'import { Plus, UserPlus',
+  'import { Plus, UserPlus, ArrowLeft, ArrowRight'
+);
 
+const cardCode = `
 function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
-  const [hover, setHover] = React.useState(false);
+  const [hover, React_useState] = React.useState(false);
   return (
     <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onMouseEnter={() => React_useState(true)}
+      onMouseLeave={() => React_useState(false)}
       style={{
         background: "var(--glass-a)", border: "1px solid var(--glass-border)",
         borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 16,
@@ -23,7 +26,7 @@ function DashboardActionCard({ icon: Icon, color, title, description, stats, onC
     >
       <div style={{ position: "absolute", top: 0, right: 0, width: 120, height: 120, background: color, opacity: 0.05, borderRadius: "50%", transform: "translate(30%, -30%)", transition: "transform 0.3s ease", ...(hover ? { transform: "translate(25%, -25%) scale(1.1)" } : {}) }} />
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", color: color, transition: "transform 0.2s ease", transform: hover ? "scale(1.05)" : "none" }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: \`\${color}15\`, display: "flex", alignItems: "center", justifyContent: "center", color: color, transition: "transform 0.2s ease", transform: hover ? "scale(1.05)" : "none" }}>
           <Icon size={22} />
         </div>
         <div>
@@ -46,7 +49,7 @@ function DashboardActionCard({ icon: Icon, color, title, description, stats, onC
           marginTop: stats ? 0 : "auto", padding: "12px 16px", borderRadius: 8,
           background: color, color: "#fff", border: "none", fontWeight: 600, fontSize: 13,
           cursor: "pointer", transition: "all 0.2s ease",
-          boxShadow: `0 4px 12px ${color}40`, opacity: hover ? 1 : 0.9,
+          boxShadow: \`0 4px 12px \${color}40\`, opacity: hover ? 1 : 0.9,
           display: "flex", justifyContent: "center", alignItems: "center", gap: 6
         }}
       >
@@ -58,356 +61,18 @@ function DashboardActionCard({ icon: Icon, color, title, description, stats, onC
 
 export default function UsersPanel({ user }) {
   const [activeView, setActiveView] = React.useState("grid");
-  const [users, setUsers] = useState([]);
-  const [institutions, setInstitutions] = useState([]);
-  const [courses, setCourses] = useState([]);
+`;
+content = content.replace('export default function UsersPanel({ user }) {', cardCode);
 
-  // Creation form
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [registrationNumber, setRegistrationNumber] = useState("");
-  const [role, setRole] = useState("student");
-  const [selectedInst, setSelectedInst] = useState("");
-  const [departments, setDepartments] = useState([]);
-  const [semesters, setSemesters] = useState([]);
-  const [sections, setSections] = useState([]);
-  const [selectedDept, setSelectedDept] = useState("");
-  const [selectedSem, setSelectedSem] = useState("");
-  const [selectedSec, setSelectedSec] = useState("");
+const returnIdx = content.indexOf('  return (\n    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>\n\n      {/* ── SECTION 1: USER DIRECTORY ── */}');
+if (returnIdx === -1) {
+  console.error("Return statement not found");
+  process.exit(1);
+}
 
-  // Bulk
-  const [bulkInst, setBulkInst] = useState("");
-  const [bulkDepts, setBulkDepts] = useState([]);
-  const [bulkDept, setBulkDept] = useState("");
-  const [bulkSems, setBulkSems] = useState([]);
-  const [bulkSem, setBulkSem] = useState("");
-  const [bulkSecs, setBulkSecs] = useState([]);
-  const [bulkSec, setBulkSec] = useState("");
-  const [bulkPrefix, setBulkPrefix] = useState("std_");
-  const [bulkCount, setBulkCount] = useState(5);
-  const [bulkPassword, setBulkPassword] = useState("");
-  const [bulkCourse, setBulkCourse] = useState("");
-  const [generatedAccounts, setGeneratedAccounts] = useState([]);
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkError, setBulkError] = useState("");
-  const [bulkSuccessMsg, setBulkSuccessMsg] = useState("");
+const preReturn = content.substring(0, returnIdx);
 
-  // Filter & sort
-  const [universityFilter, setUniversityFilter] = useState("all");
-  const [filterDept, setFilterDept] = useState("all");
-  const [filterSem, setFilterSem] = useState("all");
-  const [filterSec, setFilterSec] = useState("all");
-  const [filterDepts, setFilterDepts] = useState([]);
-  const [filterSems, setFilterSems] = useState([]);
-  const [filterSecs, setFilterSecs] = useState([]);
-
-  const [sortField, setSortField] = useState("email");
-  const [sortDesc, setSortDesc] = useState(false);
-
-  // Edit
-  const [editingId, setEditingId] = useState(null);
-  const [editEmail, setEditEmail] = useState("");
-  const [editPassword, setEditPassword] = useState("");
-  const [editRegNum, setEditRegNum] = useState("");
-  const [editIsEmailVerified, setEditIsEmailVerified] = useState(false);
-  const [editRole, setEditRole] = useState("student");
-  const [editInst, setEditInst] = useState("");
-  const [editDept, setEditDept] = useState("");
-  const [editSem, setEditSem] = useState("");
-  const [editSec, setEditSec] = useState("");
-  const [editIsActive, setEditIsActive] = useState(true);
-  const [editDepts, setEditDepts] = useState([]);
-  const [editSems, setEditSems] = useState([]);
-  const [editSecs, setEditSecs] = useState([]);
-
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => { fetchUsers(); fetchInitialData(); }, []);
-
-  // Creation cascades
-  useEffect(() => {
-    if (selectedInst) {
-      API.get(`/admin/departments/?institution=${selectedInst}`).then(r => {
-        const data = r.data.results || r.data;
-        setDepartments(data);
-        if (data.length > 0) setSelectedDept(String(data[0].id));
-        else setSelectedDept("");
-      });
-    } else { setDepartments([]); setSelectedDept(""); }
-  }, [selectedInst]);
-
-  useEffect(() => {
-    if (selectedDept) {
-      API.get(`/admin/semesters/?department=${selectedDept}`).then(r => {
-        const data = r.data.results || r.data;
-        setSemesters(data);
-        if (data.length > 0) setSelectedSem(String(data[0].id));
-        else setSelectedSem("");
-      });
-    } else { setSemesters([]); setSelectedSem(""); }
-  }, [selectedDept]);
-
-  useEffect(() => {
-    if (selectedSem) {
-      API.get(`/admin/sections/?semester=${selectedSem}`).then(r => {
-        const data = r.data.results || r.data;
-        setSections(data);
-        if (data.length > 0) setSelectedSec(String(data[0].id));
-        else setSelectedSec("");
-      });
-    } else { setSections([]); setSelectedSec(""); }
-  }, [selectedSem]);
-
-  // List filter cascades
-  useEffect(() => {
-    if (universityFilter !== "all" && universityFilter) {
-      API.get(`/admin/departments/?institution=${universityFilter}`).then(r => {
-        setFilterDepts(r.data.results || r.data);
-        setFilterDept("all");
-        setFilterSem("all");
-        setFilterSec("all");
-      });
-    } else { 
-      setFilterDepts([]); setFilterDept("all"); 
-      setFilterSems([]); setFilterSem("all");
-      setFilterSecs([]); setFilterSec("all");
-    }
-  }, [universityFilter]);
-
-  useEffect(() => {
-    if (filterDept !== "all" && filterDept) {
-      API.get(`/admin/semesters/?department=${filterDept}`).then(r => {
-        setFilterSems(r.data.results || r.data);
-        setFilterSem("all");
-        setFilterSec("all");
-      });
-    } else { 
-      setFilterSems([]); setFilterSem("all");
-      setFilterSecs([]); setFilterSec("all");
-    }
-  }, [filterDept]);
-
-  useEffect(() => {
-    if (filterSem !== "all" && filterSem) {
-      API.get(`/admin/sections/?semester=${filterSem}`).then(r => {
-        setFilterSecs(r.data.results || r.data);
-        setFilterSec("all");
-      });
-    } else { 
-      setFilterSecs([]); setFilterSec("all"); 
-    }
-  }, [filterSem]);
-
-  // Bulk cascades
-  useEffect(() => {
-    if (bulkInst) {
-      API.get(`/admin/departments/?institution=${bulkInst}`).then(r => {
-        const data = r.data.results || r.data;
-        setBulkDepts(data);
-        if (data.length > 0) setBulkDept(String(data[0].id));
-        else setBulkDept("");
-      });
-    } else { setBulkDepts([]); setBulkDept(""); }
-  }, [bulkInst]);
-
-  useEffect(() => {
-    if (bulkDept) {
-      API.get(`/admin/semesters/?department=${bulkDept}`).then(r => {
-        const data = r.data.results || r.data;
-        setBulkSems(data);
-        if (data.length > 0) setBulkSem(String(data[0].id));
-        else setBulkSem("");
-      });
-    } else { setBulkSems([]); setBulkSem(""); }
-  }, [bulkDept]);
-
-  useEffect(() => {
-    if (bulkSem) {
-      API.get(`/admin/sections/?semester=${bulkSem}`).then(r => {
-        const data = r.data.results || r.data;
-        setBulkSecs(data);
-        if (data.length > 0) setBulkSec(String(data[0].id));
-        else setBulkSec("");
-      });
-    } else { setBulkSecs([]); setBulkSec(""); }
-  }, [bulkSem]);
-
-  // Edit cascades
-  useEffect(() => { if (editInst) { API.get(`/admin/departments/?institution=${editInst}`).then(r => setEditDepts(r.data.results || r.data)); } else setEditDepts([]); }, [editInst]);
-  useEffect(() => { if (editDept) { API.get(`/admin/semesters/?department=${editDept}`).then(r => setEditSems(r.data.results || r.data)); } else setEditSems([]); }, [editDept]);
-  useEffect(() => { if (editSem) { API.get(`/admin/sections/?semester=${editSem}`).then(r => setEditSecs(r.data.results || r.data)); } else setEditSecs([]); }, [editSem]);
-
-  const fetchInitialData = async () => {
-    try {
-      const ri = await API.get("/admin/institutions/");
-      const insts = ri.data.results || ri.data;
-      setInstitutions(insts);
-      if (!user?.is_superuser && user?.institution) {
-        setSelectedInst(String(user.institution));
-        setBulkInst(String(user.institution));
-      } else if (insts.length > 0) {
-        setSelectedInst(String(insts[0].id));
-        setBulkInst(String(insts[0].id));
-      }
-      const rc = await API.get("/admin/courses/"); setCourses(rc.data.results || rc.data);
-    } catch { setError("Failed to fetch administrative records"); }
-  };
-
-  const fetchUsers = async () => {
-    try { const r = await API.get("/admin/users/"); setUsers(r.data.results || r.data); }
-    catch { setError("Failed to fetch user accounts"); }
-  };
-
-  const handleRegister = async (e) => {
-    e.preventDefault(); setError(""); setLoading(true);
-    try {
-      await API.post("/admin/users/", {
-        email, password, role,
-        registration_number: registrationNumber.trim() || null,
-        institution: selectedInst ? parseInt(selectedInst) : null,
-        department: (role === "student" || role === "teacher") && selectedDept ? parseInt(selectedDept) : null,
-        section: role === "student" && selectedSec ? parseInt(selectedSec) : null
-      });
-      setEmail(""); setPassword(""); setRegistrationNumber("");
-      fetchUsers();
-    } catch (err) { setError(err.response?.data?.email?.[0] || err.response?.data?.error || "Registration error occurred"); }
-    finally { setLoading(false); }
-  };
-
-  const handleBulkGenerate = async (e) => {
-    e.preventDefault(); setBulkError(""); setBulkSuccessMsg(""); setBulkLoading(true);
-    try {
-      const res = await API.post("/admin/users/bulk-generate/", {
-        section_id: parseInt(bulkSec),
-        count: parseInt(bulkCount),
-        prefix: bulkPrefix.trim(),
-        password: bulkPassword.trim() || null,
-        course_id: bulkCourse ? parseInt(bulkCourse) : null
-      });
-      setGeneratedAccounts(res.data.users || []);
-      setBulkSuccessMsg(res.data.message || `Successfully generated ${res.data.users?.length || bulkCount} student accounts!`);
-      setBulkPrefix("std_"); setBulkCount(5); setBulkPassword(""); setBulkCourse("");
-      fetchUsers();
-    } catch (err) { setBulkError(err.response?.data?.error || "Failed to bulk generate accounts"); }
-    finally { setBulkLoading(false); }
-  };
-
-  const downloadCredentialsAsCSV = () => {
-    if (!generatedAccounts.length) return;
-    let csv = "Email Address,Generated Password,Department,Semester,Section,Auto-Enrolled Course\n";
-    generatedAccounts.forEach(a => { csv += `${a.email},${a.password},${a.department_name},${a.semester_number},${a.section_name},${a.enrolled_course || "None"}\n`; });
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a"); link.href = url; link.download = "generated_student_credentials.csv";
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Permanently delete this user account?")) return;
-    try { await API.delete(`/admin/users/${id}/`); fetchUsers(); }
-    catch { setError("Failed to delete user"); }
-  };
-
-  const handleSaveEdit = async (id) => {
-    setError(""); setLoading(true);
-    try {
-      const payload = {
-        email: editEmail, role: editRole,
-        registration_number: editRegNum.trim() || null,
-        is_email_verified: editIsEmailVerified,
-        institution: editInst ? parseInt(editInst) : null,
-        department: (editRole === "student" || editRole === "teacher") && editDept ? parseInt(editDept) : null,
-        section: editRole === "student" && editSec ? parseInt(editSec) : null,
-        is_active: editIsActive
-      };
-      if (editPassword.trim()) payload.password = editPassword.trim();
-      await API.put(`/admin/users/${id}/`, payload);
-      setEditingId(null); fetchUsers();
-    } catch (err) {
-      const data = err.response?.data;
-      let msg = "Failed to save user modifications";
-      if (data) {
-        if (typeof data === "string") msg = data;
-        else if (data.error) msg = data.error;
-        else if (data.detail) msg = data.detail;
-        else {
-          const keys = Object.keys(data);
-          if (keys.length > 0) {
-            msg = keys.map(k => `${k}: ${Array.isArray(data[k]) ? data[k].join(", ") : data[k]}`).join(" | ");
-          }
-        }
-      }
-      setError(msg);
-    } finally { setLoading(false); }
-  };
-
-  const filteredUsers = users.filter(u => {
-    const instId = u.institution || u.computed_institution;
-    const instMatch = universityFilter === "all" || String(instId) === String(universityFilter);
-    const deptId = u.department || u.computed_department;
-    const deptMatch = filterDept === "all" || String(deptId) === String(filterDept);
-    const semId = u.computed_semester;
-    const semMatch = filterSem === "all" || String(semId) === String(filterSem);
-    const secMatch = filterSec === "all" || String(u.section) === String(filterSec);
-    return instMatch && deptMatch && semMatch && secMatch;
-  });
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDesc(!sortDesc);
-    } else {
-      setSortField(field);
-      setSortDesc(false);
-    }
-  };
-
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    if (sortField === "institution_name" || sortField === "dept_sem_sec") {
-      const instA = a.institution_name || "Global Admin";
-      const instB = b.institution_name || "Global Admin";
-      let cmp = instA.localeCompare(instB);
-      if (cmp === 0) {
-        const deptA = a.department_name || "";
-        const deptB = b.department_name || "";
-        cmp = deptA.localeCompare(deptB);
-        if (cmp === 0) {
-          const semA = String(a.semester_number ?? "");
-          const semB = String(b.semester_number ?? "");
-          cmp = semA.localeCompare(semB);
-          if (cmp === 0) {
-            const secA = a.section_name || "";
-            const secB = b.section_name || "";
-            cmp = secA.localeCompare(secB);
-          }
-        }
-      }
-      return sortDesc ? -cmp : cmp;
-    }
-
-    let valA = a[sortField];
-    let valB = b[sortField];
-    
-    let cmp = 0;
-    if (typeof valA === "string" && typeof valB === "string") cmp = valA.localeCompare(valB);
-    else if (typeof valA === "boolean" && typeof valB === "boolean") cmp = valA === valB ? 0 : valA ? -1 : 1;
-    else if (valA < valB) cmp = -1;
-    else if (valA > valB) cmp = 1;
-    
-    return sortDesc ? -cmp : cmp;
-  });
-
-  const SortIndicator = ({ field }) => {
-    if (sortField !== field) return null;
-    return <span style={{ marginLeft: 4 }}>{sortDesc ? "↓" : "↑"}</span>;
-  };
-
-  const roleBadge = (r) => {
-    if (r === "admin") return <span className="badge badge-purple">Admin</span>;
-    if (r === "teacher") return <span className="badge badge-info">Teacher</span>;
-    return <span className="badge badge-good">Student</span>;
-  };
-
-  return (
+const newReturn = \`  return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {activeView === "grid" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
@@ -462,48 +127,30 @@ export default function UsersPanel({ user }) {
             </div>
           </div>
           
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 7 }}>
-              <Filter size={14} color="var(--text-muted)" />
-              <select className="form-input" value={universityFilter} onChange={e => setUniversityFilter(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                <option value="all">All Universities</option>
-                {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-              {universityFilter !== "all" && (
-                <select className="form-input" value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                  <option value="all">All Departments</option>
-                  {filterDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <Filter size={14} color="var(--text-muted)" />
+                <select className="form-input" value={universityFilter} onChange={e => setUniversityFilter(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
+                  <option value="all">All Universities</option>
+                  {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
-              )}
-              {filterDept !== "all" && (
-                <select className="form-input" value={filterSem} onChange={e => setFilterSem(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                  <option value="all">All Semesters</option>
-                  {filterSems.map(s => <option key={s.id} value={s.id}>Semester {s.number}</option>)}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                <ArrowUpDown size={14} color="var(--text-muted)" />
+                <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
+                  <option value="email">Sort by Email</option>
+                  <option value="role">Sort by Role</option>
+                  <option value="university">Sort by University</option>
+                  <option value="status">Sort by Status</option>
                 </select>
-              )}
-              {filterSem !== "all" && (
-                <select className="form-input" value={filterSec} onChange={e => setFilterSec(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                  <option value="all">All Sections</option>
-                  {filterSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              )}
+              </div>
             </div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Click column headers to sort</div>
           </div>
 
           <div className="table-container">
             <table>
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort("email")} style={{ cursor: "pointer", userSelect: "none" }}>Email / Reg No <SortIndicator field="email" /></th>
-                  <th onClick={() => handleSort("role")} style={{ cursor: "pointer", userSelect: "none" }}>Role <SortIndicator field="role" /></th>
-                  <th onClick={() => handleSort("institution_name")} style={{ cursor: "pointer", userSelect: "none" }}>Institution <SortIndicator field="institution_name" /></th>
-                  <th onClick={() => handleSort("dept_sem_sec")} style={{ cursor: "pointer", userSelect: "none" }}>Dept / Sem / Sec <SortIndicator field="dept_sem_sec" /></th>
-                  <th onClick={() => handleSort("is_active")} style={{ cursor: "pointer", userSelect: "none" }}>Status <SortIndicator field="is_active" /></th>
-                  <th onClick={() => handleSort("is_email_verified")} style={{ cursor: "pointer", userSelect: "none" }}>Verification <SortIndicator field="is_email_verified" /></th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Email / Reg No</th><th>Role</th><th>Institution</th><th>Dept / Sem / Sec</th><th>Status</th><th>Verification</th><th>Actions</th></tr></thead>
               <tbody>
                 {sortedUsers.map(u => (
                   <tr key={u.id}>
@@ -515,11 +162,11 @@ export default function UsersPanel({ user }) {
                           <input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} />
                         </td>
                         <td><select className="form-input" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ padding: "6px 10px" }}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></td>
-                        <td><select className="form-input" value={editInst} onChange={e => { setEditInst(e.target.value); setEditDept(""); setEditSem(""); setEditSec(""); }} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
+                        <td><select className="form-input" value={editInst} onChange={e => setEditInst(e.target.value)} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
                         <td>
                           {editRole === "student" && <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                            <select className="form-input" value={editDept} onChange={e => { setEditDept(e.target.value); setEditSem(""); setEditSec(""); }} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
-                            <select className="form-input" value={editSem} onChange={e => { setEditSem(e.target.value); setEditSec(""); }} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
+                            <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                            <select className="form-input" value={editSem} onChange={e => setEditSem(e.target.value)} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
                             <select className="form-input" value={editSec} onChange={e => setEditSec(e.target.value)} disabled={!editSem} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sec</option>{editSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
                           </div>}
                           {editRole === "teacher" && <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>}
@@ -553,9 +200,9 @@ export default function UsersPanel({ user }) {
                            : u.role === "teacher" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Dept: {u.department_name || "—"}</div>
                            : <span style={{ color: "var(--text-muted)" }}>—</span>}
                         </td>
-                        <td><span className={`badge ${u.is_active ? "badge-good" : "badge-defaulter"}`}>{u.is_active ? "Active" : "Disabled"}</span></td>
+                        <td><span className={`badge \${u.is_active ? "badge-good" : "badge-defaulter"}`}>{u.is_active ? "Active" : "Disabled"}</span></td>
                         <td>
-                          <span className={`badge ${u.is_email_verified ? "badge-good" : "badge-defaulter"}`}>
+                          <span className={`badge \${u.is_email_verified ? "badge-good" : "badge-defaulter"}`}>
                             {u.is_email_verified ? "Verified" : "Pending OTP"}
                           </span>
                         </td>
@@ -567,7 +214,7 @@ export default function UsersPanel({ user }) {
                               setEditRole(u.role);
                               const instId = u.institution || u.computed_institution || "";
                               const deptId = u.department || u.computed_department || "";
-                              const semId = u.computed_semester || "";
+                              const semId = u.semester || u.computed_semester || "";
                               const secId = u.section || "";
                               setEditInst(instId ? String(instId) : "");
                               setEditDept(deptId ? String(deptId) : "");
@@ -758,3 +405,6 @@ export default function UsersPanel({ user }) {
     </div>
   );
 }
+\`;
+
+fs.writeFileSync(path, preReturn + newReturn);

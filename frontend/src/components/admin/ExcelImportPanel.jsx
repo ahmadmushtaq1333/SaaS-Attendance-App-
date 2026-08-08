@@ -11,10 +11,19 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
   // Mappings
   const [emailMap, setEmailMap] = useState("");
   const [regMap, setRegMap] = useState("");
-  const [roleMap, setRoleMap] = useState("");
-  const [deptMap, setDeptMap] = useState("");
-  const [semMap, setSemMap] = useState("");
-  const [secMap, setSecMap] = useState("");
+
+  // Global Assignments
+  const [globalRole, setGlobalRole] = useState("student");
+  const [globalInstitution, setGlobalInstitution] = useState("");
+  const [globalDepartmentId, setGlobalDepartmentId] = useState("");
+  const [globalSemesterId, setGlobalSemesterId] = useState("");
+  const [globalSectionId, setGlobalSectionId] = useState("");
+
+  // Cascading options
+  const [institutions, setInstitutions] = useState([]);
+  const [importDepts, setImportDepts] = useState([]);
+  const [importSems, setImportSems] = useState([]);
+  const [importSecs, setImportSecs] = useState([]);
 
   // Settings
   const [passwordStrategy, setPasswordStrategy] = useState("auto"); // auto, reg_no, custom
@@ -32,7 +41,26 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
 
   useEffect(() => {
     API.get("/admin/courses/").then(r => setCourses(r.data.results || r.data));
+    API.get("/admin/institutions/").then(r => setInstitutions(r.data.results || r.data));
   }, []);
+
+  useEffect(() => {
+    if (globalInstitution) {
+      API.get(`/admin/departments/?institution=${globalInstitution}`).then(r => { setImportDepts(r.data.results || r.data); setGlobalDepartmentId(""); setGlobalSemesterId(""); setGlobalSectionId(""); setImportSems([]); setImportSecs([]); });
+    } else { setImportDepts([]); setGlobalDepartmentId(""); setGlobalSemesterId(""); setGlobalSectionId(""); }
+  }, [globalInstitution]);
+
+  useEffect(() => {
+    if (globalDepartmentId) {
+      API.get(`/admin/semesters/?department=${globalDepartmentId}`).then(r => { setImportSems(r.data.results || r.data); setGlobalSemesterId(""); setGlobalSectionId(""); setImportSecs([]); });
+    } else { setImportSems([]); setGlobalSemesterId(""); setGlobalSectionId(""); }
+  }, [globalDepartmentId]);
+
+  useEffect(() => {
+    if (globalSemesterId) {
+      API.get(`/admin/sections/?semester=${globalSemesterId}`).then(r => { setImportSecs(r.data.results || r.data); setGlobalSectionId(""); });
+    } else { setImportSecs([]); setGlobalSectionId(""); }
+  }, [globalSemesterId]);
 
   const handleFileChange = async (e) => {
     const uploadedFile = e.target.files[0];
@@ -66,18 +94,6 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
       const regIdx = lowerHeaders.findIndex(h => h.includes("reg") || h.includes("roll") || h.includes("id") || h.includes("number"));
       if (regIdx !== -1) setRegMap(res.data.headers[regIdx]);
 
-      const roleIdx = lowerHeaders.findIndex(h => h.includes("role") || h.includes("type"));
-      if (roleIdx !== -1) setRoleMap(res.data.headers[roleIdx]);
-
-      const deptIdx = lowerHeaders.findIndex(h => h.includes("dept") || h.includes("department"));
-      if (deptIdx !== -1) setDeptMap(res.data.headers[deptIdx]);
-
-      const semIdx = lowerHeaders.findIndex(h => h.includes("sem") || h.includes("semester"));
-      if (semIdx !== -1) setSemMap(res.data.headers[semIdx]);
-
-      const secIdx = lowerHeaders.findIndex(h => h.includes("sec") || h.includes("section"));
-      if (secIdx !== -1) setSecMap(res.data.headers[secIdx]);
-
     } catch (err) {
       setError(err.response?.data?.error || "Failed to parse spreadsheet headers.");
       setFile(null);
@@ -99,11 +115,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
 
     const mapping = {
       email: emailMap,
-      registration_number: regMap || undefined,
-      role: roleMap || undefined,
-      department: deptMap || undefined,
-      semester: semMap || undefined,
-      section: secMap || undefined
+      registration_number: regMap || undefined
     };
 
     const formData = new FormData();
@@ -113,6 +125,13 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
     formData.append("password_strategy", passwordStrategy);
     formData.append("custom_password", customPassword);
     formData.append("column_mapping", JSON.stringify(mapping));
+    
+    // Global parameters — now send IDs
+    formData.append("global_role", globalRole);
+    formData.append("global_institution", globalInstitution);
+    formData.append("global_department_id", globalDepartmentId);
+    formData.append("global_semester_id", globalSemesterId);
+    formData.append("global_section_id", globalSectionId);
     if (selectedCourse) formData.append("course_id", selectedCourse);
 
     try {
@@ -135,7 +154,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = "Registration Number,Email Address,Role,Department,Semester,Section\nCS-001,std01@mit.edu,student,Computer Science,1,Section A\nCS-002,std02@mit.edu,student,Computer Science,1,Section A\nT-01,prof.john@mit.edu,teacher,Computer Science,,";
+    const csvContent = "Registration Number,Email Address\nCS-001,std01@mit.edu\nCS-002,std02@mit.edu\nT-01,prof.john@mit.edu";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -192,9 +211,10 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
           <div>
             <h4 style={{ margin: "0 0 6px 0", fontSize: 14, color: "var(--text-primary)" }}>Import instructions & guidelines</h4>
             <ul style={{ paddingLeft: 16, margin: 0, fontSize: 12, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
-              <li><strong>Student Email Rules:</strong> Mismatched domains (e.g. Gmail) are blocked automatically.</li>
-              <li><strong>Auto-Creation:</strong> Enable below to dynamically add new semesters/sections.</li>
-              <li><strong>OTP Verification:</strong> Accounts start as unverified and require activation.</li>
+              <li><strong>Simplified Format:</strong> Your file only needs 2 columns — <strong>Email</strong> and <strong>Reg Number</strong>.</li>
+              <li><strong>Batch Assignment:</strong> Role, Department, Semester & Section are set once and applied to the entire list.</li>
+              <li><strong>Student Email Rules:</strong> Emails not matching your institution domain are blocked.</li>
+              <li><strong>OTP Verification:</strong> All new accounts start as unverified and require activation.</li>
             </ul>
           </div>
           <button className="btn-secondary" onClick={handleDownloadTemplate} style={{ gap: 6, fontSize: 12, alignSelf: "flex-start", marginTop: 10 }}>
@@ -227,96 +247,92 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
             </table>
           </div>
 
-          {/* Visual Mapper */}
+          {/* Visual Mapper & Global Config */}
           <div>
-            <h4 style={{ margin: "0 0 10px 0", fontSize: 13, color: "var(--text-secondary)" }}>Choose Columns Mapping</h4>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <h4 style={{ margin: "0 0 10px 0", fontSize: 13, color: "var(--text-secondary)" }}>1. Map Spreadsheet Columns</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
               <div>
-                <label style={{ fontSize: 11 }}>Email Address (Required)</label>
+                <label style={{ fontSize: 11 }}>Email Address Column (Required)</label>
                 <select className="form-input" value={emailMap} onChange={(e) => setEmailMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Map Email --</option>
+                  <option value="">-- Select Column --</option>
                   {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11 }}>Reg Number / Username</label>
+                <label style={{ fontSize: 11 }}>Registration Number / Username Column</label>
                 <select className="form-input" value={regMap} onChange={(e) => setRegMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Map Reg No --</option>
+                  <option value="">-- Select Column (Optional) --</option>
                   {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
                 </select>
               </div>
+            </div>
+
+            <h4 style={{ margin: "0 0 10px 0", fontSize: 13, color: "var(--text-secondary)" }}>2. Batch Assignment — Apply to All Users</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
               <div>
-                <label style={{ fontSize: 11 }}>Role (student/teacher)</label>
-                <select className="form-input" value={roleMap} onChange={(e) => setRoleMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Map Role --</option>
-                  {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
+                <label style={{ fontSize: 11 }}>Role</label>
+                <select className="form-input" value={globalRole} onChange={(e) => setGlobalRole(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11 }}>Institution</label>
+                <select className="form-input" value={globalInstitution} onChange={(e) => setGlobalInstitution(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
+                  <option value="">-- Select Institution --</option>
+                  {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: 11 }}>Department</label>
-                <select className="form-input" value={deptMap} onChange={(e) => setDeptMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Map Dept --</option>
-                  {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
+                <select className="form-input" value={globalDepartmentId} onChange={(e) => setGlobalDepartmentId(e.target.value)} disabled={!globalInstitution} style={{ padding: "6px 10px", fontSize: 12, opacity: !globalInstitution ? 0.5 : 1 }}>
+                  <option value="">-- Select Department --</option>
+                  {importDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: 11 }}>Semester</label>
-                <select className="form-input" value={semMap} onChange={(e) => setSemMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Map Semester --</option>
-                  {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
+                <select className="form-input" value={globalSemesterId} onChange={(e) => setGlobalSemesterId(e.target.value)} disabled={!globalDepartmentId || globalRole !== "student"} style={{ padding: "6px 10px", fontSize: 12, opacity: (!globalDepartmentId || globalRole !== "student") ? 0.5 : 1 }}>
+                  <option value="">-- Select Semester --</option>
+                  {importSems.map(s => <option key={s.id} value={s.id}>Semester {s.number}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: 11 }}>Section</label>
-                <select className="form-input" value={secMap} onChange={(e) => setSecMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Map Section --</option>
-                  {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
+                <select className="form-input" value={globalSectionId} onChange={(e) => setGlobalSectionId(e.target.value)} disabled={!globalSemesterId || globalRole !== "student"} style={{ padding: "6px 10px", fontSize: 12, opacity: (!globalSemesterId || globalRole !== "student") ? 0.5 : 1 }}>
+                  <option value="">-- Select Section (optional) --</option>
+                  {importSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Import Rules Configuration */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, background: "rgba(255,255,255,0.03)", padding: 16, borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12 }}>Password Strategy</label>
-                <select className="form-input" value={passwordStrategy} onChange={(e) => setPasswordStrategy(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="auto">Auto-Generate Secure Passwords</option>
-                  <option value="reg_no">Use Student's Reg Number</option>
-                  <option value="custom">Use Custom Static Password</option>
-                </select>
-              </div>
+          {/* 3. Additional Options (compact) */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
+            <div>
+              <label style={{ fontSize: 11 }}>Password Strategy</label>
+              <select className="form-input" value={passwordStrategy} onChange={(e) => setPasswordStrategy(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
+                <option value="auto">Auto-Generate Secure Passwords</option>
+                <option value="reg_no">Use Reg Number as Password</option>
+                <option value="custom">Custom Static Password</option>
+              </select>
               {passwordStrategy === "custom" && (
-                <div>
-                  <label style={{ fontSize: 11 }}>Static Password Value</label>
-                  <input type="text" className="form-input" placeholder="Static password" value={customPassword} onChange={(e) => setCustomPassword(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }} />
-                </div>
+                <input type="text" className="form-input" placeholder="e.g. Welcome@123" value={customPassword} onChange={(e) => setCustomPassword(e.target.value)} style={{ padding: "6px 10px", fontSize: 12, marginTop: 6 }} />
               )}
             </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 12 }}>Auto-Enroll Students to Course</label>
-                <select className="form-input" value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- None --</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                <input type="checkbox" id="auto-create-struct" checked={autoCreateStructure} onChange={(e) => setAutoCreateStructure(e.target.checked)} style={{ cursor: "pointer" }} />
-                <label htmlFor="auto-create-struct" style={{ margin: 0, cursor: "pointer", fontSize: 12 }}>Auto-create missing departments/semesters/sections</label>
-              </div>
+            <div>
+              <label style={{ fontSize: 11 }}>Auto-Enroll to Course (Optional)</label>
+              <select className="form-input" value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
+                <option value="">-- No course enrollment --</option>
+                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 10 }}>
-            <button className="btn-secondary" onClick={() => runVerification(true)} disabled={validating || loading || !emailMap}>
-              <RefreshCw size={13} className={validating ? "animate-spin" : ""} /> Validate Columns (Dry-Run)
-            </button>
-            <button className="btn-primary" onClick={() => runVerification(false)} disabled={loading || validating || !emailMap}>
-              <CheckCircle2 size={13} /> Confirm Import Roster
+          {/* Action button */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+            <button className="btn-primary" onClick={() => runVerification(false)} disabled={loading || validating || !emailMap} style={{ padding: "11px 28px", fontSize: 14, gap: 8 }}>
+              <Upload size={16} /> {loading ? "Importing..." : "Upload & Import Roster"}
             </button>
           </div>
         </div>
@@ -384,6 +400,18 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
               <p style={{ fontSize: 28, fontWeight: 700, color: "var(--danger)", margin: "4px 0 0" }}>{importResult.error_count}</p>
             </div>
           </div>
+
+          {importResult.errors && importResult.errors.length > 0 && (
+            <div style={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+              <h4 style={{ margin: "0 0 4px 0", fontSize: 13, color: "var(--danger)" }}>Failed Rows Details</h4>
+              {importResult.errors.map((e, idx) => (
+                <div key={idx} style={{ padding: "8px 12px", background: "rgba(255,90,90,0.05)", borderLeft: "3px solid var(--danger)", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
+                  <span>Row {e.row}: {e.error}</span>
+                  <span style={{ color: "var(--text-muted)" }}>Skipped</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Visual Domain Analytics representation */}
           <div style={{ background: "rgba(255,255,255,0.02)", padding: 18, borderRadius: 10 }}>

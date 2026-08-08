@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import API from "../../services/api";
-import { Plus, School, Edit, Trash, Check, X, ChevronDown, ChevronRight, BookOpen, Layers, Layout, AlertTriangle } from "lucide-react";
+import { Plus, School, Edit, Trash, Check, X, ChevronDown, ChevronRight, BookOpen, Layers, Layout, AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
 import AccordionSection from "../AccordionSection";
 
 /* ── Inline editor ── */
@@ -317,7 +317,60 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
 }
 
 /* ── Main panel ── */
+
+function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: "var(--glass-a)", border: "1px solid var(--glass-border)",
+        borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 16,
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: hover ? "translateY(-4px)" : "none",
+        boxShadow: hover ? "0 16px 40px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.03)",
+        position: "relative", overflow: "hidden", cursor: "pointer"
+      }}
+      onClick={onClick}
+    >
+      <div style={{ position: "absolute", top: 0, right: 0, width: 120, height: 120, background: color, opacity: 0.05, borderRadius: "50%", transform: "translate(30%, -30%)", transition: "transform 0.3s ease", ...(hover ? { transform: "translate(25%, -25%) scale(1.1)" } : {}) }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", color: color, transition: "transform 0.2s ease", transform: hover ? "scale(1.05)" : "none" }}>
+          <Icon size={22} />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h3>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>{description}</p>
+        </div>
+      </div>
+      {stats && (
+        <div style={{ display: "flex", gap: 16, padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", marginTop: "auto", transition: "background 0.2s ease", ...(hover ? { background: "rgba(255,255,255,0.05)" } : {}) }}>
+          {stats.map((stat, i) => (
+            <div key={i} style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <button 
+        style={{
+          marginTop: stats ? 0 : "auto", padding: "12px 16px", borderRadius: 8,
+          background: color, color: "#fff", border: "none", fontWeight: 600, fontSize: 13,
+          cursor: "pointer", transition: "all 0.2s ease",
+          boxShadow: `0 4px 12px ${color}40`, opacity: hover ? 1 : 0.9,
+          display: "flex", justifyContent: "center", alignItems: "center", gap: 6
+        }}
+      >
+        {buttonText} <ArrowRight size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function InstitutionsPanel({ user }) {
+  const [activeView, setActiveView] = React.useState("grid");
   const [institutions, setInstitutions] = useState([]);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -360,16 +413,56 @@ export default function InstitutionsPanel({ user }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {activeView === "grid" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+          <DashboardActionCard 
+            icon={Layout} 
+            color="var(--purple)" 
+            title="Academic Hierarchy" 
+            description="Manage departments, semesters, and sections for all institutions."
+            stats={[
+              { label: "Total Institutions", value: institutions.length }
+            ]}
+            buttonText="Manage Hierarchy"
+            onClick={() => setActiveView("hierarchy")}
+          />
+          {isSuper && (
+            <DashboardActionCard 
+              icon={School} 
+              color="var(--emerald)" 
+              title="Create Institution" 
+              description="Add a new top-level institution to the global platform."
+              buttonText="Create Institution"
+              onClick={() => setActiveView("create")}
+            />
+          )}
+        </div>
+      )}
 
-      {/* ── Create Institution (Global Admin Only) ── */}
-      {isSuper && (
-        <AccordionSection
-          title="Create New Institution"
-          icon={<School size={18} color="var(--emerald)" />}
-          iconBg="rgba(57,217,138,0.15)"
-          defaultOpen={false}
-        >
-          <div style={{ marginTop: 16, maxWidth: 520 }}>
+      {activeView !== "grid" && (
+        <div style={{ marginBottom: 4 }}>
+          <button 
+            onClick={() => setActiveView("grid")}
+            className="btn-secondary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", fontSize: 13, borderRadius: 8 }}
+          >
+            <ArrowLeft size={14} /> Back to Actions
+          </button>
+        </div>
+      )}
+
+      {isSuper && activeView === "create" && (
+        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <School size={20} color="var(--emerald)" />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Create New Institution</h2>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Add a new global organization entity</p>
+            </div>
+          </div>
+          <div style={{ maxWidth: 520 }}>
             {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
             <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
@@ -393,33 +486,37 @@ export default function InstitutionsPanel({ user }) {
               </button>
             </form>
           </div>
-        </AccordionSection>
+        </div>
       )}
 
-      {/* ── Institution List & Academic Hierarchy ── */}
-      <AccordionSection
-        title="Institutions & Academic Hierarchy"
-        subtitle={`(${institutions.length} institutions)`}
-        icon={<Layout size={18} color="var(--purple)" />}
-        iconBg="rgba(123,97,255,0.15)"
-        defaultOpen={true}
-      >
-        <div style={{ marginTop: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Click any institution to expand departments, semesters, and sections.</p>
-          {institutions.length === 0 ? (
-            <p className="text-meta" style={{ textAlign: "center", padding: "32px 0" }}>No institutions yet.{isSuper ? " Create one above." : " Contact your global admin."}</p>
-          ) : (
-            institutions.map(inst => (
-              <InstitutionBlock
-                key={inst.id}
-                inst={inst}
-                onDelete={isSuper ? handleDelete : null}
-                onEdit={isSuper ? handleEdit : null}
-              />
-            ))
-          )}
+      {activeView === "hierarchy" && (
+        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(123,97,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Layout size={20} color="var(--purple)" />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Institutions & Academic Hierarchy</h2>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{institutions.length} organizations</p>
+            </div>
+          </div>
+          <div>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Click any institution to expand departments, semesters, and sections.</p>
+            {institutions.length === 0 ? (
+              <p className="text-meta" style={{ textAlign: "center", padding: "32px 0" }}>No institutions yet.{isSuper ? " Create one from the grid." : " Contact your global admin."}</p>
+            ) : (
+              institutions.map(inst => (
+                <InstitutionBlock
+                  key={inst.id}
+                  inst={inst}
+                  onDelete={isSuper ? handleDelete : null}
+                  onEdit={isSuper ? handleEdit : null}
+                />
+              ))
+            )}
+          </div>
         </div>
-      </AccordionSection>
+      )}
 
       {!isSuper && error && <div className="alert alert-danger">{error}</div>}
     </div>

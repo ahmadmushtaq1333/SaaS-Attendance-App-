@@ -1,9 +1,62 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, BookOpen, UserCheck, Edit, Trash, Check, X, ArrowUpDown } from "lucide-react";
+import { Plus, BookOpen, UserCheck, Edit, Trash, Check, X, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
 import AccordionSection from "../AccordionSection";
 
+
+function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: "var(--glass-a)", border: "1px solid var(--glass-border)",
+        borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 16,
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+        transform: hover ? "translateY(-4px)" : "none",
+        boxShadow: hover ? "0 16px 40px rgba(0,0,0,0.15)" : "0 4px 12px rgba(0,0,0,0.03)",
+        position: "relative", overflow: "hidden", cursor: "pointer"
+      }}
+      onClick={onClick}
+    >
+      <div style={{ position: "absolute", top: 0, right: 0, width: 120, height: 120, background: color, opacity: 0.05, borderRadius: "50%", transform: "translate(30%, -30%)", transition: "transform 0.3s ease", ...(hover ? { transform: "translate(25%, -25%) scale(1.1)" } : {}) }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: `${color}15`, display: "flex", alignItems: "center", justifyContent: "center", color: color, transition: "transform 0.2s ease", transform: hover ? "scale(1.05)" : "none" }}>
+          <Icon size={22} />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h3>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>{description}</p>
+        </div>
+      </div>
+      {stats && (
+        <div style={{ display: "flex", gap: 16, padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", marginTop: "auto", transition: "background 0.2s ease", ...(hover ? { background: "rgba(255,255,255,0.05)" } : {}) }}>
+          {stats.map((stat, i) => (
+            <div key={i} style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginTop: 2 }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <button 
+        style={{
+          marginTop: stats ? 0 : "auto", padding: "12px 16px", borderRadius: 8,
+          background: color, color: "#fff", border: "none", fontWeight: 600, fontSize: 13,
+          cursor: "pointer", transition: "all 0.2s ease",
+          boxShadow: `0 4px 12px ${color}40`, opacity: hover ? 1 : 0.9,
+          display: "flex", justifyContent: "center", alignItems: "center", gap: 6
+        }}
+      >
+        {buttonText} <ArrowRight size={14} />
+      </button>
+    </div>
+  );
+}
+
 export default function CoursesPanel({ user }) {
+  const [activeView, setActiveView] = React.useState("grid");
   const [courses, setCourses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
@@ -36,7 +89,8 @@ export default function CoursesPanel({ user }) {
   const [editSems, setEditSems] = useState([]);
   const [editSecs, setEditSecs] = useState([]);
 
-  const [sortBy, setSortBy] = useState("name");
+  const [sortField, setSortField] = useState("name");
+  const [sortDesc, setSortDesc] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -166,42 +220,112 @@ export default function CoursesPanel({ user }) {
     finally { setLoading(false); }
   };
 
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDesc(!sortDesc);
+    } else {
+      setSortField(field);
+      setSortDesc(false);
+    }
+  };
+
   const sortedCourses = [...courses].sort((a, b) => {
-    if (sortBy === "name") return a.name.localeCompare(b.name);
-    if (sortBy === "enrollments") return b.enrollment_count - a.enrollment_count;
-    return 0;
+    if (sortField === "institution") {
+      const instA = a.institution?.name || "";
+      const instB = b.institution?.name || "";
+      let cmp = instA.localeCompare(instB);
+      if (cmp === 0) {
+        const deptA = a.department?.name || "";
+        const deptB = b.department?.name || "";
+        cmp = deptA.localeCompare(deptB);
+        if (cmp === 0) {
+          const semA = String(a.section?.semester_number ?? "");
+          const semB = String(b.section?.semester_number ?? "");
+          cmp = semA.localeCompare(semB);
+          if (cmp === 0) {
+            const secA = a.section?.name || "";
+            const secB = b.section?.name || "";
+            cmp = secA.localeCompare(secB);
+          }
+        }
+      }
+      return sortDesc ? -cmp : cmp;
+    }
+
+    let valA = a[sortField];
+    let valB = b[sortField];
+
+    let cmp = 0;
+    if (typeof valA === "string" && typeof valB === "string") cmp = valA.localeCompare(valB);
+    else if (valA < valB) cmp = -1;
+    else if (valA > valB) cmp = 1;
+    
+    return sortDesc ? -cmp : cmp;
   });
+
+  const SortIndicator = ({ field }) => {
+    if (sortField !== field) return null;
+    return <span style={{ marginLeft: 4 }}>{sortDesc ? "↓" : "↑"}</span>;
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {activeView === "grid" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+          <DashboardActionCard 
+            icon={BookOpen} 
+            color="var(--purple)" 
+            title="Manage Courses" 
+            description="View, edit, and organize all academic courses."
+            stats={[
+              { label: "Total Courses", value: courses.length }
+            ]}
+            buttonText="View Courses"
+            onClick={() => setActiveView("directory")}
+          />
+          <DashboardActionCard 
+            icon={UserCheck} 
+            color="var(--emerald)" 
+            title="Course Tools" 
+            description="Create new courses and manage manual student enrollments."
+            buttonText="Open Tools"
+            onClick={() => setActiveView("tools")}
+          />
+        </div>
+      )}
 
-      {/* ── SECTION 1: COURSE LIST ── */}
-      <AccordionSection
-        title="Course List & Enrollments"
-        subtitle={`(${sortedCourses.length} courses)`}
-        icon={<BookOpen size={18} color="var(--purple)" />}
-        iconBg="rgba(123,97,255,0.15)"
-        defaultOpen={true}
-      >
-        <div style={{ marginTop: 16 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center", gap: 12, marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <ArrowUpDown size={14} color="var(--text-muted)" />
-              <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ width: "auto", padding: "7px 32px 7px 12px" }}>
-                <option value="name">Sort by Name</option>
-                <option value="enrollments">Sort by Enrollments</option>
-              </select>
+      {activeView !== "grid" && (
+        <div style={{ marginBottom: 4 }}>
+          <button 
+            onClick={() => setActiveView("grid")}
+            className="btn-secondary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", fontSize: 13, borderRadius: 8 }}
+          >
+            <ArrowLeft size={14} /> Back to Actions
+          </button>
+        </div>
+      )}
+
+      {activeView === "directory" && (
+        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(123,97,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <BookOpen size={20} color="var(--purple)" />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Course List & Enrollments</h2>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{sortedCourses.length} courses total</p>
             </div>
           </div>
-
+          
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Course Title</th>
-                  <th>Institution / Dept / Sec</th>
+                  <th onClick={() => handleSort("name")} style={{ cursor: "pointer", userSelect: "none" }}>Course Title <SortIndicator field="name" /></th>
+                  <th onClick={() => handleSort("institution")} style={{ cursor: "pointer", userSelect: "none" }}>Inst / Dept / Sem / Sec <SortIndicator field="institution" /></th>
                   <th>Instructors</th>
-                  <th>Enrolled</th>
+                  <th onClick={() => handleSort("enrollment_count")} style={{ cursor: "pointer", userSelect: "none" }}>Enrolled <SortIndicator field="enrollment_count" /></th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -213,8 +337,12 @@ export default function CoursesPanel({ user }) {
                         <td><input type="text" className="form-input" value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: "6px 10px" }} /></td>
                         <td>
                           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                            <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
-                            <select className="form-input" value={editSem} onChange={e => setEditSem(e.target.value)} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
+                            <select className="form-input" value={editInst} onChange={e => { setEditInst(e.target.value); setEditDept(""); setEditSem(""); setEditSec(""); }} disabled={!user?.is_superuser} style={{ padding: "5px 10px", fontSize: 12 }}>
+                              <option value="">Inst</option>
+                              {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                            </select>
+                            <select className="form-input" value={editDept} onChange={e => { setEditDept(e.target.value); setEditSem(""); setEditSec(""); }} disabled={!editInst} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                            <select className="form-input" value={editSem} onChange={e => { setEditSem(e.target.value); setEditSec(""); }} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
                             <select className="form-input" value={editSec} onChange={e => setEditSec(e.target.value)} disabled={!editSem} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sec</option>{editSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
                           </div>
                         </td>
@@ -236,9 +364,9 @@ export default function CoursesPanel({ user }) {
                       <>
                         <td style={{ fontWeight: 600 }}>{c.name}</td>
                         <td style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                          <div>Inst: {c.institution_name}</div>
-                          <div>Dept: {c.department_name || "—"}</div>
-                          <div>Sec: {c.section_name || "—"}</div>
+                          <div>Inst: {c.institution?.name}</div>
+                          <div>Dept: {c.department?.name || "—"}</div>
+                          <div>Sem: {c.section?.semester_number || "—"} | Sec: {c.section?.name || "—"}</div>
                         </td>
                         <td>
                           {c.instructors && c.instructors.length > 0 ? (
@@ -258,7 +386,7 @@ export default function CoursesPanel({ user }) {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => { setEditingId(c.id); setEditName(c.name); setEditInst(c.institution || ""); setEditDept(c.department || ""); setEditSem(c.semester || ""); setEditSec(c.section || ""); setEditTeacherId(c.instructors?.[0]?.id || ""); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
+                            <button onClick={() => { setEditingId(c.id); setEditName(c.name); setEditInst(c.institution?.id ? String(c.institution.id) : ""); setEditDept(c.department?.id ? String(c.department.id) : ""); setEditSem(c.section?.semester ? String(c.section.semester) : ""); setEditSec(c.section?.id ? String(c.section.id) : ""); setEditTeacherId(c.instructors?.[0]?.id ? String(c.instructors[0].id) : ""); }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
                             <button onClick={() => handleDelete(c.id)} className="btn-danger" style={{ padding: "6px 12px", fontSize: 13 }}><Trash size={12} /> Delete</button>
                           </div>
                         </td>
@@ -271,86 +399,98 @@ export default function CoursesPanel({ user }) {
             </table>
           </div>
         </div>
-      </AccordionSection>
+      )}
 
-      {/* ── SECTION 2: CREATE ACADEMIC COURSE ── */}
-      <AccordionSection
-        title="Create New Academic Course"
-        icon={<Plus size={18} color="var(--emerald)" />}
-        iconBg="rgba(57,217,138,0.15)"
-        defaultOpen={false}
-      >
-        <div style={{ marginTop: 16 }}>
-          <form onSubmit={handleCreateCourse} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div><label>Course Title</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="CS101 - Programming" required /></div>
-              <div><label>Institution</label>
-                <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)} disabled={!user?.is_superuser}>
-                  {user?.is_superuser ? (
-                    institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)
-                  ) : (
-                    institutions.filter(i => i.id === user?.institution).map(i => <option key={i.id} value={i.id}>{i.name}</option>)
-                  )}
-                </select>
+      {activeView === "tools" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* CREATE COURSE */}
+          <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Plus size={20} color="var(--emerald)" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Create New Academic Course</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Set up a new course in the hierarchy</p>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, background: "rgba(255,255,255,0.04)", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div><label>Dept</label>
-                <select className="form-input" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} required>
-                  <option value="">Select</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            
+            <form onSubmit={handleCreateCourse} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Course Title</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="CS101 - Programming" required /></div>
+                <div><label>Institution</label>
+                  <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)} disabled={!user?.is_superuser}>
+                    {user?.is_superuser ? (
+                      institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)
+                    ) : (
+                      institutions.filter(i => i.id === user?.institution).map(i => <option key={i.id} value={i.id}>{i.name}</option>)
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, background: "rgba(255,255,255,0.04)", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div><label>Dept</label>
+                  <select className="form-input" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} required>
+                    <option value="">Select</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div><label>Semester</label>
+                  <select className="form-input" value={selectedSem} onChange={e => setSelectedSem(e.target.value)} disabled={!selectedDept}>
+                    <option value="">Select</option>
+                    {semesters.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}
+                  </select>
+                </div>
+                <div><label>Section</label>
+                  <select className="form-input" value={selectedSec} onChange={e => setSelectedSec(e.target.value)} disabled={!selectedSem}>
+                    <option value="">Select</option>
+                    {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div><label>Assign Teacher</label>
+                <select className="form-input" value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)}>
+                  <option value="">-- Select Instructor --</option>
+                  {teachers.map(t => <option key={t.id} value={t.id}>{t.email}</option>)}
                 </select>
               </div>
-              <div><label>Semester</label>
-                <select className="form-input" value={selectedSem} onChange={e => setSelectedSem(e.target.value)} disabled={!selectedDept}>
-                  <option value="">Select</option>
-                  {semesters.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}
-                </select>
+              <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}><Plus size={15} /> Create Course</button>
+            </form>
+          </div>
+
+          {/* MANUAL ENROLLMENT */}
+          <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(46,230,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <UserCheck size={20} color="var(--cyan)" />
               </div>
-              <div><label>Section</label>
-                <select className="form-input" value={selectedSec} onChange={e => setSelectedSec(e.target.value)} disabled={!selectedSem}>
-                  <option value="">Select</option>
-                  {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Manual Student Enrollment</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Add students to existing courses</p>
               </div>
             </div>
-            <div><label>Assign Teacher</label>
-              <select className="form-input" value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)}>
-                <option value="">-- Select Instructor --</option>
-                {teachers.map(t => <option key={t.id} value={t.id}>{t.email}</option>)}
-              </select>
-            </div>
-            <button type="submit" className="btn-primary" style={{ justifyContent: "center" }} disabled={loading}><Plus size={15} /> Create Course</button>
-          </form>
+            
+            <form onSubmit={handleManualEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label>Target Course</label>
+                  <select className="form-input" value={enrollCourse} onChange={e => setEnrollCourse(e.target.value)}>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div><label>Select Student</label>
+                  <select className="form-input" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} required>
+                    <option value="">-- Select Student --</option>
+                    {students.map(s => <option key={s.id} value={s.id}>{s.email}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="btn-primary" style={{ justifyContent: "center", marginTop: 4 }} disabled={loading}><UserCheck size={15} /> Enroll Student</button>
+            </form>
+          </div>
         </div>
-      </AccordionSection>
+      )}
 
-      {/* ── SECTION 3: MANUAL STUDENT ENROLLMENT ── */}
-      <AccordionSection
-        title="Manual Student Enrollment"
-        icon={<UserCheck size={18} color="var(--cyan)" />}
-        iconBg="rgba(46,230,255,0.15)"
-        defaultOpen={false}
-      >
-        <div style={{ marginTop: 16 }}>
-          <form onSubmit={handleManualEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div><label>Target Course</label>
-              <select className="form-input" value={enrollCourse} onChange={e => setEnrollCourse(e.target.value)}>
-                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div><label>Select Student</label>
-              <select className="form-input" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} required>
-                <option value="">-- Select Student --</option>
-                {students.map(s => <option key={s.id} value={s.id}>{s.email}</option>)}
-              </select>
-            </div>
-            <button type="submit" className="btn-primary" style={{ justifyContent: "center", marginTop: 4 }} disabled={loading}><UserCheck size={15} /> Enroll Student</button>
-          </form>
-        </div>
-      </AccordionSection>
-
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && <div className="alert alert-danger" style={{ marginTop: 16 }}>{error}</div>}
     </div>
   );
 }

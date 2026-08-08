@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attend AI — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-deep:        #07111F;
+      --bg-mid:         #0B1830;
+      --bg-surface:     #0F2040;
+      --glass-a:        rgba(255,255,255,0.13);
+      --glass-b:        rgba(255,255,255,0.08);
+      --glass-border:   rgba(255,255,255,0.14);
+      --glass-inner:    rgba(255,255,255,0.06);
+      --text-primary:   #FFFFFF;
+      --text-secondary: rgba(255,255,255,0.68);
+      --text-muted:     rgba(255,255,255,0.38);
+      --emerald:        #39D98A;
+      --emerald-glow:   rgba(57,217,138,0.22);
+      --emerald-dim:    rgba(57,217,138,0.10);
+      --cyan:           #2EE6FF;
+      --cyan-glow:      rgba(46,230,255,0.18);
+      --purple:         #7B61FF;
+      --purple-glow:    rgba(123,97,255,0.18);
+      --warning:        #FFB547;
+      --warning-glow:   rgba(255,181,71,0.18);
+      --danger:         #FF5A5A;
+      --danger-glow:    rgba(255,90,90,0.18);
+    }
+    html { font-family: 'Inter', sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 50% at 10% 10%, rgba(57,217,138,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 90% 90%, rgba(46,230,255,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 50% 50%, rgba(123,97,255,0.04) 0%, transparent 70%);
+    }
+
+    /* NAVBAR */
+    .navbar {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 60px;
+      background: rgba(7,17,31,0.90);
+      backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .navbar-brand { display: flex; align-items: center; gap: 10px; }
+    .navbar-logo {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--emerald), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 18px var(--emerald-glow); font-size: 16px;
+    }
+    .navbar-title { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
+    .navbar-title span { color: var(--emerald); }
+    .navbar-subtitle { font-size: 10px; color: var(--text-muted); letter-spacing: 0.8px; text-transform: uppercase; margin-top: 1px; }
+    .navbar-center { display: flex; align-items: center; gap: 2px; }
+    .nav-link {
+      padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+      color: var(--text-muted); transition: all 150ms ease; border: none; background: none; font-family: inherit;
+    }
+    .nav-link:hover { color: var(--text-primary); background: var(--glass-inner); }
+    .nav-link.active { color: var(--emerald); background: var(--emerald-dim); }
+    .navbar-right { display: flex; align-items: center; gap: 10px; }
+    .nav-icon-btn {
+      width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--glass-border);
+      background: var(--glass-b); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-muted); transition: all 150ms ease; font-size: 14px;
+    }
+    .nav-icon-btn:hover { color: var(--text-primary); border-color: var(--emerald); box-shadow: 0 0 12px var(--emerald-glow); }
+    .notif-wrap { position: relative; }
+    .notif-badge-dot {
+      position: absolute; top: -3px; right: -3px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--danger); color: #fff; font-size: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; border: 2px solid var(--bg-deep);
+    }
+    .nav-avatar {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--purple), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      border: 1px solid rgba(123,97,255,0.4);
+    }
+
+    /* LAYOUT */
+    .layout { position: relative; z-index: 1; display: flex; animation: fadeUp 0.35s ease both; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+    .main-content { flex: 1; padding: 28px; overflow: hidden; min-width: 0; }
+    .sidebar { width: 288px; min-width: 288px; padding: 28px 24px 28px 0; }
+
+    /* PAGE HEADER */
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .page-title-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .page-title-sub b { color: var(--cyan); font-weight: 600; }
+    .admin-info-card {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--glass-b); border: 1px solid var(--glass-border);
+      border-radius: 14px; padding: 10px 14px; backdrop-filter: blur(12px);
+    }
+    .admin-avatar {
+      width: 38px; height: 38px; border-radius: 11px;
+      background: linear-gradient(135deg, var(--purple), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 12px; border: 1px solid rgba(123,97,255,0.35);
+    }
+    .admin-info-name { font-size: 13px; font-weight: 700; }
+    .admin-info-role {
+      font-size: 10px; background: var(--emerald-dim); color: var(--emerald);
+      border-radius: 4px; padding: 2px 6px; display: inline-block; margin-top: 2px;
+      font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase;
+    }
+    .online-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--emerald); box-shadow: 0 0 8px var(--emerald-glow);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.45; } }
+
+    /* KPI CARDS */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+    .kpi-card {
+      background: var(--glass-a); border: 1px solid var(--glass-border);
+      border-radius: 16px; padding: 18px 16px; backdrop-filter: blur(20px);
+      transition: transform 180ms ease, box-shadow 180ms ease; position: relative; overflow: hidden;
+    }
+    .kpi-card::after {
+      content:''; position:absolute; top:0; right:0;
+      width:90px; height:90px; border-radius:50%; opacity:0.07;
+      transform:translate(25px,-25px);
+    }
+    .kpi-card.em::after  { background:var(--emerald); }
+    .kpi-card.cy::after  { background:var(--cyan); }
+    .kpi-card.pu::after  { background:var(--purple); }
+    .kpi-card.wa::after  { background:var(--warning); }
+    .kpi-card:hover { transform:translateY(-2px); box-shadow:0 14px 36px rgba(0,0,0,0.25); }
+    .kpi-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .kpi-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .kpi-card.em .kpi-icon { background:var(--emerald-dim); }
+    .kpi-card.cy .kpi-icon { background:var(--cyan-glow); }
+    .kpi-card.pu .kpi-icon { background:var(--purple-glow); }
+    .kpi-card.wa .kpi-icon { background:var(--warning-glow); }
+    .kpi-badge { font-size:10px; font-weight:700; padding:3px 7px; border-radius:6px; }
+    .kpi-badge.up   { background:var(--emerald-dim); color:var(--emerald); }
+    .kpi-badge.down { background:var(--danger-glow); color:var(--danger); }
+    .kpi-value { font-size:28px; font-weight:800; letter-spacing:-1px; line-height:1; margin-bottom:3px; }
+    .kpi-label { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.7px; }
+    .kpi-sub   { font-size:11px; color:var(--text-secondary); margin-top:10px; }
+    .kpi-bar   { height:3px; border-radius:2px; background:var(--glass-inner); margin-top:8px; overflow:hidden; }
+    .kpi-bar-fill { height:100%; border-radius:2px; }
+    .kpi-card.em .kpi-bar-fill { background:var(--emerald); width:76%; }
+    .kpi-card.cy .kpi-bar-fill { background:var(--cyan);    width:89%; }
+    .kpi-card.pu .kpi-bar-fill { background:var(--purple);  width:62%; }
+    .kpi-card.wa .kpi-bar-fill { background:var(--warning); width:18%; }
+
+    /* TABS */
+    .tab-bar {
+      display:flex; align-items:center; gap:2px;
+      background:var(--glass-b); border:1px solid var(--glass-border);
+      border-radius:12px; padding:4px; width:fit-content; margin-bottom:16px;
+    }
+    .tab-btn {
+      padding:7px 16px; border-radius:9px; cursor:pointer; font-size:13px;
+      font-weight:500; border:none; background:transparent; color:var(--text-muted);
+      transition:all 150ms ease; font-family:inherit;
+    }
+    .tab-btn:hover { color:var(--text-primary); }
+    .tab-btn.active {
+      background:var(--glass-a); color:var(--emerald);
+      box-shadow:0 2px 8px rgba(0,0,0,0.22); border:1px solid var(--glass-border);
+    }
+    .tab-count {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:18px; height:18px; border-radius:5px; font-size:9px;
+      font-weight:700; margin-left:5px; background:var(--glass-inner); color:var(--text-muted);
+    }
+    .tab-btn.active .tab-count { background:var(--emerald-dim); color:var(--emerald); }
+
+    /* ACTION BAR */
+    .action-bar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+    .search-box {
+      display:flex; align-items:center; gap:8px;
+      background:var(--glass-b); border:1px solid var(--glass-border);
+      border-radius:10px; padding:8px 12px; flex:1; max-width:300px;
+      transition:border-color 180ms ease;
+    }
+    .search-box:focus-within { border-color:var(--emerald); box-shadow:0 0 0 3px var(--emerald-dim); }
+    .search-box input {
+      background:none; border:none; outline:none; font-size:13px;
+      color:var(--text-primary); flex:1; font-family:inherit;
+    }
+    .search-box input::placeholder { color:var(--text-muted); }
+    .action-right { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+    .btn {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:8px 14px; border-radius:9px; cursor:pointer; font-size:12px;
+      font-weight:600; font-family:inherit; border:none; transition:all 150ms ease;
+    }
+    .btn-primary { background:linear-gradient(135deg,var(--emerald),#22c78c); color:#07111F; box-shadow:0 4px 14px var(--emerald-glow); }
+    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 22px var(--emerald-glow); }
+    .btn-secondary { background:var(--glass-b); color:var(--text-secondary); border:1px solid var(--glass-border); }
+    .btn-secondary:hover { border-color:var(--cyan); color:var(--cyan); }
+    .btn-ghost { background:transparent; color:var(--text-muted); border:1px solid var(--glass-border); }
+    .btn-ghost:hover { background:var(--glass-inner); color:var(--text-primary); }
+    .filter-chip {
+      display:inline-flex; align-items:center; gap:4px; padding:5px 10px;
+      border-radius:7px; cursor:pointer; font-size:11px; font-weight:500;
+      background:var(--glass-b); border:1px solid var(--glass-border); color:var(--text-muted);
+      transition:all 150ms ease;
+    }
+    .filter-chip.active { background:var(--emerald-dim); border-color:rgba(57,217,138,0.3); color:var(--emerald); }
+    .divider { width:1px; height:22px; background:var(--glass-inner); margin:0 2px; }
+
+    /* TABLE */
+    .table-card { background:var(--glass-a); border:1px solid var(--glass-border); border-radius:16px; overflow:hidden; backdrop-filter:blur(20px); }
+    .table-head {
+      display:grid; grid-template-columns:40px 2fr 1.4fr 0.8fr 1fr 0.9fr 110px;
+      padding:10px 18px; border-bottom:1px solid var(--glass-inner);
+      font-size:10px; font-weight:700; color:var(--text-muted);
+      text-transform:uppercase; letter-spacing:0.8px; align-items:center;
+    }
+    .table-row {
+      display:grid; grid-template-columns:40px 2fr 1.4fr 0.8fr 1fr 0.9fr 110px;
+      padding:13px 18px; border-bottom:1px solid var(--glass-inner);
+      align-items:center; transition:background 120ms ease; cursor:pointer;
+    }
+    .table-row:last-child { border-bottom:none; }
+    .table-row:hover { background:rgba(255,255,255,0.04); }
+    .cb {
+      width:16px; height:16px; border-radius:4px; border:1px solid var(--glass-border);
+      background:var(--glass-inner); display:flex; align-items:center;
+      justify-content:center; cursor:pointer; font-size:9px;
+    }
+    .cb.on { background:var(--emerald); border-color:var(--emerald); color:#07111F; }
+    .user-cell { display:flex; align-items:center; gap:10px; }
+    .ua {
+      width:32px; height:32px; border-radius:9px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:700;
+    }
+    .un { font-size:13px; font-weight:600; white-space:nowrap; }
+    .ue { font-size:11px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .inst-cell { font-size:12px; color:var(--text-secondary); }
+    .inst-sub  { font-size:10px; color:var(--text-muted); }
+    .badge {
+      display:inline-flex; align-items:center; padding:3px 9px;
+      border-radius:6px; font-size:11px; font-weight:600; gap:3px;
+    }
+    .b-em { background:var(--emerald-dim); color:var(--emerald); }
+    .b-cy { background:var(--cyan-glow);   color:var(--cyan); }
+    .b-pu { background:var(--purple-glow); color:var(--purple); }
+    .b-wa { background:var(--warning-glow);color:var(--warning); }
+    .b-da { background:var(--danger-glow); color:var(--danger); }
+    .b-mu { background:var(--glass-inner); color:var(--text-muted); }
+    .att-wrap { display:flex; align-items:center; gap:7px; }
+    .att-track { flex:1; height:4px; border-radius:2px; background:var(--glass-inner); overflow:hidden; }
+    .att-fill  { height:100%; border-radius:2px; }
+    .att-pct   { font-size:11px; font-weight:700; flex-shrink:0; }
+    .row-acts { display:flex; align-items:center; gap:5px; opacity:0; transition:opacity 120ms; }
+    .table-row:hover .row-acts { opacity:1; }
+    .ra {
+      width:26px; height:26px; border-radius:7px; border:1px solid var(--glass-border);
+      background:var(--glass-inner); cursor:pointer; display:flex;
+      align-items:center; justify-content:center; font-size:11px;
+      color:var(--text-muted); transition:all 120ms ease;
+    }
+    .ra:hover { border-color:var(--cyan); color:var(--cyan); }
+    .ra.del:hover { border-color:var(--danger); color:var(--danger); }
+    .tfoot {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 18px; border-top:1px solid var(--glass-inner);
+      background:rgba(255,255,255,0.03);
+    }
+    .pages { display:flex; align-items:center; gap:4px; }
+    .pg {
+      width:28px; height:28px; border-radius:7px; cursor:pointer; font-size:12px;
+      font-weight:600; border:1px solid var(--glass-border); background:transparent;
+      color:var(--text-muted); display:flex; align-items:center; justify-content:center;
+      transition:all 120ms ease; font-family:inherit;
+    }
+    .pg:hover, .pg.active { background:var(--emerald-dim); border-color:rgba(57,217,138,0.4); color:var(--emerald); }
+
+    /* SIDEBAR */
+    .sc {
+      background:var(--glass-a); border:1px solid var(--glass-border);
+      border-radius:16px; padding:18px; backdrop-filter:blur(20px); margin-bottom:14px;
+    }
+    .st {
+      font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;
+      letter-spacing:0.8px; margin-bottom:14px; display:flex; align-items:center; gap:8px;
+    }
+    .st::after { content:''; flex:1; height:1px; background:var(--glass-inner); }
+    .sr-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--glass-inner); }
+    .sr-row:last-child { border-bottom:none; }
+    .sr-lbl { font-size:12px; color:var(--text-secondary); }
+    .sr-val { font-size:13px; font-weight:700; }
+    .ai { display:flex; gap:10px; padding:7px 0; position:relative; }
+    .ai:not(:last-child)::before {
+      content:''; position:absolute; left:12px; top:28px; width:1px;
+      bottom:-7px; background:var(--glass-inner);
+    }
+    .ad {
+      width:24px; height:24px; border-radius:7px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:10px; margin-top:1px;
+    }
+    .at { font-size:12px; color:var(--text-secondary); line-height:1.5; }
+    .at b { color:var(--text-primary); font-weight:600; }
+    .atm { font-size:10px; color:var(--text-muted); margin-top:1px; }
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-thumb { background:var(--glass-border); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="navbar-logo">⚡</div>
+    <div>
+      <div class="navbar-title">Attend<span>AI</span></div>
+      <div class="navbar-subtitle">Management Suite</div>
+    </div>
+  </div>
+  <div class="navbar-center">
+    <button class="nav-link" onclick="setNav(this)">Overview</button>
+    <button class="nav-link active" onclick="setNav(this)">Users</button>
+    <button class="nav-link" onclick="setNav(this)">Institutions</button>
+    <button class="nav-link" onclick="setNav(this)">Courses</button>
+    <button class="nav-link" onclick="setNav(this)">Sessions</button>
+    <button class="nav-link" onclick="setNav(this)">Reports</button>
+  </div>
+  <div class="navbar-right">
+    <div class="notif-wrap">
+      <button class="nav-icon-btn">🔔</button>
+      <div class="notif-badge-dot">3</div>
+    </div>
+    <button class="nav-icon-btn">⚙️</button>
+    <div class="divider"></div>
+    <div class="nav-avatar">SA</div>
+  </div>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- MAIN -->
+  <div class="main-content">
+
+    <!-- PAGE TITLE + ADMIN INFO -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">User Management</div>
+        <div class="page-title-sub">
+          Manage all users across <b>4 institutions</b> &nbsp;·&nbsp; Last synced 2 min ago
+        </div>
+      </div>
+      <div class="admin-info-card">
+        <div class="admin-avatar">SA</div>
+        <div>
+          <div class="admin-info-name">Super Admin</div>
+          <div class="admin-info-role">Superuser</div>
+        </div>
+        <div class="online-dot"></div>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card em">
+        <div class="kpi-top">
+          <div class="kpi-icon">👥</div>
+          <div class="kpi-badge up">↑ 12%</div>
+        </div>
+        <div class="kpi-value">2,847</div>
+        <div class="kpi-label">Total Users</div>
+        <div class="kpi-sub">+34 this week</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill"></div></div>
+      </div>
+      <div class="kpi-card cy">
+        <div class="kpi-top">
+          <div class="kpi-icon">🎓</div>
+          <div class="kpi-badge up">↑ 8%</div>
+        </div>
+        <div class="kpi-value">2,401</div>
+        <div class="kpi-label">Students</div>
+        <div class="kpi-sub">89% activation rate</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill"></div></div>
+      </div>
+      <div class="kpi-card pu">
+        <div class="kpi-top">
+          <div class="kpi-icon">🏫</div>
+          <div class="kpi-badge up">↑ 3%</div>
+        </div>
+        <div class="kpi-value">246</div>
+        <div class="kpi-label">Teachers</div>
+        <div class="kpi-sub">Across 12 departments</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill"></div></div>
+      </div>
+      <div class="kpi-card wa">
+        <div class="kpi-top">
+          <div class="kpi-icon">⚠️</div>
+          <div class="kpi-badge down">↑ 5%</div>
+        </div>
+        <div class="kpi-value">52</div>
+        <div class="kpi-label">Pending Activation</div>
+        <div class="kpi-sub">Awaiting email verify</div>
+        <div class="kpi-bar"><div class="kpi-bar-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="setTab(this)">All Users<span class="tab-count">2847</span></button>
+      <button class="tab-btn" onclick="setTab(this)">Students<span class="tab-count">2401</span></button>
+      <button class="tab-btn" onclick="setTab(this)">Teachers<span class="tab-count">246</span></button>
+      <button class="tab-btn" onclick="setTab(this)">Admins<span class="tab-count">12</span></button>
+      <button class="tab-btn" onclick="setTab(this)">Inactive<span class="tab-count">52</span></button>
+    </div>
+
+    <!-- ACTION BAR -->
+    <div class="action-bar">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" placeholder="Search by name, email or roll number…" />
+      </div>
+      <div class="action-right">
+        <div class="filter-chip active">All Institutions</div>
+        <div class="filter-chip">CS Dept</div>
+        <div class="filter-chip">Sem 3</div>
+        <div class="divider"></div>
+        <button class="btn btn-ghost">⬇ Export</button>
+        <button class="btn btn-ghost">📤 Import CSV</button>
+        <button class="btn btn-primary">＋ Add User</button>
+      </div>
+    </div>
+
+    <!-- DATA TABLE -->
+    <div class="table-card">
+      <div class="table-head">
+        <div><div class="cb on">✓</div></div>
+        <div>User</div>
+        <div>Institution</div>
+        <div>Role</div>
+        <div>Attendance</div>
+        <div>Status</div>
+        <div>Actions</div>
+      </div>
+
+      <!-- Row 1 -->
+      <div class="table-row">
+        <div><div class="cb on">✓</div></div>
+        <div class="user-cell">
+          <div class="ua" style="background:linear-gradient(135deg,#39D98A,#2EE6FF)">AM</div>
+          <div><div class="un">Ahmad Mushtaq</div><div class="ue">ahmad.m@fastnu.edu.pk</div></div>
+        </div>
+        <div class="inst-cell">FAST NUCES<div class="inst-sub">CS · Sem 5 · Sec A</div></div>
+        <div><span class="badge b-em">Student</span></div>
+        <div><div class="att-wrap"><div class="att-track"><div class="att-fill" style="width:87%;background:var(--emerald)"></div></div><span class="att-pct" style="color:var(--emerald)">87%</span></div></div>
+        <div><span class="badge b-em">● Active</span></div>
+        <div class="row-acts"><button class="ra">✏️</button><button class="ra">👁</button><button class="ra del">🗑</button></div>
+      </div>
+
+      <!-- Row 2 -->
+      <div class="table-row">
+        <div><div class="cb"></div></div>
+        <div class="user-cell">
+          <div class="ua" style="background:linear-gradient(135deg,#7B61FF,#2EE6FF)">SR</div>
+          <div><div class="un">Sara Raza</div><div class="ue">sara.r@lums.edu.pk</div></div>
+        </div>
+        <div class="inst-cell">LUMS<div class="inst-sub">EE · Sem 3 · Sec B</div></div>
+        <div><span class="badge b-em">Student</span></div>
+        <div><div class="att-wrap"><div class="att-track"><div class="att-fill" style="width:61%;background:var(--warning)"></div></div><span class="att-pct" style="color:var(--warning)">61%</span></div></div>
+        <div><span class="badge b-wa">⚠ At Risk</span></div>
+        <div class="row-acts"><button class="ra">✏️</button><button class="ra">👁</button><button class="ra del">🗑</button></div>
+      </div>
+
+      <!-- Row 3 -->
+      <div class="table-row">
+        <div><div class="cb"></div></div>
+        <div class="user-cell">
+          <div class="ua" style="background:linear-gradient(135deg,#7B61FF,#FF5A5A)">DK</div>
+          <div><div class="un">Dr. Kamran Iqbal</div><div class="ue">k.iqbal@uet.edu.pk</div></div>
+        </div>
+        <div class="inst-cell">UET Lahore<div class="inst-sub">ME Dept</div></div>
+        <div><span class="badge b-cy">Teacher</span></div>
+        <div><div class="att-wrap"><div class="att-track"><div class="att-fill" style="width:95%;background:var(--emerald)"></div></div><span class="att-pct" style="color:var(--emerald)">95%</span></div></div>
+        <div><span class="badge b-em">● Active</span></div>
+        <div class="row-acts"><button class="ra">✏️</button><button class="ra">👁</button><button class="ra del">🗑</button></div>
+      </div>
+
+      <!-- Row 4 -->
+      <div class="table-row">
+        <div><div class="cb"></div></div>
+        <div class="user-cell">
+          <div class="ua" style="background:linear-gradient(135deg,#FFB547,#FF5A5A)">ZA</div>
+          <div><div class="un">Zainab Ashraf</div><div class="ue">zainab.a@nust.edu.pk</div></div>
+        </div>
+        <div class="inst-cell">NUST<div class="inst-sub">BBA · Sem 7 · Sec A</div></div>
+        <div><span class="badge b-em">Student</span></div>
+        <div><div class="att-wrap"><div class="att-track"><div class="att-fill" style="width:42%;background:var(--danger)"></div></div><span class="att-pct" style="color:var(--danger)">42%</span></div></div>
+        <div><span class="badge b-da">✕ Defaulter</span></div>
+        <div class="row-acts"><button class="ra">✏️</button><button class="ra">👁</button><button class="ra del">🗑</button></div>
+      </div>
+
+      <!-- Row 5 -->
+      <div class="table-row">
+        <div><div class="cb"></div></div>
+        <div class="user-cell">
+          <div class="ua" style="background:linear-gradient(135deg,#2EE6FF,#7B61FF)">MH</div>
+          <div><div class="un">M. Hassan Ali</div><div class="ue">m.hassan@iba.edu.pk</div></div>
+        </div>
+        <div class="inst-cell">IBA Karachi<div class="inst-sub">Admin Panel</div></div>
+        <div><span class="badge b-pu">Admin</span></div>
+        <div><div class="att-wrap"><div class="att-track"><div class="att-fill" style="width:100%;background:var(--cyan)"></div></div><span class="att-pct" style="color:var(--text-muted)">N/A</span></div></div>
+        <div><span class="badge b-em">● Active</span></div>
+        <div class="row-acts"><button class="ra">✏️</button><button class="ra">👁</button><button class="ra del">🗑</button></div>
+      </div>
+
+      <!-- Row 6 -->
+      <div class="table-row">
+        <div><div class="cb"></div></div>
+        <div class="user-cell">
+          <div class="ua" style="background:linear-gradient(135deg,#39D98A,#7B61FF)">FN</div>
+          <div><div class="un">Fatima Noor</div><div class="ue">fatima.n@lums.edu.pk</div></div>
+        </div>
+        <div class="inst-cell">LUMS<div class="inst-sub">Law · Sem 1 · Sec C</div></div>
+        <div><span class="badge b-em">Student</span></div>
+        <div><div class="att-wrap"><div class="att-track"><div class="att-fill" style="width:0%"></div></div><span class="att-pct" style="color:var(--text-muted)">—</span></div></div>
+        <div><span class="badge b-mu">○ Pending</span></div>
+        <div class="row-acts"><button class="ra">✏️</button><button class="ra">👁</button><button class="ra del">🗑</button></div>
+      </div>
+
+      <!-- Table Footer -->
+      <div class="tfoot">
+        <div style="font-size:12px;color:var(--text-muted)">
+          Showing <strong style="color:var(--text-primary)">1–6</strong> of <strong style="color:var(--text-primary)">2,847</strong> users
+        </div>
+        <div class="pages">
+          <button class="pg">‹</button>
+          <button class="pg active">1</button>
+          <button class="pg">2</button>
+          <button class="pg">3</button>
+          <span style="font-size:12px;color:var(--text-muted);padding:0 4px">…</span>
+          <button class="pg">475</button>
+          <button class="pg">›</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+
+  <!-- ACTIVITY SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- System Snapshot -->
+    <div class="sc">
+      <div class="st">System Snapshot</div>
+      <div class="sr-row"><span class="sr-lbl">Active Sessions</span><span class="sr-val" style="color:var(--emerald)">7 live 🟢</span></div>
+      <div class="sr-row"><span class="sr-lbl">Avg. Attendance</span><span class="sr-val">73.4%</span></div>
+      <div class="sr-row"><span class="sr-lbl">Defaulters Today</span><span class="sr-val" style="color:var(--danger)">52</span></div>
+      <div class="sr-row"><span class="sr-lbl">Pending Activations</span><span class="sr-val" style="color:var(--warning)">18</span></div>
+      <div class="sr-row"><span class="sr-lbl">Total Scans Today</span><span class="sr-val" style="color:var(--cyan)">1,284</span></div>
+    </div>
+
+    <!-- Activity Feed -->
+    <div class="sc">
+      <div class="st">Activity Feed</div>
+      <div class="ai">
+        <div class="ad" style="background:var(--emerald-dim);color:var(--emerald)">✓</div>
+        <div><div class="at"><b>Ahmad Mushtaq</b> verified their email</div><div class="atm">2 min ago · FAST NUCES</div></div>
+      </div>
+      <div class="ai">
+        <div class="ad" style="background:var(--cyan-glow);color:var(--cyan)">📋</div>
+        <div><div class="at"><b>Dr. Kamran</b> started session for <b>DB-301</b></div><div class="atm">8 min ago · UET Lahore</div></div>
+      </div>
+      <div class="ai">
+        <div class="ad" style="background:var(--warning-glow);color:var(--warning)">⚠</div>
+        <div><div class="at"><b>Sara Raza</b> flagged as attendance risk (61%)</div><div class="atm">14 min ago · LUMS</div></div>
+      </div>
+      <div class="ai">
+        <div class="ad" style="background:var(--purple-glow);color:var(--purple)">📤</div>
+        <div><div class="at"><b>M. Hassan</b> imported <b>120 students</b> via CSV</div><div class="atm">31 min ago · IBA Karachi</div></div>
+      </div>
+      <div class="ai">
+        <div class="ad" style="background:var(--danger-glow);color:var(--danger)">✕</div>
+        <div><div class="at"><b>Zainab Ashraf</b> marked defaulter in <b>MGT-201</b></div><div class="atm">47 min ago · NUST</div></div>
+      </div>
+      <div class="ai">
+        <div class="ad" style="background:var(--emerald-dim);color:var(--emerald)">🔑</div>
+        <div><div class="at"><b>Admin</b> bulk-generated credentials for <b>Sem 1</b></div><div class="atm">1 hr ago · FAST NUCES</div></div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="sc">
+      <div class="st">Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-primary" style="width:100%;justify-content:center;">＋ Add New Institution</button>
+        <button class="btn btn-secondary" style="width:100%;justify-content:center;">📤 Bulk Import Users</button>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;">🔄 Reset Defaulter Flags</button>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+</div><!-- /layout -->
+
+<script>
+  function setNav(el) {
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+  function setTab(el) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+  }
+</script>
+</body>
+</html>

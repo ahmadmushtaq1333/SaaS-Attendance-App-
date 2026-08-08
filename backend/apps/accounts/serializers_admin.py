@@ -87,7 +87,6 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         role = attrs.get("role", getattr(self.instance, 'role', 'student'))
-        email = attrs.get("email", getattr(self.instance, 'email', None))
         institution = attrs.get("institution", getattr(self.instance, 'institution', None))
         section = attrs.get("section", getattr(self.instance, 'section', None))
 
@@ -96,18 +95,22 @@ class UserAdminSerializer(serializers.ModelSerializer):
             attrs["institution"] = None
             attrs["department"] = None
 
-        # Block personal email addresses for students
-        if role == "student" and email:
+        # Only validate email domain if the email field is actually being changed
+        # (skip during updates where email is unchanged to avoid false rejections)
+        email_is_changing = "email" in attrs
+        email = attrs.get("email") if email_is_changing else None
+
+        if role == "student" and email_is_changing and email:
             if not institution:
                 raise serializers.ValidationError({"email": "Students must be assigned to a section or institution to validate domain."})
-            
+
             domain_suffix = institution.domain
             if not domain_suffix:
                 domain_suffix = f"{institution.slug}.edu"
-            
+
             domain_suffix = domain_suffix.strip().lower()
             email_val = email.strip().lower()
-            
+
             if not email_val.endswith(f"@{domain_suffix}") and not email_val.endswith(f".{domain_suffix}"):
                 raise serializers.ValidationError({
                     "email": f"Personal emails are not permitted. Students must use their institutional email address ending with '@{domain_suffix}'."

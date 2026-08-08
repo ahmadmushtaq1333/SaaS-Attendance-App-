@@ -4,6 +4,8 @@ from .views import (
     MeView,
     UserCoursesView,
     CustomTokenObtainPairView,
+    CookieTokenRefreshView,
+    LogoutView,
     SendVerificationCodeView,
     VerifyEmailView,
     RequestPasswordResetView,
@@ -12,7 +14,8 @@ from .views import (
 
 urlpatterns = [
     path("login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("refresh/", CookieTokenRefreshView.as_view(), name="token_refresh"),
+    path("logout/", LogoutView.as_view(), name="logout"),
     path("me/", MeView.as_view(), name="user_me"),
     path("courses/", UserCoursesView.as_view(), name="user_courses"),
     path("verify-email/", VerifyEmailView.as_view(), name="verify_email"),

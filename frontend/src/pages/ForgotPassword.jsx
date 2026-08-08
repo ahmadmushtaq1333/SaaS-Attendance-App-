@@ -12,6 +12,21 @@ export default function ForgotPassword({ onBackToLogin }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const getPasswordStrength = (pass) => {
+    let score = 0;
+    if (!pass) return { score: 0, text: "", color: "transparent" };
+    if (pass.length >= 8) score += 1;
+    if (pass.length >= 12) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    
+    if (score < 2) return { score, text: "Weak", color: "#ff4d4f" }; // Danger red
+    if (score < 4) return { score, text: "Good", color: "#faad14" }; // Warning yellow
+    return { score, text: "Strong", color: "var(--emerald, #39d98a)" };
+  };
+  const strength = getPasswordStrength(newPassword);
+
   const handleRequestReset = async (e) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -155,6 +170,16 @@ export default function ForgotPassword({ onBackToLogin }) {
               onChange={(e) => setNewPassword(e.target.value)}
               required 
             />
+            {newPassword && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 4, height: 4, marginBottom: 4 }}>
+                  {[1, 2, 3, 4, 5].map(level => (
+                    <div key={level} style={{ flex: 1, borderRadius: 2, background: level <= strength.score ? strength.color : "var(--glass-inner)", transition: "background 0.3s" }} />
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: strength.color, textAlign: "right", fontWeight: 600 }}>{strength.text}</div>
+              </div>
+            )}
           </div>
           <div>
             <label style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, fontSize: 12 }}>
@@ -169,7 +194,7 @@ export default function ForgotPassword({ onBackToLogin }) {
               required 
             />
           </div>
-          <button type="submit" className="btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center", padding: "12px 20px", fontSize: 15, marginTop: 6 }}>
+          <button type="submit" className="btn-primary" disabled={loading || strength.score < 2} style={{ width: "100%", justifyContent: "center", padding: "12px 20px", fontSize: 15, marginTop: 6 }}>
             {loading ? "Saving..." : "Change Password"}
           </button>
         </form>

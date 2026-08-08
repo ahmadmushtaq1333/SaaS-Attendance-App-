@@ -25,23 +25,18 @@ export default function App() {
   }, [lightMode]);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      API.get("/auth/me/")
-        .then((res) => {
-          setUser(res.data);
-          if (res.data.role === "student") setCurrentView("scanner");
-          else if (res.data.role === "admin" || res.data.is_staff) setCurrentView("admin");
-          else setCurrentView("dashboard");
-        })
-        .catch(() => {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    // Attempt to restore session via HTTPOnly cookie — no localStorage check needed
+    API.get("/auth/me/")
+      .then((res) => {
+        setUser(res.data);
+        if (res.data.role === "student") setCurrentView("scanner");
+        else if (res.data.role === "admin" || res.data.is_staff) setCurrentView("admin");
+        else setCurrentView("dashboard");
+      })
+      .catch(() => {
+        // No valid session cookie — show login
+      })
+      .finally(() => setLoading(false));
 
     // Listen for irrecoverable 401 from api.js token refresh failure
     const onLogout = () => {
@@ -52,9 +47,12 @@ export default function App() {
     return () => window.removeEventListener("auth:logout", onLogout);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+  const handleLogout = async () => {
+    try {
+      await API.post("/auth/logout/"); // clears HTTPOnly cookies server-side
+    } catch {
+      // Ignore errors — still clear client state
+    }
     setUser(null);
   };
 
@@ -141,10 +139,10 @@ export default function App() {
             <button className="nav-icon-btn" onClick={() => setLightMode(!lightMode)} title={lightMode ? "Dark Mode" : "Light Mode"} aria-label="Theme toggle">
               {lightMode ? <Moon size={15} /> : <Sun size={15} />}
             </button>
-            <button className="nav-icon-btn" title="Notifications" aria-label="Notifications">
+            <button className="nav-icon-btn" title="Notifications" aria-label="Notifications" onClick={() => alert("Notifications: No new alerts.")}>
               <Bell size={15} />
             </button>
-            <button className="nav-icon-btn" title="Settings" aria-label="Settings">
+            <button className="nav-icon-btn" title="Settings" aria-label="Settings" onClick={() => alert("Settings panel coming soon.")}>
               <Settings size={15} />
             </button>
             <div

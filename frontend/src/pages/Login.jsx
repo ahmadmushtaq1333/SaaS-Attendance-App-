@@ -18,9 +18,8 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setLoading(true);
 
     try {
-      const res = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
-      localStorage.setItem("access_token", res.data.access);
-      localStorage.setItem("refresh_token", res.data.refresh);
+      // Tokens are set as HTTPOnly cookies by the backend — no localStorage needed
+      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
@@ -42,15 +41,15 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setError("");
     setLoading(true);
     try {
-      const res = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
-      localStorage.setItem("access_token", res.data.access);
-      localStorage.setItem("refresh_token", res.data.refresh);
+      // Tokens are set as HTTPOnly cookies by the backend
+      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch {
       setError("Email verified successfully! Please log in now.");
     } finally {
       setLoading(false);
+      setPassword(""); // Clear password from state after login attempt
     }
   };
 

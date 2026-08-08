@@ -82,6 +82,7 @@ class EmailVerificationCode(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="verification_codes")
     code = models.CharField(max_length=6)
     purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default="verify")
+    failed_attempts = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
 
