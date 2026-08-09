@@ -14,3 +14,4 @@ whitenoise>=6.7
 openpyxl>=3.1.0
 django-anymail[resend]>=10.0
 django-ratelimit>=4.0.0
+sentry-sdk

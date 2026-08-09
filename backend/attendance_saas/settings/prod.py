@@ -1,6 +1,7 @@
 from .base import *
 from decouple import config
-
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
 DEBUG = False
 
 # Railway provides the app's public URL automatically
@@ -70,3 +71,11 @@ ANYMAIL = {
     "BREVO_API_KEY": config("BREVO_API_KEY", default=""),
 }
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Attend AI <muhammadahmadmushtaq11@gmail.com>")
+
+sentry_sdk.init(
+    dsn=config("SENTRY_DSN", default=""),
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=0.1,  # 10% of requests tracked for performance monitoring
+    send_default_pii=False,  # Don't send personal user data automatically
+    environment="production",
+)
