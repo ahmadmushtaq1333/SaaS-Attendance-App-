@@ -230,12 +230,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                    httponly=True, samesite='None', secure=not settings.DEBUG
                 )
             if refresh_token:
                 response.set_cookie(
                     'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                    httponly=True, samesite='None', secure=not settings.DEBUG
                 )
             response.data['access'] = "set-in-cookie"
             response.data['refresh'] = "set-in-cookie"
@@ -255,7 +255,7 @@ class CookieTokenRefreshView(TokenRefreshView):
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                    httponly=True, samesite='None', secure=not settings.DEBUG
                 )
             response.data['access'] = "set-in-cookie"
             
@@ -263,7 +263,7 @@ class CookieTokenRefreshView(TokenRefreshView):
             if new_refresh_token:
                 response.set_cookie(
                     'refresh_token', new_refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='Lax', secure=not settings.DEBUG
+                    httponly=True, samesite='None', secure=not settings.DEBUG
                 )
                 response.data['refresh'] = "set-in-cookie"
         return response

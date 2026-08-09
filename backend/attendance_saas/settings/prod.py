@@ -50,7 +50,7 @@ MIDDLEWARE = [
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # ── CORS: allow Vercel frontend ────────────────────────────────────────────────
-_cors_origins = config(
+CORS_ALLOWED_ORIGINS = config(
     "CORS_ALLOWED_ORIGINS",
     default="http://localhost,http://localhost:80,http://localhost:5173",
     cast=lambda v: [s.strip() for s in v.split(",")],
@@ -59,8 +59,8 @@ _cors_origins = config(
 # Append Vercel domain automatically if set
 if VERCEL_DOMAIN:
     vercel_https = f"https://{VERCEL_DOMAIN}"
-    if vercel_https not in _cors_origins:
-        _cors_origins.append(vercel_https)
+    if vercel_https not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(vercel_https)
 
 # ── Email: Brevo HTTP API via django-anymail ──────────────────────────────────
 # Uses HTTPS port 443 — immune to Railway's raw SMTP port blocks.
