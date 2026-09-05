@@ -8,7 +8,7 @@ import { ChevronDown } from "lucide-react";
  *   title        {string}     — Section title
  *   subtitle     {string}     — Optional count/info shown after title in muted color
  *   icon         {ReactNode}  — Icon element (e.g. <BookOpen size={18} />)
- *   iconBg       {string}     — CSS background for the icon pill (e.g. "rgba(123,97,255,0.15)")
+ *   iconBg       {string}     — CSS background for the icon pill (e.g. "rgba(167,139,250,0.15)")
  *   iconColor    {string}     — CSS color for the icon (e.g. "var(--purple)")
  *   defaultOpen  {boolean}    — Whether to start expanded (default: false)
  *   badge        {ReactNode}  — Optional badge rendered in the header right area

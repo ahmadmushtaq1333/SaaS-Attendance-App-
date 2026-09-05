@@ -202,7 +202,7 @@ export default function ForgotPassword({ onBackToLogin }) {
 
       {step === 3 && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center", padding: "12px 0" }}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--emerald)" }}>
+          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--emerald)" }}>
             <CheckCircle2 size={24} />
           </div>
           <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.5 }}>

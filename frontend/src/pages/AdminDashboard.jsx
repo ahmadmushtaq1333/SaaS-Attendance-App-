@@ -92,7 +92,7 @@ function KpiCard({ icon: Icon, iconColor, glowColor, label, value, sub, barPct, 
         {trending !== undefined && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: "3px 7px", borderRadius: 6,
-            background: trending >= 0 ? "rgba(57,217,138,0.12)" : "rgba(255,90,90,0.12)",
+            background: trending >= 0 ? "rgba(79,142,247,0.12)" : "rgba(248,113,113,0.12)",
             color: trending >= 0 ? "var(--emerald)" : "var(--danger)"
           }}>
             {trending >= 0 ? "↑" : "↓"} {Math.abs(trending)}%
@@ -235,7 +235,7 @@ function AdminChip({ user }) {
         background: "linear-gradient(135deg, var(--purple), var(--cyan))",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontWeight: 700, fontSize: 13,
-        border: "1px solid rgba(123,97,255,0.35)"
+        border: "1px solid rgba(167,139,250,0.35)"
       }}>{initials}</div>
       <div>
         <div style={{ fontSize: 13, fontWeight: 700 }}>
@@ -243,7 +243,7 @@ function AdminChip({ user }) {
         </div>
         <span style={{
           fontSize: 10,
-          background: user.is_superuser ? "rgba(57,217,138,0.12)" : "rgba(123,97,255,0.12)",
+          background: user.is_superuser ? "rgba(79,142,247,0.12)" : "rgba(167,139,250,0.12)",
           color: user.is_superuser ? "var(--emerald)" : "var(--purple)",
           borderRadius: 4, padding: "2px 7px", display: "inline-block", marginTop: 2,
           fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase"
@@ -398,7 +398,7 @@ export default function AdminDashboard({ user }) {
         <KpiCard
           icon={Users}
           iconColor="var(--emerald)"
-          glowColor="#39D98A"
+          glowColor="#4F8EF7"
           label="Total Users"
           value={loadingStats ? "…" : stats?.totalUsers}
           sub={`${stats?.activeUsers ?? "—"} active accounts`}
@@ -408,7 +408,7 @@ export default function AdminDashboard({ user }) {
         <KpiCard
           icon={School}
           iconColor="var(--cyan)"
-          glowColor="#2EE6FF"
+          glowColor="#818CF8"
           label="Institutions"
           value={loadingStats ? "…" : stats?.institutions}
           sub={`${stats?.courses ?? "—"} courses total`}
@@ -418,7 +418,7 @@ export default function AdminDashboard({ user }) {
         <KpiCard
           icon={CheckCircle}
           iconColor="var(--purple)"
-          glowColor="#7B61FF"
+          glowColor="#A78BFA"
           label="Teachers"
           value={loadingStats ? "…" : stats?.teachers}
           sub={`${stats?.students ?? "—"} students enrolled`}
@@ -428,7 +428,7 @@ export default function AdminDashboard({ user }) {
         <KpiCard
           icon={AlertTriangle}
           iconColor="var(--warning)"
-          glowColor="#FFB547"
+          glowColor="#FBBF24"
           label="Pending Activation"
           value={loadingStats ? "…" : stats?.unverified}
           sub={`${stats?.activeSessions ?? "—"} live sessions now`}

@@ -453,7 +453,7 @@ export default function UsersPanel({ user }) {
       {activeView === "directory" && (
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(123,97,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Users size={20} color="var(--purple)" />
             </div>
             <div>
@@ -597,7 +597,7 @@ export default function UsersPanel({ user }) {
           {/* REGISTER NEW USER */}
           <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <UserPlus size={20} color="var(--emerald)" />
               </div>
               <div>
@@ -680,7 +680,7 @@ export default function UsersPanel({ user }) {
             {/* BULK GENERATE */}
             <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(46,230,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Plus size={20} color="var(--cyan)" />
                 </div>
                 <div>
@@ -711,7 +711,7 @@ export default function UsersPanel({ user }) {
               </form>
 
               {generatedAccounts.length > 0 && (
-                <div style={{ marginTop: 20, padding: 20, background: "rgba(57,217,138,0.06)", border: "1px solid rgba(57,217,138,0.25)", borderRadius: 12 }}>
+                <div style={{ marginTop: 20, padding: 20, background: "rgba(79,142,247,0.06)", border: "1px solid rgba(79,142,247,0.25)", borderRadius: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                     <h4 style={{ margin: 0, color: "var(--emerald)", display: "flex", alignItems: "center", gap: 8 }}>
                       <Check size={18} /> Generated Credentials ({generatedAccounts.length})
@@ -727,7 +727,7 @@ export default function UsersPanel({ user }) {
                         {generatedAccounts.map((acc, idx) => (
                           <tr key={idx}>
                             <td style={{ fontWeight: 600 }}>{acc.email}</td>
-                            <td><code style={{ background: "rgba(57,217,138,0.08)", color: "var(--emerald)", padding: "2px 7px", borderRadius: 5, fontSize: 12 }}>{acc.password}</code></td>
+                            <td><code style={{ background: "rgba(79,142,247,0.08)", color: "var(--emerald)", padding: "2px 7px", borderRadius: 5, fontSize: 12 }}>{acc.password}</code></td>
                           </tr>
                         ))}
                       </tbody>
@@ -740,7 +740,7 @@ export default function UsersPanel({ user }) {
             {/* BATCH IMPORT EXCEL */}
             <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <FileSpreadsheet size={20} color="var(--emerald)" />
                 </div>
                 <div>

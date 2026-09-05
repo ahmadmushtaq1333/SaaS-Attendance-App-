@@ -167,9 +167,9 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
           {/* KPI Cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
             {[
-              { label: "Sessions Held",    value: report?.total_sessions || 0,            color: "var(--cyan)",    glow: "rgba(46,230,255,0.2)" },
-              { label: "Students Enrolled", value: report?.students?.length || 0,           color: "var(--emerald)", glow: "rgba(57,217,138,0.2)" },
-              { label: "At-Risk (<75%)",   value: report?.defaulters_list?.length || 0,    color: "var(--danger)",  glow: "rgba(255,90,90,0.18)" },
+              { label: "Sessions Held",    value: report?.total_sessions || 0,            color: "var(--cyan)",    glow: "rgba(129,140,248,0.2)" },
+              { label: "Students Enrolled", value: report?.students?.length || 0,           color: "var(--emerald)", glow: "rgba(79,142,247,0.2)" },
+              { label: "At-Risk (<75%)",   value: report?.defaulters_list?.length || 0,    color: "var(--danger)",  glow: "rgba(248,113,113,0.18)" },
             ].map(kpi => (
               <div key={kpi.label} className="glass-b" style={{
                 padding: "20px 22px",

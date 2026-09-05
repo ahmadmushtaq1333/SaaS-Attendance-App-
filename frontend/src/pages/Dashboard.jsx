@@ -365,7 +365,7 @@ export default function Dashboard({ user, onViewReports }) {
       {activeView === "live" && (
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Zap size={22} color="var(--emerald)" />
             </div>
             <div>
@@ -383,7 +383,7 @@ export default function Dashboard({ user, onViewReports }) {
 
           {activeSession ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-              <div style={{ display: "flex", gap: 24, padding: "10px 24px", background: "rgba(57,217,138,0.08)", border: "1px solid rgba(57,217,138,0.2)", borderRadius: 12, width: "100%", maxWidth: 420, justifyContent: "space-around" }}>
+              <div style={{ display: "flex", gap: 24, padding: "10px 24px", background: "rgba(79,142,247,0.08)", border: "1px solid rgba(79,142,247,0.2)", borderRadius: 12, width: "100%", maxWidth: 420, justifyContent: "space-around" }}>
                 <div style={{ textAlign: "center" }}>
                   <div className="text-meta">Present / Total</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "var(--emerald)" }}>{presentCount} / {totalEnrolled}</div>
@@ -463,7 +463,7 @@ export default function Dashboard({ user, onViewReports }) {
       {activeView === "courses" && (
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(123,97,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BookOpen size={22} color="var(--purple)" />
             </div>
             <div>
@@ -496,8 +496,8 @@ export default function Dashboard({ user, onViewReports }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                   <div style={{
                     width: 38, height: 38, borderRadius: 10,
-                    background: `linear-gradient(135deg, ${["rgba(57,217,138,0.2)", "rgba(46,230,255,0.2)", "rgba(123,97,255,0.2)"][i % 3]}, transparent)`,
-                    border: `1px solid ${["rgba(57,217,138,0.3)", "rgba(46,230,255,0.3)", "rgba(123,97,255,0.3)"][i % 3]}`,
+                    background: `linear-gradient(135deg, ${["rgba(79,142,247,0.2)", "rgba(129,140,248,0.2)", "rgba(167,139,250,0.2)"][i % 3]}, transparent)`,
+                    border: `1px solid ${["rgba(79,142,247,0.3)", "rgba(129,140,248,0.3)", "rgba(167,139,250,0.3)"][i % 3]}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 14, fontWeight: 700, color: ["var(--emerald)", "var(--cyan)", "var(--purple)"][i % 3]
                   }}>
@@ -528,7 +528,7 @@ export default function Dashboard({ user, onViewReports }) {
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(255,90,90,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(248,113,113,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <AlertTriangle size={22} color="var(--danger)" />
               </div>
               <div>
@@ -561,7 +561,7 @@ export default function Dashboard({ user, onViewReports }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {courseDefaulters.map(std => (
-                <div key={std.id} style={{ padding: "12px 16px", background: "rgba(255,90,90,0.06)", border: "1px solid rgba(255,90,90,0.18)", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div key={std.id} style={{ padding: "12px 16px", background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.18)", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{std.email}</div>
                   </div>
@@ -584,7 +584,7 @@ export default function Dashboard({ user, onViewReports }) {
       {activeView === "history" && (
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(46,230,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(129,140,248,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <History size={22} color="var(--cyan)" />
             </div>
             <div>
@@ -616,7 +616,7 @@ export default function Dashboard({ user, onViewReports }) {
           <button onClick={() => setIsZoomed(false)} className="btn-secondary" style={{ position: "absolute", top: 24, right: 24, padding: "10px 14px", gap: 6 }}>
             <X size={18} /> Close
           </button>
-          <div style={{ background: "white", padding: 24, borderRadius: 24, boxShadow: "0 0 50px rgba(57,217,138,0.4)" }}>
+          <div style={{ background: "white", padding: 24, borderRadius: 24, boxShadow: "0 0 50px rgba(79,142,247,0.4)" }}>
             <img src={qrCode} alt="Zoomed QR Code" style={{ width: 380, height: 380, display: "block" }} />
           </div>
           <div style={{ marginTop: 20, color: "white", textAlign: "center" }}>

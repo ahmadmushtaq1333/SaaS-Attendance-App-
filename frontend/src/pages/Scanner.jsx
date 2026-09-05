@@ -287,7 +287,7 @@ export default function StudentDashboard({ user }) {
       {activeView === "scanner" && (
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)", maxWidth: 560, margin: "0 auto", width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(57,217,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ScanLine size={22} color="var(--emerald)" />
             </div>
             <div>
@@ -308,13 +308,13 @@ export default function StudentDashboard({ user }) {
             <canvas ref={canvasRef} style={{ display: "none" }} />
             {scanning && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                <div style={{ width: 180, height: 180, border: "2px solid var(--emerald)", borderRadius: 12, boxShadow: "0 0 24px rgba(57,217,138,0.4), inset 0 0 24px rgba(57,217,138,0.08)", animation: "scanPulse 2s ease-in-out infinite" }} />
-                <style>{`@keyframes scanPulse { 0%,100%{box-shadow:0 0 20px rgba(57,217,138,0.3),inset 0 0 20px rgba(57,217,138,0.06)} 50%{box-shadow:0 0 40px rgba(57,217,138,0.5),inset 0 0 30px rgba(57,217,138,0.12)} }`}</style>
+                <div style={{ width: 180, height: 180, border: "2px solid var(--emerald)", borderRadius: 12, boxShadow: "0 0 24px rgba(79,142,247,0.4), inset 0 0 24px rgba(79,142,247,0.08)", animation: "scanPulse 2s ease-in-out infinite" }} />
+                <style>{`@keyframes scanPulse { 0%,100%{box-shadow:0 0 20px rgba(79,142,247,0.3),inset 0 0 20px rgba(79,142,247,0.06)} 50%{box-shadow:0 0 40px rgba(79,142,247,0.5),inset 0 0 30px rgba(79,142,247,0.12)} }`}</style>
               </div>
             )}
             {!scanning && (
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "rgba(7,17,31,0.6)", backdropFilter: "blur(4px)" }}>
-                <div style={{ width: 60, height: 60, background: "var(--emerald-dim)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(57,217,138,0.3)" }}>
+                <div style={{ width: 60, height: 60, background: "var(--emerald-dim)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(79,142,247,0.3)" }}>
                   <Camera size={26} color="var(--emerald)" />
                 </div>
                 <button onClick={startScanning} className="btn-primary" style={{ gap: 8 }}>
@@ -344,7 +344,7 @@ export default function StudentDashboard({ user }) {
       {activeView === "attendance" && !selectedCourse && (
         <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(123,97,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BarChart2 size={22} color="var(--purple)" />
             </div>
             <div>
@@ -365,7 +365,7 @@ export default function StudentDashboard({ user }) {
                 return (
                   <div key={course.course_id}
                     onClick={() => { setSelectedCourse(course); setActiveView("detail"); fetchCourseDetail(course.course_id); }}
-                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: `1px solid ${course.is_at_risk ? "rgba(255,90,90,0.25)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer", transition: "all 0.2s ease" }}
+                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: `1px solid ${course.is_at_risk ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer", transition: "all 0.2s ease" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
                     onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
                   >
@@ -431,10 +431,10 @@ export default function StudentDashboard({ user }) {
                 <div key={s.session_id} style={{
                   display: "flex", alignItems: "center", gap: 14,
                   padding: "10px 16px", borderRadius: 10,
-                  background: s.present ? "rgba(57,217,138,0.06)" : "rgba(255,90,90,0.05)",
-                  border: `1px solid ${s.present ? "rgba(57,217,138,0.2)" : "rgba(255,90,90,0.15)"}`,
+                  background: s.present ? "rgba(79,142,247,0.06)" : "rgba(248,113,113,0.05)",
+                  border: `1px solid ${s.present ? "rgba(79,142,247,0.2)" : "rgba(248,113,113,0.15)"}`,
                 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: s.present ? "rgba(57,217,138,0.15)" : "rgba(255,90,90,0.12)", flexShrink: 0 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", background: s.present ? "rgba(79,142,247,0.15)" : "rgba(248,113,113,0.12)", flexShrink: 0 }}>
                     {s.present ? <CheckCircle2 size={16} color="var(--emerald)" /> : <XCircle size={16} color="var(--danger)" />}
                   </div>
                   <div style={{ flex: 1 }}>

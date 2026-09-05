@@ -340,16 +340,16 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
 
       {/* ── Dry Run Validation Alerts Dashboard ── */}
       {validationResult && !importResult && (
-        <div className="glass-b" style={{ padding: 20, borderRadius: 12, border: "1px solid rgba(46,230,255,0.2)" }}>
+        <div className="glass-b" style={{ padding: 20, borderRadius: 12, border: "1px solid rgba(129,140,248,0.2)" }}>
           <h4 style={{ margin: "0 0 12px 0", display: "flex", alignItems: "center", gap: 8, color: "var(--cyan)" }}>
             <ShieldCheck size={18} /> Dry-Run Verification Summary
           </h4>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-            <div style={{ padding: 12, background: "rgba(57,217,138,0.06)", borderRadius: 8, border: "1px solid rgba(57,217,138,0.2)" }}>
+            <div style={{ padding: 12, background: "rgba(79,142,247,0.06)", borderRadius: 8, border: "1px solid rgba(79,142,247,0.2)" }}>
               <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Ready to Import:</span>
               <p style={{ fontSize: 24, fontWeight: 700, color: "var(--emerald)", margin: "4px 0 0" }}>{validationResult.success_count} accounts</p>
             </div>
-            <div style={{ padding: 12, background: validationResult.error_count > 0 ? "rgba(255,90,90,0.06)" : "rgba(255,255,255,0.03)", borderRadius: 8, border: validationResult.error_count > 0 ? "1px solid rgba(255,90,90,0.2)" : "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ padding: 12, background: validationResult.error_count > 0 ? "rgba(248,113,113,0.06)" : "rgba(255,255,255,0.03)", borderRadius: 8, border: validationResult.error_count > 0 ? "1px solid rgba(248,113,113,0.2)" : "1px solid rgba(255,255,255,0.06)" }}>
               <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Critical Errors found:</span>
               <p style={{ fontSize: 24, fontWeight: 700, color: validationResult.error_count > 0 ? "var(--danger)" : "var(--text-secondary)", margin: "4px 0 0" }}>{validationResult.error_count} rows</p>
             </div>
@@ -358,7 +358,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
           {validationResult.errors.length > 0 ? (
             <div style={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
               {validationResult.errors.map((e, idx) => (
-                <div key={idx} style={{ padding: "8px 12px", background: "rgba(255,90,90,0.05)", borderLeft: "3px solid var(--danger)", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
+                <div key={idx} style={{ padding: "8px 12px", background: "rgba(248,113,113,0.05)", borderLeft: "3px solid var(--danger)", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
                   <span>Row {e.row}: {e.error}</span>
                   <span style={{ color: "var(--text-muted)" }}>Skipped</span>
                 </div>
@@ -372,7 +372,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
 
       {/* ── Post-Import Analytics Dashboard ── */}
       {importResult && (
-        <div className="glass-b" style={{ padding: 24, borderRadius: 12, border: "1px solid rgba(57,217,138,0.25)" }}>
+        <div className="glass-b" style={{ padding: 24, borderRadius: 12, border: "1px solid rgba(79,142,247,0.25)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <h3 style={{ margin: 0, color: "var(--emerald)", display: "flex", alignItems: "center", gap: 8 }}>
               <CheckCircle2 size={20} /> Roster Import Successful!
@@ -389,12 +389,12 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
               <span className="text-meta">Total Uploaded</span>
               <p style={{ fontSize: 28, fontWeight: 700, margin: "4px 0 0" }}>{importResult.success_count + importResult.error_count}</p>
             </div>
-            <div style={{ padding: 16, background: "rgba(57,217,138,0.05)", borderRadius: 10, border: "1px solid rgba(57,217,138,0.15)" }}>
+            <div style={{ padding: 16, background: "rgba(79,142,247,0.05)", borderRadius: 10, border: "1px solid rgba(79,142,247,0.15)" }}>
               <ShieldCheck size={16} color="var(--emerald)" style={{ marginBottom: 6 }} />
               <span className="text-meta" style={{ color: "var(--emerald)" }}>Successfully Created</span>
               <p style={{ fontSize: 28, fontWeight: 700, color: "var(--emerald)", margin: "4px 0 0" }}>{importResult.success_count}</p>
             </div>
-            <div style={{ padding: 16, background: "rgba(255,90,90,0.05)", borderRadius: 10, border: "1px solid rgba(255,90,90,0.15)" }}>
+            <div style={{ padding: 16, background: "rgba(248,113,113,0.05)", borderRadius: 10, border: "1px solid rgba(248,113,113,0.15)" }}>
               <AlertTriangle size={16} color="var(--danger)" style={{ marginBottom: 6 }} />
               <span className="text-meta" style={{ color: "var(--danger)" }}>Failed / Skipped</span>
               <p style={{ fontSize: 28, fontWeight: 700, color: "var(--danger)", margin: "4px 0 0" }}>{importResult.error_count}</p>
@@ -405,7 +405,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
             <div style={{ maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
               <h4 style={{ margin: "0 0 4px 0", fontSize: 13, color: "var(--danger)" }}>Failed Rows Details</h4>
               {importResult.errors.map((e, idx) => (
-                <div key={idx} style={{ padding: "8px 12px", background: "rgba(255,90,90,0.05)", borderLeft: "3px solid var(--danger)", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
+                <div key={idx} style={{ padding: "8px 12px", background: "rgba(248,113,113,0.05)", borderLeft: "3px solid var(--danger)", fontSize: 12, display: "flex", justifyContent: "space-between" }}>
                   <span>Row {e.row}: {e.error}</span>
                   <span style={{ color: "var(--text-muted)" }}>Skipped</span>
                 </div>
