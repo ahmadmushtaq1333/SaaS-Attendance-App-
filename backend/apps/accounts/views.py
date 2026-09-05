@@ -397,23 +397,21 @@ class ConfirmPasswordResetView(APIView):
             return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
- c l a s s   R e s e t D e v i c e B i n d i n g V i e w ( A P I V i e w ) : 
-         p e r m i s s i o n _ c l a s s e s   =   [ I s A u t h e n t i c a t e d ] 
- 
-         d e f   p o s t ( s e l f ,   r e q u e s t ,   u s e r _ i d ) : 
-                 i f   r e q u e s t . u s e r . r o l e   n o t   i n   [ " a d m i n " ,   " t e a c h e r " ]   a n d   n o t   g e t a t t r ( r e q u e s t . u s e r ,   " i s _ s u p e r u s e r " ,   F a l s e ) : 
-                         r e t u r n   R e s p o n s e ( { " e r r o r " :   " U n a u t h o r i z e d " } ,   s t a t u s = s t a t u s . H T T P _ 4 0 3 _ F O R B I D D E N ) 
-                         
-                 t r y : 
-                         s t u d e n t   =   C u s t o m U s e r . o b j e c t s . g e t ( i d = u s e r _ i d ,   r o l e = " s t u d e n t " ) 
-                         #   V e r i f y   p e r m i s s i o n   s c o p e 
-                         i f   r e q u e s t . u s e r . r o l e   = =   " t e a c h e r "   a n d   s t u d e n t . g e t _ i n s t i t u t i o n   ! =   r e q u e s t . u s e r . i n s t i t u t i o n : 
-                                 r e t u r n   R e s p o n s e ( { " e r r o r " :   " U n a u t h o r i z e d " } ,   s t a t u s = s t a t u s . H T T P _ 4 0 3 _ F O R B I D D E N ) 
-                                 
-                         s t u d e n t . b o u n d _ d e v i c e _ i d   =   N o n e 
-                         s t u d e n t . s a v e ( u p d a t e _ f i e l d s = [ " b o u n d _ d e v i c e _ i d " ] ) 
-                         r e t u r n   R e s p o n s e ( { " m e s s a g e " :   " D e v i c e   b i n d i n g   r e s e t   s u c c e s s f u l l y . " } ) 
-                 e x c e p t   C u s t o m U s e r . D o e s N o t E x i s t : 
-                         r e t u r n   R e s p o n s e ( { " e r r o r " :   " S t u d e n t   n o t   f o u n d " } ,   s t a t u s = s t a t u s . H T T P _ 4 0 4 _ N O T _ F O U N D ) 
-  
- 
+class ResetDeviceBindingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        if request.user.role not in ["admin", "teacher"] and not getattr(request.user, "is_superuser", False):
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            student = CustomUser.objects.get(id=user_id, role="student")
+            # Verify institution scope for teachers
+            if request.user.role == "teacher" and student.get_institution != request.user.institution:
+                return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+            student.bound_device_id = None
+            student.save(update_fields=["bound_device_id"])
+            return Response({"message": "Device binding reset successfully."})
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
