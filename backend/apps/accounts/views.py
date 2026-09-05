@@ -227,18 +227,18 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         if response.status_code == 200:
             access_token = response.data.get('access')
             refresh_token = response.data.get('refresh')
-            is_prod = not settings.DEBUG
-            samesite_policy = 'None' if is_prod else 'Lax'
+            is_secure = request.is_secure() or (not settings.DEBUG)
+            samesite_policy = 'None' if is_secure else 'Lax'
             
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite=samesite_policy, secure=is_prod
+                    httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
             if refresh_token:
                 response.set_cookie(
                     'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite=samesite_policy, secure=is_prod
+                    httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
             response.data['access'] = "set-in-cookie"
             response.data['refresh'] = "set-in-cookie"
@@ -255,13 +255,13 @@ class CookieTokenRefreshView(TokenRefreshView):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             access_token = response.data.get('access')
-            is_prod = not settings.DEBUG
-            samesite_policy = 'None' if is_prod else 'Lax'
+            is_secure = request.is_secure() or (not settings.DEBUG)
+            samesite_policy = 'None' if is_secure else 'Lax'
             
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite=samesite_policy, secure=is_prod
+                    httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
             response.data['access'] = "set-in-cookie"
             
@@ -269,7 +269,7 @@ class CookieTokenRefreshView(TokenRefreshView):
             if new_refresh_token:
                 response.set_cookie(
                     'refresh_token', new_refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite=samesite_policy, secure=is_prod
+                    httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
                 response.data['refresh'] = "set-in-cookie"
         return response
@@ -277,10 +277,35 @@ class CookieTokenRefreshView(TokenRefreshView):
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
+        refresh_token = request.COOKIES.get('refresh_token') or request.data.get('refresh')
+        if refresh_token:
+            try:
+                from rest_framework_simplejwt.tokens import RefreshToken
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass
+
         response = Response({"message": "Successfully logged out."})
-        response.delete_cookie('access_token')
-        response.delete_cookie('refresh_token')
+        is_secure = request.is_secure() or (not settings.DEBUG)
+        samesite_policy = 'None' if is_secure else 'Lax'
+
+        for cookie_name in ['access_token', 'refresh_token']:
+            # Exact mirror of set_cookie with max_age=0, expires in 1970
+            response.set_cookie(
+                cookie_name,
+                '',
+                max_age=0,
+                expires='Thu, 01 Jan 1970 00:00:00 GMT',
+                path='/',
+                httponly=True,
+                samesite=samesite_policy,
+                secure=is_secure,
+            )
+            response.delete_cookie(cookie_name, path='/', samesite=samesite_policy)
+
         return response
 
 
