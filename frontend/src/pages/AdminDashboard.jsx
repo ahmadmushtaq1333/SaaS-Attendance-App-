@@ -280,32 +280,43 @@ export default function AdminDashboard({ user }) {
     setLoadingStats(true);
     try {
       const [usersRes, instsRes, coursesRes, sessionsRes] = await Promise.all([
-        API.get("/admin/users/"),
+        API.get("/admin/users/", { params: { page_size: 1 } }),  // We only need the count
         API.get("/admin/institutions/"),
         API.get("/admin/courses/"),
         API.get("/admin/sessions/"),
       ]);
-      const users    = usersRes.data.results    || usersRes.data    || [];
+
+      // Paginated responses expose the real total in `.count`
+      const totalUsers = usersRes.data.count ?? (usersRes.data.results || usersRes.data || []).length;
+
+      // Fetch role-specific counts in parallel using the server filter
+      const [studentsRes, teachersRes, unverifiedRes, activeRes] = await Promise.all([
+        API.get("/admin/users/", { params: { role: "student",  page_size: 1 } }),
+        API.get("/admin/users/", { params: { role: "teacher",  page_size: 1 } }),
+        API.get("/admin/users/", { params: { is_email_verified: "false", page_size: 1 } }),
+        API.get("/admin/users/", { params: { is_active: "true",  page_size: 1 } }),
+      ]);
+
       const insts    = instsRes.data.results    || instsRes.data    || [];
       const courses  = coursesRes.data.results  || coursesRes.data  || [];
       const sessions = sessionsRes.data.results || sessionsRes.data || [];
 
-      const students   = users.filter(u => u.role === "student");
-      const teachers   = users.filter(u => u.role === "teacher");
-      const unverified = users.filter(u => !u.is_email_verified);
-      const active     = users.filter(u => u.is_active);
-      const activeSess = sessions.filter(s => s.is_active);
+      const totalStudents   = studentsRes.data.count   ?? 0;
+      const totalTeachers   = teachersRes.data.count   ?? 0;
+      const totalUnverified = unverifiedRes.data.count ?? 0;
+      const totalActive     = activeRes.data.count     ?? 0;
+      const activeSess      = sessions.filter(s => s.is_active);
 
       setStats({
-        totalUsers: users.length,
-        students: students.length,
-        teachers: teachers.length,
+        totalUsers,
+        students: totalStudents,
+        teachers: totalTeachers,
         institutions: insts.length,
         courses: courses.length,
-        unverified: unverified.length,
+        unverified: totalUnverified,
         activeSessions: activeSess.length,
-        activeUsers: active.length,
-        activePct: users.length ? Math.round((active.length / users.length) * 100) : 0,
+        activeUsers: totalActive,
+        activePct: totalUsers ? Math.round((totalActive / totalUsers) * 100) : 0,
       });
     } catch {
       setStats(null);

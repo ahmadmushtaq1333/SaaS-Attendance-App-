@@ -127,6 +127,18 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 Q(institution_id=inst_id) | 
                 Q(section__semester__department__institution_id=inst_id)
             )
+        role = self.request.query_params.get("role")
+        if role:
+            queryset = queryset.filter(role=role)
+
+        is_email_verified = self.request.query_params.get("is_email_verified")
+        if is_email_verified is not None:
+            queryset = queryset.filter(is_email_verified=is_email_verified.lower() == "true")
+
+        is_active = self.request.query_params.get("is_active")
+        if is_active is not None:
+            queryset = queryset.filter(is_active=is_active.lower() == "true")
+
         return queryset
 
     @action(detail=False, methods=["post"], url_path="bulk-generate")
