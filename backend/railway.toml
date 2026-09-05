@@ -6,6 +6,6 @@ dockerfilePath = "Dockerfile"
 # releaseCommand runs ONCE before the new version goes live.
 # If migrations fail, the deploy is aborted — no bad migration ships itself.
 releaseCommand = "python manage.py migrate --noinput"
-startCommand = "gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 120 --log-level info attendance_saas.wsgi:application"
+startCommand = "sh -c 'gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 120 --log-level info attendance_saas.wsgi:application'"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
