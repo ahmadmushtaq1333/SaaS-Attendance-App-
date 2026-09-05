@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F8EF7"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <linearGradient id="qgrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#c7d5ff" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
+  <!-- Subtle inner glow ring -->
+  <rect x="1" y="1" width="30" height="30" rx="7.2" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+  <!-- Q letter -->
+  <text
+    x="16"
+    y="23"
+    font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="20"
+    font-weight="800"
+    text-anchor="middle"
+    fill="url(#qgrad)"
+    letter-spacing="-1"
+  >Q</text>
+</svg>
