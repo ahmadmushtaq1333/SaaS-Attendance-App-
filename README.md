@@ -1,6 +1,6 @@
 <h1 align="center">
   <br/>
-  🎓 Attend AI — SaaS Attendance Management System
+  🎓 Quorum — SaaS Attendance Management System
   <br/>
 </h1>
 
@@ -45,7 +45,7 @@
 
 ## 🌟 Overview
 
-**Attend AI** is a production-grade, multi-tenant SaaS Attendance Management System designed for universities and institutions. It allows teachers to host live, QR-code-based attendance sessions, students to scan and mark themselves present (even offline with automatic sync), and admins to manage the full institution hierarchy — all through a single, beautifully designed web application deployed on Railway (backend) and Vercel (frontend).
+**Quorum** is a production-grade, multi-tenant SaaS Attendance Management System designed for universities and institutions. It allows teachers to host live, QR-code-based attendance sessions, students to scan and mark themselves present (even offline with automatic sync), and admins to manage the full institution hierarchy — all through a single, beautifully designed web application deployed on Railway (backend) and Vercel (frontend).
 
 ---
 
@@ -337,7 +337,7 @@ DB_PORT=3306
 # Email (dev uses console backend by default — no config needed)
 # For production, set Brevo API key:
 BREVO_API_KEY=your-brevo-api-key
-DEFAULT_FROM_EMAIL=Attend AI <noreply@yourdomain.com>
+DEFAULT_FROM_EMAIL=Quorum <noreply@yourdomain.com>
 ```
 
 ---
@@ -493,6 +493,7 @@ Student (role=student, section-scoped)
 | **Role-based Permissions** | `IsTeacher`, `IsStudent`, `IsAdminUser` Django permission classes enforce access at every view |
 | **Scope Isolation** | Institution-scoped admins can only access data within their own institution |
 | **Email Enumeration Prevention** | Auth endpoints return generic messages regardless of whether an email exists |
+| **Device Binding** | Associates a student's account with their primary device using a persistent local identifier (`device_id`). Prevents "buddy punching" / proxy attendance by blocking login on secondary devices. Admins can reset this binding if a device is lost. |
 
 ---
 
@@ -523,7 +524,7 @@ VERCEL_DOMAIN=your-app.vercel.app
 
 # Email
 BREVO_API_KEY=<your-brevo-api-key>
-DEFAULT_FROM_EMAIL=Attend AI <noreply@yourdomain.com>
+DEFAULT_FROM_EMAIL=Quorum <noreply@yourdomain.com>
 ```
 
 ### Frontend `.env` on Vercel

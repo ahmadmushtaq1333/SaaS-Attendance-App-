@@ -159,7 +159,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "attendai_import_template.csv";
+    link.download = "quorum_import_template.csv";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -88,7 +88,7 @@ export default function App() {
         </div>
         <div className="glass-spinner">
           <div className="spinner-ring" />
-          <span style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading Attendance Management system…</span>
+          <span style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading Quorum…</span>
         </div>
       </>
     );
@@ -117,7 +117,7 @@ export default function App() {
             <div className="nav-logo" style={{ background: "linear-gradient(135deg, var(--emerald), var(--cyan))", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Activity size={15} color="#07111F" strokeWidth={2.5} />
             </div>
-            <span className="nav-title">Attendance Management system</span>
+            <span className="nav-title">Quorum</span>
           </div>
 
           <div className="nav-links">

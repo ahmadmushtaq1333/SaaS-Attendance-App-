@@ -18,8 +18,15 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setLoading(true);
 
     try {
+      // Get or generate a persistent device ID for anti-proxy attendance
+      let device_id = localStorage.getItem("device_id");
+      if (!device_id) {
+        device_id = window.crypto && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("device_id", device_id);
+      }
+
       // Tokens are set as HTTPOnly cookies by the backend — no localStorage needed
-      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
+      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
@@ -41,8 +48,14 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setError("");
     setLoading(true);
     try {
+      let device_id = localStorage.getItem("device_id");
+      if (!device_id) {
+        device_id = window.crypto && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem("device_id", device_id);
+      }
+      
       // Tokens are set as HTTPOnly cookies by the backend
-      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
+      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch {
@@ -101,7 +114,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
             </div>
             <div>
               <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
-                Attendance Management system
+                Quorum
               </h1>
               <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
                 Sign in to your institute portal

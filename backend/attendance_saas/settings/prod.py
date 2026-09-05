@@ -4,6 +4,52 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 DEBUG = False
 
+# ── HTTPS / Proxy hardening ───────────────────────────────────────────────────
+# Railway terminates TLS at its proxy; this tells Django the request is HTTPS.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = True
+
+# HSTS — instruct browsers to always use HTTPS for 1 year.
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Cookie hardening — required for CookieJWTAuthentication over HTTPS.
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+# Replaces relying solely on Sentry; surfaces slow queries, auth warnings, etc.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname}] {asctime} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
 # Railway provides the app's public URL automatically
 # RAILWAY_PUBLIC_DOMAIN is set by Railway for each service
 RAILWAY_DOMAIN = config("RAILWAY_PUBLIC_DOMAIN", default="")
@@ -63,6 +109,23 @@ if VERCEL_DOMAIN:
     if vercel_https not in CORS_ALLOWED_ORIGINS:
         CORS_ALLOWED_ORIGINS.append(vercel_https)
 
+# ── CSRF trusted origins ───────────────────────────────────────────────────────
+# Required for cross-origin cookie auth (Vercel frontend → Railway backend).
+# Django 4.0+ requires this for any cross-origin POST that sends a CSRF cookie.
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="",
+    cast=lambda v: [s.strip() for s in v.split(",") if s.strip()],
+)
+if VERCEL_DOMAIN:
+    vercel_https = f"https://{VERCEL_DOMAIN}"
+    if vercel_https not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(vercel_https)
+if RAILWAY_DOMAIN:
+    railway_https = f"https://{RAILWAY_DOMAIN}"
+    if railway_https not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(railway_https)
+
 # ── Email: Brevo HTTP API via django-anymail ──────────────────────────────────
 # Uses HTTPS port 443 — immune to Railway's raw SMTP port blocks.
 # Allows sending to arbitrary recipients on free tier.
@@ -70,8 +133,9 @@ EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
 ANYMAIL = {
     "BREVO_API_KEY": config("BREVO_API_KEY", default=""),
 }
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Attend AI <muhammadahmadmushtaq11@gmail.com>")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Quorum <muhammadahmadmushtaq11@gmail.com>")
 
+#Sentry configuration for error tracking and performance monitoring
 sentry_sdk.init(
     dsn=config("SENTRY_DSN", default=""),
     integrations=[DjangoIntegration()],

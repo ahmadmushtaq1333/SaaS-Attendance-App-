@@ -27,9 +27,10 @@ RUN DJANGO_SETTINGS_MODULE=attendance_saas.settings.prod \
 
 EXPOSE 8000
 
-# Railway sets $PORT dynamically; fall back to 8000 for local Docker
-CMD python manage.py migrate --noinput && \
-    gunicorn --bind 0.0.0.0:${PORT:-8000} \
+# Railway uses startCommand from railway.toml (which overrides this CMD).
+# This CMD is a fallback for local `docker run` only — no migrate here
+# because migrations are a deliberate release step, not an automatic boot step.
+CMD gunicorn --bind 0.0.0.0:${PORT:-8000} \
              --workers 2 \
              --timeout 120 \
              attendance_saas.wsgi:application

@@ -12,7 +12,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    device_id = serializers.CharField(required=False, allow_blank=True)
+
     def validate(self, attrs):
+        device_id = attrs.pop("device_id", None)
+        
         # Check authentication first
         data = super().validate(attrs)
         
@@ -22,5 +26,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "email_unverified": True,
                 "detail": "Email address not verified yet. Please check your inbox for the activation OTP code."
             })
+            
+        # Device Binding Logic for Students
+        if self.user.role == "student" and device_id:
+            if not self.user.bound_device_id:
+                # Bind this new device to the student
+                self.user.bound_device_id = device_id
+                self.user.save(update_fields=['bound_device_id'])
+            elif self.user.bound_device_id != device_id:
+                # Device mismatch - possible proxy attendance attempt
+                raise serializers.ValidationError({
+                    "device_mismatch": True,
+                    "detail": "This account is registered to another device. Please use your original device or contact your teacher to reset your device binding."
+                })
+                
         return data
 

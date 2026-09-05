@@ -1,0 +1,51 @@
+# .dockerignore — excludes files/dirs that should not go into the production image.
+# Applied when Docker runs "COPY . ." in the Dockerfile.
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+
+# ── Python artefacts ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+
+# ── Virtual environment — never copy the local venv into the image ────────────
+venv/
+.venv/
+env/
+
+# ── Local secrets — always excluded from image ────────────────────────────────
+.env
+*.env.local
+
+# ── Dev / debug scripts — not needed at runtime ───────────────────────────────
+debug_courses.py
+populate_db.py
+
+# ── Local databases ───────────────────────────────────────────────────────────
+*.sqlite3
+db.sqlite3
+
+# ── Test and coverage artefacts ───────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Documentation / assets not needed at runtime ─────────────────────────────
+docs/
+erd.mmd
+erd.png
+
+# ── IDE / OS noise ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

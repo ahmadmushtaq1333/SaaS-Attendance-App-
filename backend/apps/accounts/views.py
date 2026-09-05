@@ -113,7 +113,7 @@ def _send_mail_in_background(subject, message, from_addr, recipient_list, html_m
 def get_otp_html_template(code, purpose="verify"):
     if purpose == "verify":
         title = "Activate Your Account"
-        instructions = "Thank you for joining Attend AI! Please use the 6-digit verification code below to verify your email address and activate your account."
+        instructions = "Thank you for joining Quorum! Please use the 6-digit verification code below to verify your email address and activate your account."
     else:
         title = "Reset Your Password"
         instructions = "We received a request to reset your password. Use the 6-digit security code below to complete the verification step."
@@ -123,7 +123,7 @@ def get_otp_html_template(code, purpose="verify"):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attend AI Security Code</title>
+  <title>Quorum Security Code</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;">
   <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
@@ -133,7 +133,7 @@ def get_otp_html_template(code, purpose="verify"):
           <!-- Header Accent Banner -->
           <tr>
             <td align="center" style="padding: 30px 20px; background: linear-gradient(135deg, #4f46e5, #0d9488);">
-              <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800; letter-spacing: 1px;">Attend AI</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 26px; font-weight: 800; letter-spacing: 1px;">Quorum</h1>
               <p style="margin: 5px 0 0 0; color: rgba(255,255,255,0.85); font-size: 13px; font-weight: 500;">Attendance Management System</p>
             </td>
           </tr>
@@ -173,7 +173,7 @@ def get_otp_html_template(code, purpose="verify"):
           <tr>
             <td style="padding: 20px; background-color: #f9fafb; border-top: 1px solid #f3f4f6; text-align: center;">
               <p style="margin: 0; color: #9ca3af; font-size: 11px;">
-                &copy; 2026 Attend AI. All rights reserved.
+                &copy; 2026 Quorum. All rights reserved.
               </p>
             </td>
           </tr>
@@ -199,7 +199,7 @@ def generate_and_send_otp(user, purpose="verify"):
         expires_at=expires_at
     )
     
-    subject = "Attend AI Activation Code" if purpose == "verify" else "Attend AI Password Reset Code"
+    subject = "Quorum Activation Code" if purpose == "verify" else "Quorum Password Reset Code"
     message = f"Your verification code is: {code}. It expires in 15 minutes."
     html_message = get_otp_html_template(code, purpose)
     
@@ -227,15 +227,18 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         if response.status_code == 200:
             access_token = response.data.get('access')
             refresh_token = response.data.get('refresh')
+            is_prod = not settings.DEBUG
+            samesite_policy = 'None' if is_prod else 'Lax'
+            
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='None', secure=not settings.DEBUG
+                    httponly=True, samesite=samesite_policy, secure=is_prod
                 )
             if refresh_token:
                 response.set_cookie(
                     'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='None', secure=not settings.DEBUG
+                    httponly=True, samesite=samesite_policy, secure=is_prod
                 )
             response.data['access'] = "set-in-cookie"
             response.data['refresh'] = "set-in-cookie"
@@ -252,10 +255,13 @@ class CookieTokenRefreshView(TokenRefreshView):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             access_token = response.data.get('access')
+            is_prod = not settings.DEBUG
+            samesite_policy = 'None' if is_prod else 'Lax'
+            
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='None', secure=not settings.DEBUG
+                    httponly=True, samesite=samesite_policy, secure=is_prod
                 )
             response.data['access'] = "set-in-cookie"
             
@@ -263,7 +269,7 @@ class CookieTokenRefreshView(TokenRefreshView):
             if new_refresh_token:
                 response.set_cookie(
                     'refresh_token', new_refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
-                    httponly=True, samesite='None', secure=not settings.DEBUG
+                    httponly=True, samesite=samesite_policy, secure=is_prod
                 )
                 response.data['refresh'] = "set-in-cookie"
         return response
@@ -390,3 +396,24 @@ class ConfirmPasswordResetView(APIView):
         except EmailVerificationCode.DoesNotExist:
             return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
+
+ c l a s s   R e s e t D e v i c e B i n d i n g V i e w ( A P I V i e w ) : 
+         p e r m i s s i o n _ c l a s s e s   =   [ I s A u t h e n t i c a t e d ] 
+ 
+         d e f   p o s t ( s e l f ,   r e q u e s t ,   u s e r _ i d ) : 
+                 i f   r e q u e s t . u s e r . r o l e   n o t   i n   [ " a d m i n " ,   " t e a c h e r " ]   a n d   n o t   g e t a t t r ( r e q u e s t . u s e r ,   " i s _ s u p e r u s e r " ,   F a l s e ) : 
+                         r e t u r n   R e s p o n s e ( { " e r r o r " :   " U n a u t h o r i z e d " } ,   s t a t u s = s t a t u s . H T T P _ 4 0 3 _ F O R B I D D E N ) 
+                         
+                 t r y : 
+                         s t u d e n t   =   C u s t o m U s e r . o b j e c t s . g e t ( i d = u s e r _ i d ,   r o l e = " s t u d e n t " ) 
+                         #   V e r i f y   p e r m i s s i o n   s c o p e 
+                         i f   r e q u e s t . u s e r . r o l e   = =   " t e a c h e r "   a n d   s t u d e n t . g e t _ i n s t i t u t i o n   ! =   r e q u e s t . u s e r . i n s t i t u t i o n : 
+                                 r e t u r n   R e s p o n s e ( { " e r r o r " :   " U n a u t h o r i z e d " } ,   s t a t u s = s t a t u s . H T T P _ 4 0 3 _ F O R B I D D E N ) 
+                                 
+                         s t u d e n t . b o u n d _ d e v i c e _ i d   =   N o n e 
+                         s t u d e n t . s a v e ( u p d a t e _ f i e l d s = [ " b o u n d _ d e v i c e _ i d " ] ) 
+                         r e t u r n   R e s p o n s e ( { " m e s s a g e " :   " D e v i c e   b i n d i n g   r e s e t   s u c c e s s f u l l y . " } ) 
+                 e x c e p t   C u s t o m U s e r . D o e s N o t E x i s t : 
+                         r e t u r n   R e s p o n s e ( { " e r r o r " :   " S t u d e n t   n o t   f o u n d " } ,   s t a t u s = s t a t u s . H T T P _ 4 0 4 _ N O T _ F O U N D ) 
+  
+ 

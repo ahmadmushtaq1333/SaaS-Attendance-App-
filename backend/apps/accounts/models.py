@@ -45,6 +45,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    
+    # Device Binding for Students (anti-proxy attendance)
+    bound_device_id = models.CharField(max_length=255, null=True, blank=True)
 
     @property
     def get_institution(self):

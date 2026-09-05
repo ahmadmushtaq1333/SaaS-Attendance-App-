@@ -1,17 +1,70 @@
-django>=4.2,<5.0
-djangorestframework>=3.15
-djangorestframework-simplejwt>=5.3
-django-cors-headers>=4.3
-qrcode[pil]>=7.4
-Pillow>=10.0
-mysqlclient>=2.2
-gunicorn>=21.2
-python-decouple>=3.8
-python-dateutil>=2.8
-drf-spectacular>=0.28
-django-filter>=24.0
-whitenoise>=6.7
-openpyxl>=3.1.0
+# requirements.txt
+# ──────────────────────────────────────────────────────────────────────────────
+# Packages verified in the dev venv are pinned to exact versions (==).
+# Packages not installed in dev (prod-only: anymail, openpyxl, ratelimit)
+# use a minimum floor (>=) — pin these once you have a prod pip freeze.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Django core ───────────────────────────────────────────────────────────────
+Django==4.2.30
+asgiref==3.11.1
+sqlparse==0.5.5
+
+# ── REST framework ────────────────────────────────────────────────────────────
+djangorestframework==3.17.1
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.13.0
+
+# ── API schema ────────────────────────────────────────────────────────────────
+drf-spectacular==0.30.0
+inflection==0.5.1
+uritemplate==4.2.0
+
+# ── Filtering / pagination ─────────────────────────────────────────────────────
+django-filter==25.1
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+django-cors-headers==4.9.0
+
+# ── QR codes ──────────────────────────────────────────────────────────────────
+qrcode==8.2
+Pillow==12.2.0
+
+# ── Database ──────────────────────────────────────────────────────────────────
+mysqlclient==2.2.8
+
+# ── WSGI server ───────────────────────────────────────────────────────────────
+gunicorn==26.0.0
+
+# ── Config / env ──────────────────────────────────────────────────────────────
+python-decouple==3.8
+
+# ── Date utilities ────────────────────────────────────────────────────────────
+python-dateutil==2.9.0.post0
+six==1.17.0
+
+# ── Static files ──────────────────────────────────────────────────────────────
+whitenoise==6.12.0
+
+# ── Timezone data ─────────────────────────────────────────────────────────────
+tzdata==2026.2
+
+# ── JSON schema (drf-spectacular dependency) ──────────────────────────────────
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==2026.6.3
+attrs==26.1.0
+PyYAML==6.0.3
+packaging==26.2
+
+# ── Prod-only: not installed in dev venv; pin after first prod pip freeze ─────
 django-anymail[resend]>=10.0
-django-ratelimit>=4.0.0
-sentry-sdk
+openpyxl>=3.1.0
+django-ratelimit>=4.1.0
+
+# ── Error tracking ────────────────────────────────────────────────────────────
+# IMPORTANT: sentry-sdk had no version at all before — adding a safe minimum.
+# Pin to exact version after prod pip freeze.
+sentry-sdk>=2.0.0,<3.0.0
+colorama==0.4.6

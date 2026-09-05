@@ -1,6 +1,6 @@
 {
-  "name": "AttendanceSaaS",
-  "short_name": "Attendance",
+  "name": "Quorum",
+  "short_name": "Quorum",
   "description": "Multi-tenant Attendance Management System with Offline Support",
   "start_url": "/",
   "display": "standalone",
