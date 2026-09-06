@@ -12,7 +12,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState("dashboard");
   const [selectedCourseId, setSelectedCourseId] = useState(null);
-  const [lightMode, setLightMode] = useState(() => localStorage.getItem("theme") === "light");
+  const [lightMode, setLightMode] = useState(() => localStorage.getItem("theme") !== "dark");
 
   useEffect(() => {
     if (lightMode) {

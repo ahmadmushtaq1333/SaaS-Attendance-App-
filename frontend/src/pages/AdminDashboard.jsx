@@ -248,7 +248,7 @@ function AdminChip({ user }) {
           borderRadius: 4, padding: "2px 7px", display: "inline-block", marginTop: 2,
           fontWeight: 700, letterSpacing: "0.4px", textTransform: "uppercase"
         }}>
-          {user.is_superuser ? "Superuser" : `Admin · ${user.institution_name || "Global"}`}
+          {user.is_superuser ? "System Administrator" : `Admin · ${user.institution_name || "Global"}`}
         </span>
       </div>
       <div style={{

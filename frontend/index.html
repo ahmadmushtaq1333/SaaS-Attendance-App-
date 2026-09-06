@@ -9,6 +9,12 @@
     <title>Quorum - Management System</title>
   </head>
   <body>
+    <script>
+      // Prevent flash of dark mode: apply theme class before React renders
+      if (localStorage.getItem("theme") !== "dark") {
+        document.documentElement.classList.add("light-mode");
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

@@ -600,7 +600,7 @@ export default function Dashboard({ user, onViewReports }) {
               return (
                 <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>Session #{s.id}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>Session {s.session_number ?? s.id}</div>
                     <div className="text-meta">{formatLocalDate(s.start_time)}</div>
                   </div>
                   <span className={`badge ${isPast ? "badge-defaulter" : "badge-good"}`}>{isPast ? "Ended" : "Active"}</span>

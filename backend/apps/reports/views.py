@@ -64,8 +64,8 @@ class CourseReportView(APIView):
         ).order_by("start_time")
         total_sessions = sessions.count()
         session_list = [
-            {"id": s.id, "start_time": s.start_time}
-            for s in sessions
+            {"id": s.id, "session_number": i + 1, "start_time": s.start_time}
+            for i, s in enumerate(sessions)
         ]
 
         # All enrollments for this course
@@ -207,9 +207,10 @@ class StudentCourseDetailView(APIView):
         )
 
         session_log = []
-        for s in sessions:
+        for i, s in enumerate(sessions):
             session_log.append({
                 "session_id": s.id,
+                "session_number": i + 1,
                 "date": s.start_time.strftime("%Y-%m-%d"),
                 "time": s.start_time.strftime("%H:%M"),
                 "present": s.id in attended_session_ids,

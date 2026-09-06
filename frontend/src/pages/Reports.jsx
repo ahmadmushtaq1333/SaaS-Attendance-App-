@@ -95,7 +95,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
     if (!report) return;
     let csv = "Student Email,";
     const sl = report.session_list || [];
-    sl.forEach(s => { csv += `Session ${s.id} (${formatLocalDate(s.start_time, false)}),`; });
+    sl.forEach(s => { csv += `Session ${s.session_number ?? s.id} (${formatLocalDate(s.start_time, false)}),`; });
     csv += "Total Attended,Attendance %,Status\n";
     report.students.forEach(student => {
       let row = `${student.email},`;
@@ -218,7 +218,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
                   >
                     {sessions.map(s => (
                       <option key={s.id} value={s.id}>
-                        Session #{s.id} · {formatLocalDate(s.start_time, false)}
+                        Session {s.session_number ?? s.id} · {formatLocalDate(s.start_time, false)}
                       </option>
                     ))}
                   </select>

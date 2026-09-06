@@ -437,7 +437,7 @@ export default function StudentDashboard({ user }) {
                     {s.present ? <CheckCircle2 size={16} color="var(--emerald)" /> : <XCircle size={16} color="var(--danger)" />}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, fontSize: 13 }}>Session #{s.session_id}</div>
+                    <div style={{ fontWeight: 500, fontSize: 13 }}>Session {s.session_number ?? s.session_id}</div>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
                       <Clock size={10} style={{ display: "inline", marginRight: 4 }} />{s.date} at {s.time}
                     </div>

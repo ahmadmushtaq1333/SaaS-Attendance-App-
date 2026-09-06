@@ -31,7 +31,11 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       onLoginSuccess(userRes.data);
     } catch (err) {
       const errorData = err.response?.data;
-      if (errorData?.email_unverified) {
+      if (errorData?.device_mismatch) {
+        setError(
+          "Your account is linked to a different device. Please ask your instructor to reset your device binding from the admin panel, or try logging in from your original device."
+        );
+      } else if (errorData?.email_unverified) {
         // Direct to activation OTP
         setViewState("verify");
       } else {
@@ -140,7 +144,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
                 className="form-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@institute.edu"
+                placeholder="you@example.com"
                 required
                 autoFocus
               />
@@ -201,7 +205,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
             fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--glass-inner)",
             paddingTop: 18, margin: 0,
           }}>
-            <Shield size={12} color="var(--emerald)" /> Encrypted OAuth2 / JWT Authentication
+            <Shield size={12} color="var(--emerald)" /> Secure &amp; Encrypted Connection
           </div>
 
         </div>
