@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Upload, FileSpreadsheet, Download, RefreshCw, CheckCircle2, AlertTriangle, Layers, Lock, ShieldCheck, PieChart, Users } from "lucide-react";
+import { Upload, FileSpreadsheet, Download, CheckCircle2, AlertTriangle, ShieldCheck, PieChart, Users } from "lucide-react";
 
-export default function ExcelImportPanel({ user, onImportComplete }) {
+export default function ExcelImportPanel({ user: _user, onImportComplete }) {
   const [file, setFile] = useState(null);
   const [headers, setHeaders] = useState([]);
   const [previewRows, setPreviewRows] = useState([]);
@@ -28,7 +28,7 @@ export default function ExcelImportPanel({ user, onImportComplete }) {
   // Settings
   const [passwordStrategy, setPasswordStrategy] = useState("auto"); // auto, reg_no, custom
   const [customPassword, setCustomPassword] = useState("");
-  const [autoCreateStructure, setAutoCreateStructure] = useState(false);
+  const [autoCreateStructure] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [courses, setCourses] = useState([]);
 

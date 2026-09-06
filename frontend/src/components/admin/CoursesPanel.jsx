@@ -95,6 +95,7 @@ export default function CoursesPanel({ user }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchCourses(); fetchInitialData(); }, []);
 
   // Creation cascades

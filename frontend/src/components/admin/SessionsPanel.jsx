@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import API from "../../services/api";
-import { RefreshCw, Trash2, Clock, AlertCircle, ArrowLeft, ArrowRight, Activity, History } from "lucide-react";
+import { RefreshCw, Trash2, AlertCircle, ArrowLeft, ArrowRight, Activity, History } from "lucide-react";
 import { formatLocalDate, parseUTCDate } from "../../utils/date";
-import AccordionSection from "../AccordionSection";
 
 
 function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
-  const [hover, setHover] = React.useState(false);
+  const [hover, setHover] = useState(false);
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -57,7 +56,7 @@ function DashboardActionCard({ icon: Icon, color, title, description, stats, onC
 }
 
 export default function SessionsPanel() {
-  const [activeView, setActiveView] = React.useState("grid");
+  const [activeView, setActiveView] = useState("grid");
   const [sessions, setSessions] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

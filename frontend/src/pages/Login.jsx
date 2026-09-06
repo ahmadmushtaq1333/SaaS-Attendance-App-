@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import API from "../services/api";
 import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon } from "lucide-react";
 import EmailVerification from "./EmailVerification";

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import API from "../services/api";
-import { ArrowLeft, ShieldCheck, Mail, Lock, Key, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Key, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function ForgotPassword({ onBackToLogin }) {
   const [step, setStep] = useState(1); // 1 = Request, 2 = Confirm

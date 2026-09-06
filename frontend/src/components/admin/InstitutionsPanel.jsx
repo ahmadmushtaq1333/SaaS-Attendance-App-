@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import API from "../../services/api";
 import { Plus, School, Edit, Trash, Check, X, ChevronDown, ChevronRight, BookOpen, Layers, Layout, AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
-import AccordionSection from "../AccordionSection";
 
 /* ── Inline editor ── */
 function InlineEdit({ value, onChange, onSave, onCancel, placeholder }) {
@@ -319,7 +318,7 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
 /* ── Main panel ── */
 
 function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
-  const [hover, setHover] = React.useState(false);
+  const [hover, setHover] = useState(false);
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -370,7 +369,7 @@ function DashboardActionCard({ icon: Icon, color, title, description, stats, onC
 }
 
 export default function InstitutionsPanel({ user }) {
-  const [activeView, setActiveView] = React.useState("grid");
+  const [activeView, setActiveView] = useState("grid");
   const [institutions, setInstitutions] = useState([]);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");

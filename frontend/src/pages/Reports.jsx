@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import API from "../services/api";
-import { ArrowLeft, RefreshCw, AlertTriangle, CheckCircle, XCircle, Download, Trash2, BarChart2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Download, Trash2, BarChart2 } from "lucide-react";
 import { formatLocalDate } from "../utils/date";
 
 export default function Reports({ courseId: initialCourseId, onBack }) {
@@ -15,6 +15,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
 
   useEffect(() => {
     fetchTeacherCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTeacherCourses = async () => {
@@ -24,7 +25,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
       if (!activeCourseId && res.data.length > 0) {
         setActiveCourseId(res.data[0].id);
       }
-    } catch (e) {
+    } catch {
       console.error("Failed to fetch courses list");
     }
   };
@@ -64,7 +65,9 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
     setSessionAttendance(list);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchReports(); }, [activeCourseId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSessionAttendance(); }, [selectedSessionId, report]);
 
   const toggleAttendance = async (studentId, currentStatus) => {

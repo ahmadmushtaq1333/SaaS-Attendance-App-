@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import InstitutionsPanel from "../components/admin/InstitutionsPanel";
 import UsersPanel from "../components/admin/UsersPanel";
 import CoursesPanel from "../components/admin/CoursesPanel";
@@ -361,8 +361,6 @@ export default function AdminDashboard({ user }) {
       description: "Active QR attendance sessions",
     },
   ];
-
-  const activeNav = navItems.find(n => n.id === activeTab);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>

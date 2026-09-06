@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import API from "../services/api";
 import {
-  Plus, RefreshCw, Eye, ShieldCheck, Clock, Zap, BookOpen,
+  RefreshCw, Eye, ShieldCheck, Clock, Zap, BookOpen,
   Maximize2, X, Users, AlertTriangle, Send, CheckCircle2, Play,
-  ArrowLeft, ArrowRight, Activity, History, BarChart2
+  ArrowLeft, ArrowRight, History
 } from "lucide-react";
 import { formatLocalDate, parseUTCDate } from "../utils/date";
 
@@ -114,6 +114,7 @@ export default function Dashboard({ user, onViewReports }) {
     fetchLiveReport();
     const interval = setInterval(fetchLiveReport, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession]);
 
   const fetchActiveSession = async () => {
@@ -214,6 +215,7 @@ export default function Dashboard({ user, onViewReports }) {
     if (timeLeft <= 0) { refreshQR(); return; }
     const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, activeSession]);
 
   useEffect(() => {

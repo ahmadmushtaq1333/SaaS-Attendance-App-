@@ -107,6 +107,10 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             "section__semester",
             "section__semester__department",
             "section__semester__department__institution"
+        ).prefetch_related(
+            "courses_taught",
+            "courses_taught__department",
+            "courses_taught__section"
         ).all()
         if not self.request.user.is_superuser:
             if self.request.user.institution:
@@ -131,6 +135,13 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         if role:
             queryset = queryset.filter(role=role)
 
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(email__icontains=search) |
+                Q(registration_number__icontains=search)
+            )
+
         is_email_verified = self.request.query_params.get("is_email_verified")
         if is_email_verified is not None:
             queryset = queryset.filter(is_email_verified=is_email_verified.lower() == "true")
@@ -139,7 +150,19 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == "true")
 
-        return queryset
+        return queryset.order_by("-date_joined", "-id")
+
+    def paginate_queryset(self, queryset):
+        if self.request.query_params.get("all") == "true":
+            return None
+        return super().paginate_queryset(queryset)
+
+    @action(detail=True, methods=["post"], url_path="reset-device")
+    def reset_device(self, request, pk=None):
+        user = self.get_object()
+        user.bound_device_id = None
+        user.save(update_fields=["bound_device_id"])
+        return Response({"message": f"Device binding reset successfully for {user.email}."})
 
     @action(detail=False, methods=["post"], url_path="bulk-generate")
     def bulk_generate(self, request):

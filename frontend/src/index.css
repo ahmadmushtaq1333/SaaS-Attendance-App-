@@ -1290,3 +1290,36 @@ details.acc-panel .acc-panel-body {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+/* ── Master-Detail Directory Layout ────────────────────────────────────────── */
+.directory-split-layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 38%) 1fr;
+  gap: 18px;
+  min-height: 560px;
+}
+
+.directory-list-pane {
+  background: var(--glass-a);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.directory-inspector-pane {
+  background: var(--glass-a);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .directory-split-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+}
+
+

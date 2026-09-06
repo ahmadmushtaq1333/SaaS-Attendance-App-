@@ -49,6 +49,9 @@ class UserAdminSerializer(serializers.ModelSerializer):
     computed_institution = serializers.SerializerMethodField()
     computed_department = serializers.SerializerMethodField()
     computed_semester = serializers.SerializerMethodField()
+    assigned_courses = serializers.SerializerMethodField()
+    enrolled_courses_count = serializers.SerializerMethodField()
+    has_bound_device = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -56,10 +59,11 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "id", "email", "role", "institution", "institution_name",
             "department", "department_name", "semester_number",
             "section", "section_name", "is_active", "date_joined", "password",
-            "registration_number", "is_email_verified",
+            "registration_number", "is_email_verified", "bound_device_id",
+            "has_bound_device", "assigned_courses", "enrolled_courses_count",
             "computed_institution", "computed_department", "computed_semester"
         )
-        read_only_fields = ("id", "date_joined")
+        read_only_fields = ("id", "date_joined", "has_bound_device", "assigned_courses", "enrolled_courses_count")
 
     def get_computed_institution(self, obj):
         inst = obj.get_institution
@@ -84,6 +88,27 @@ class UserAdminSerializer(serializers.ModelSerializer):
     def get_semester_number(self, obj):
         sem = obj.get_semester
         return sem.number if sem else None
+
+    def get_assigned_courses(self, obj):
+        if obj.role == "teacher":
+            return [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "department_name": c.department.name if c.department else None,
+                    "section_name": c.section.name if c.section else None,
+                }
+                for c in obj.courses_taught.all()
+            ]
+        return []
+
+    def get_enrolled_courses_count(self, obj):
+        if obj.role == "student":
+            return obj.enrollments.count()
+        return 0
+
+    def get_has_bound_device(self, obj):
+        return bool(obj.bound_device_id)
 
     def validate(self, attrs):
         role = attrs.get("role", getattr(self.instance, 'role', 'student'))

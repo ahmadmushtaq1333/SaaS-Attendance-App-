@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, UserPlus, ArrowLeft, ArrowRight, Edit, Trash, Check, X, ArrowUpDown, Filter, Download, AlertTriangle, Users, FileSpreadsheet } from "lucide-react";
-import AccordionSection from "../AccordionSection";
+import { Plus, UserPlus, ArrowLeft, ArrowRight, Check, Download, AlertTriangle, Users, FileSpreadsheet } from "lucide-react";
 import ExcelImportPanel from "./ExcelImportPanel";
+import UserDirectory from "./directory/UserDirectory";
 
 
 function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
@@ -61,6 +61,7 @@ export default function UsersPanel({ user }) {
   const [users, setUsers] = useState([]);
   const [institutions, setInstitutions] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [allDepartments, setAllDepartments] = useState([]);
 
   // Creation form
   const [email, setEmail] = useState("");
@@ -92,37 +93,10 @@ export default function UsersPanel({ user }) {
   const [bulkError, setBulkError] = useState("");
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState("");
 
-  // Filter & sort
-  const [universityFilter, setUniversityFilter] = useState("all");
-  const [filterDept, setFilterDept] = useState("all");
-  const [filterSem, setFilterSem] = useState("all");
-  const [filterSec, setFilterSec] = useState("all");
-  const [filterDepts, setFilterDepts] = useState([]);
-  const [filterSems, setFilterSems] = useState([]);
-  const [filterSecs, setFilterSecs] = useState([]);
-
-  const [sortField, setSortField] = useState("email");
-  const [sortDesc, setSortDesc] = useState(false);
-
-  // Edit
-  const [editingId, setEditingId] = useState(null);
-  const [editEmail, setEditEmail] = useState("");
-  const [editPassword, setEditPassword] = useState("");
-  const [editRegNum, setEditRegNum] = useState("");
-  const [editIsEmailVerified, setEditIsEmailVerified] = useState(false);
-  const [editRole, setEditRole] = useState("student");
-  const [editInst, setEditInst] = useState("");
-  const [editDept, setEditDept] = useState("");
-  const [editSem, setEditSem] = useState("");
-  const [editSec, setEditSec] = useState("");
-  const [editIsActive, setEditIsActive] = useState(true);
-  const [editDepts, setEditDepts] = useState([]);
-  const [editSems, setEditSems] = useState([]);
-  const [editSecs, setEditSecs] = useState([]);
-
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchUsers(); fetchInitialData(); }, []);
 
   // Creation cascades
@@ -159,46 +133,6 @@ export default function UsersPanel({ user }) {
     } else { setSections([]); setSelectedSec(""); }
   }, [selectedSem]);
 
-  // List filter cascades
-  useEffect(() => {
-    if (universityFilter !== "all" && universityFilter) {
-      API.get(`/admin/departments/?institution=${universityFilter}`).then(r => {
-        setFilterDepts(r.data.results || r.data);
-        setFilterDept("all");
-        setFilterSem("all");
-        setFilterSec("all");
-      });
-    } else { 
-      setFilterDepts([]); setFilterDept("all"); 
-      setFilterSems([]); setFilterSem("all");
-      setFilterSecs([]); setFilterSec("all");
-    }
-  }, [universityFilter]);
-
-  useEffect(() => {
-    if (filterDept !== "all" && filterDept) {
-      API.get(`/admin/semesters/?department=${filterDept}`).then(r => {
-        setFilterSems(r.data.results || r.data);
-        setFilterSem("all");
-        setFilterSec("all");
-      });
-    } else { 
-      setFilterSems([]); setFilterSem("all");
-      setFilterSecs([]); setFilterSec("all");
-    }
-  }, [filterDept]);
-
-  useEffect(() => {
-    if (filterSem !== "all" && filterSem) {
-      API.get(`/admin/sections/?semester=${filterSem}`).then(r => {
-        setFilterSecs(r.data.results || r.data);
-        setFilterSec("all");
-      });
-    } else { 
-      setFilterSecs([]); setFilterSec("all"); 
-    }
-  }, [filterSem]);
-
   // Bulk cascades
   useEffect(() => {
     if (bulkInst) {
@@ -233,11 +167,6 @@ export default function UsersPanel({ user }) {
     } else { setBulkSecs([]); setBulkSec(""); }
   }, [bulkSem]);
 
-  // Edit cascades
-  useEffect(() => { if (editInst) { API.get(`/admin/departments/?institution=${editInst}`).then(r => setEditDepts(r.data.results || r.data)); } else setEditDepts([]); }, [editInst]);
-  useEffect(() => { if (editDept) { API.get(`/admin/semesters/?department=${editDept}`).then(r => setEditSems(r.data.results || r.data)); } else setEditSems([]); }, [editDept]);
-  useEffect(() => { if (editSem) { API.get(`/admin/sections/?semester=${editSem}`).then(r => setEditSecs(r.data.results || r.data)); } else setEditSecs([]); }, [editSem]);
-
   const fetchInitialData = async () => {
     try {
       const ri = await API.get("/admin/institutions/");
@@ -250,13 +179,18 @@ export default function UsersPanel({ user }) {
         setSelectedInst(String(insts[0].id));
         setBulkInst(String(insts[0].id));
       }
-      const rc = await API.get("/admin/courses/"); setCourses(rc.data.results || rc.data);
+      const rc = await API.get("/admin/courses/");
+      setCourses(rc.data.results || rc.data);
+      const rd = await API.get("/admin/departments/");
+      setAllDepartments(rd.data.results || rd.data);
     } catch { setError("Failed to fetch administrative records"); }
   };
 
   const fetchUsers = async () => {
-    try { const r = await API.get("/admin/users/"); setUsers(r.data.results || r.data); }
-    catch { setError("Failed to fetch user accounts"); }
+    try {
+      const r = await API.get("/admin/users/?all=true");
+      setUsers(r.data.results || r.data);
+    } catch { setError("Failed to fetch user accounts"); }
   };
 
   const handleRegister = async (e) => {
@@ -302,111 +236,6 @@ export default function UsersPanel({ user }) {
     const link = document.createElement("a"); link.href = url; link.download = "generated_student_credentials.csv";
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Permanently delete this user account?")) return;
-    try { await API.delete(`/admin/users/${id}/`); fetchUsers(); }
-    catch { setError("Failed to delete user"); }
-  };
-
-  const handleSaveEdit = async (id) => {
-    setError(""); setLoading(true);
-    try {
-      const payload = {
-        email: editEmail, role: editRole,
-        registration_number: editRegNum.trim() || null,
-        is_email_verified: editIsEmailVerified,
-        institution: editInst ? parseInt(editInst) : null,
-        department: (editRole === "student" || editRole === "teacher") && editDept ? parseInt(editDept) : null,
-        section: editRole === "student" && editSec ? parseInt(editSec) : null,
-        is_active: editIsActive
-      };
-      if (editPassword.trim()) payload.password = editPassword.trim();
-      await API.put(`/admin/users/${id}/`, payload);
-      setEditingId(null); fetchUsers();
-    } catch (err) {
-      const data = err.response?.data;
-      let msg = "Failed to save user modifications";
-      if (data) {
-        if (typeof data === "string") msg = data;
-        else if (data.error) msg = data.error;
-        else if (data.detail) msg = data.detail;
-        else {
-          const keys = Object.keys(data);
-          if (keys.length > 0) {
-            msg = keys.map(k => `${k}: ${Array.isArray(data[k]) ? data[k].join(", ") : data[k]}`).join(" | ");
-          }
-        }
-      }
-      setError(msg);
-    } finally { setLoading(false); }
-  };
-
-  const filteredUsers = users.filter(u => {
-    const instId = u.institution || u.computed_institution;
-    const instMatch = universityFilter === "all" || String(instId) === String(universityFilter);
-    const deptId = u.department || u.computed_department;
-    const deptMatch = filterDept === "all" || String(deptId) === String(filterDept);
-    const semId = u.computed_semester;
-    const semMatch = filterSem === "all" || String(semId) === String(filterSem);
-    const secMatch = filterSec === "all" || String(u.section) === String(filterSec);
-    return instMatch && deptMatch && semMatch && secMatch;
-  });
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortDesc(!sortDesc);
-    } else {
-      setSortField(field);
-      setSortDesc(false);
-    }
-  };
-
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    if (sortField === "institution_name" || sortField === "dept_sem_sec") {
-      const instA = a.institution_name || "Global Admin";
-      const instB = b.institution_name || "Global Admin";
-      let cmp = instA.localeCompare(instB);
-      if (cmp === 0) {
-        const deptA = a.department_name || "";
-        const deptB = b.department_name || "";
-        cmp = deptA.localeCompare(deptB);
-        if (cmp === 0) {
-          const semA = String(a.semester_number ?? "");
-          const semB = String(b.semester_number ?? "");
-          cmp = semA.localeCompare(semB);
-          if (cmp === 0) {
-            const secA = a.section_name || "";
-            const secB = b.section_name || "";
-            cmp = secA.localeCompare(secB);
-          }
-        }
-      }
-      return sortDesc ? -cmp : cmp;
-    }
-
-    let valA = a[sortField];
-    let valB = b[sortField];
-    
-    let cmp = 0;
-    if (typeof valA === "string" && typeof valB === "string") cmp = valA.localeCompare(valB);
-    else if (typeof valA === "boolean" && typeof valB === "boolean") cmp = valA === valB ? 0 : valA ? -1 : 1;
-    else if (valA < valB) cmp = -1;
-    else if (valA > valB) cmp = 1;
-    
-    return sortDesc ? -cmp : cmp;
-  });
-
-  const SortIndicator = ({ field }) => {
-    if (sortField !== field) return null;
-    return <span style={{ marginLeft: 4 }}>{sortDesc ? "↓" : "↑"}</span>;
-  };
-
-  const roleBadge = (r) => {
-    if (r === "admin") return <span className="badge badge-purple">Admin</span>;
-    if (r === "teacher") return <span className="badge badge-info">Teacher</span>;
-    return <span className="badge badge-good">Student</span>;
-  };
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {activeView === "grid" && (
@@ -449,147 +278,15 @@ export default function UsersPanel({ user }) {
           </button>
         </div>
       )}
-
       {activeView === "directory" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Users size={20} color="var(--purple)" />
-            </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>User Directory</h2>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{sortedUsers.length} users matching filters</p>
-            </div>
-          </div>
-          
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 7 }}>
-              <Filter size={14} color="var(--text-muted)" />
-              <select className="form-input" value={universityFilter} onChange={e => setUniversityFilter(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                <option value="all">All Universities</option>
-                {institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-              </select>
-              {universityFilter !== "all" && (
-                <select className="form-input" value={filterDept} onChange={e => setFilterDept(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                  <option value="all">All Departments</option>
-                  {filterDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              )}
-              {filterDept !== "all" && (
-                <select className="form-input" value={filterSem} onChange={e => setFilterSem(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                  <option value="all">All Semesters</option>
-                  {filterSems.map(s => <option key={s.id} value={s.id}>Semester {s.number}</option>)}
-                </select>
-              )}
-              {filterSem !== "all" && (
-                <select className="form-input" value={filterSec} onChange={e => setFilterSec(e.target.value)} style={{ width: "auto", padding: "7px 20px 7px 12px" }}>
-                  <option value="all">All Sections</option>
-                  {filterSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              )}
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Click column headers to sort</div>
-          </div>
-
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th onClick={() => handleSort("email")} style={{ cursor: "pointer", userSelect: "none" }}>Email / Reg No <SortIndicator field="email" /></th>
-                  <th onClick={() => handleSort("role")} style={{ cursor: "pointer", userSelect: "none" }}>Role <SortIndicator field="role" /></th>
-                  <th onClick={() => handleSort("institution_name")} style={{ cursor: "pointer", userSelect: "none" }}>Institution <SortIndicator field="institution_name" /></th>
-                  <th onClick={() => handleSort("dept_sem_sec")} style={{ cursor: "pointer", userSelect: "none" }}>Dept / Sem / Sec <SortIndicator field="dept_sem_sec" /></th>
-                  <th onClick={() => handleSort("is_active")} style={{ cursor: "pointer", userSelect: "none" }}>Status <SortIndicator field="is_active" /></th>
-                  <th onClick={() => handleSort("is_email_verified")} style={{ cursor: "pointer", userSelect: "none" }}>Verification <SortIndicator field="is_email_verified" /></th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedUsers.map(u => (
-                  <tr key={u.id}>
-                    {editingId === u.id ? (
-                      <>
-                        <td>
-                          <input type="email" className="form-input" value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ padding: "6px 10px", marginBottom: 4 }} />
-                          <input type="text" className="form-input" value={editRegNum} onChange={e => setEditRegNum(e.target.value)} placeholder="Reg Number" style={{ padding: "5px 10px", fontSize: 12, marginBottom: 4 }} />
-                          <input type="password" className="form-input" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="New password (optional)" style={{ padding: "5px 10px", fontSize: 12 }} />
-                        </td>
-                        <td><select className="form-input" value={editRole} onChange={e => setEditRole(e.target.value)} style={{ padding: "6px 10px" }}><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Administrator</option></select></td>
-                        <td><select className="form-input" value={editInst} onChange={e => { setEditInst(e.target.value); setEditDept(""); setEditSem(""); setEditSec(""); }} style={{ padding: "6px 10px" }}><option value="">None (Global Admin)</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></td>
-                        <td>
-                          {editRole === "student" && <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                            <select className="form-input" value={editDept} onChange={e => { setEditDept(e.target.value); setEditSem(""); setEditSec(""); }} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
-                            <select className="form-input" value={editSem} onChange={e => { setEditSem(e.target.value); setEditSec(""); }} disabled={!editDept} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sem</option>{editSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select>
-                            <select className="form-input" value={editSec} onChange={e => setEditSec(e.target.value)} disabled={!editSem} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Sec</option>{editSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
-                          </div>}
-                          {editRole === "teacher" && <select className="form-input" value={editDept} onChange={e => setEditDept(e.target.value)} style={{ padding: "5px 10px", fontSize: 12 }}><option value="">Dept</option>{editDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select>}
-                          {editRole === "admin" && <span style={{ color: "var(--text-muted)" }}>—</span>}
-                        </td>
-                        <td><select className="form-input" value={editIsActive ? "active" : "disabled"} onChange={e => setEditIsActive(e.target.value === "active")} style={{ padding: "6px 10px" }}><option value="active">Active</option><option value="disabled">Disabled</option></select></td>
-                        <td><select className="form-input" value={editIsEmailVerified ? "verified" : "pending"} onChange={e => setEditIsEmailVerified(e.target.value === "verified")} style={{ padding: "6px 10px" }}><option value="verified">Verified</option><option value="pending">Pending OTP</option></select></td>
-                        <td><div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 120 }}>
-                          <button onClick={() => handleSaveEdit(u.id)} disabled={loading} className="btn-primary" style={{ padding: "6px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }} title="Confirm Changes">
-                            <Check size={13} /> {loading ? "Saving…" : "Confirm Changes"}
-                          </button>
-                          <button onClick={() => setEditingId(null)} disabled={loading} className="btn-secondary" style={{ padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }} title="Cancel">
-                            <X size={13} /> Cancel
-                          </button>
-                        </div></td>
-                      </>
-                    ) : (
-                      <>
-                        <td>
-                          <div style={{ fontWeight: 600 }}>{u.email}</div>
-                          {u.registration_number && (
-                            <div style={{ fontSize: 11, color: "var(--cyan)", marginTop: 2, fontFamily: "monospace" }}>
-                              Reg: {u.registration_number}
-                            </div>
-                          )}
-                        </td>
-                        <td>{roleBadge(u.role)}</td>
-                        <td style={{ fontSize: 13 }}>{u.institution_name || <span style={{ color: "var(--text-muted)" }}>Global Admin</span>}</td>
-                        <td>
-                          {u.role === "student" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}><div>Dept: {u.department_name || "—"}</div><div>Sem: {u.semester_number || "—"}</div><div>Sec: {u.section_name || "—"}</div></div>
-                           : u.role === "teacher" ? <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Dept: {u.department_name || "—"}</div>
-                           : <span style={{ color: "var(--text-muted)" }}>—</span>}
-                        </td>
-                        <td><span className={`badge ${u.is_active ? "badge-good" : "badge-defaulter"}`}>{u.is_active ? "Active" : "Disabled"}</span></td>
-                        <td>
-                          <span className={`badge ${u.is_email_verified ? "badge-good" : "badge-defaulter"}`}>
-                            {u.is_email_verified ? "Verified" : "Pending OTP"}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => {
-                              setEditingId(u.id);
-                              setEditEmail(u.email);
-                              setEditRole(u.role);
-                              const instId = u.institution || u.computed_institution || "";
-                              const deptId = u.department || u.computed_department || "";
-                              const semId = u.computed_semester || "";
-                              const secId = u.section || "";
-                              setEditInst(instId ? String(instId) : "");
-                              setEditDept(deptId ? String(deptId) : "");
-                              setEditSem(semId ? String(semId) : "");
-                              setEditSec(secId ? String(secId) : "");
-                              setEditIsActive(u.is_active);
-                              setEditPassword("");
-                              setEditRegNum(u.registration_number || "");
-                              setEditIsEmailVerified(u.is_email_verified);
-                            }} className="btn-secondary" style={{ padding: "6px 12px", fontSize: 13 }}><Edit size={12} /> Edit</button>
-                            <button onClick={() => handleDelete(u.id)} className="btn-danger" style={{ padding: "6px 12px", fontSize: 13 }}><Trash size={12} /> Delete</button>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-                {users.length === 0 && <tr><td colSpan="7" style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>No users found.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <UserDirectory
+          users={users}
+          institutions={institutions}
+          departments={allDepartments}
+          courses={courses}
+          onRefresh={fetchUsers}
+          onOpenOnboarding={() => setActiveView("onboarding")}
+        />
       )}
 
       {activeView === "onboarding" && (
