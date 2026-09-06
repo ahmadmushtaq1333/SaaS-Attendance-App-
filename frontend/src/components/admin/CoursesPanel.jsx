@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, BookOpen, UserCheck, Users, Edit, Trash, Check, X, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
-import AccordionSection from "../AccordionSection";
+import { Plus, BookOpen, UserCheck, Users, Edit, Trash, Check, X, ArrowLeft, ArrowRight } from "lucide-react";
 import MultiStudentAssignmentForm from "./MultiStudentAssignmentForm";
 
 

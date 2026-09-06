@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Reports from "./pages/Reports";
 import AdminDashboard from "./pages/AdminDashboard";
 import API from "./services/api";
-import { LogOut, Bell, Settings, Activity, BarChart2, Users, BookOpen, Clock, Home, Sun, Moon } from "lucide-react";
+import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon } from "lucide-react";
 
 export default function App() {
   const [user, setUser] = useState(null);

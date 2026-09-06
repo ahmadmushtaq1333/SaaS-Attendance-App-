@@ -1,11 +1,11 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import jsQR from "jsqr";
 import API from "../services/api";
 import { saveScanOffline, getPendingScansCount, syncOfflineScans } from "../services/offline";
 import {
   Camera, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle, Info, ScanLine,
-  BookOpen, ArrowLeft, ArrowRight, BarChart2, TrendingDown, Clock, CheckCircle2,
-  XCircle, Activity
+  ArrowLeft, ArrowRight, BarChart2, TrendingDown, Clock, CheckCircle2,
+  XCircle
 } from "lucide-react";
 
 /* ── Mini progress ring ── */
@@ -78,7 +78,6 @@ export default function StudentDashboard({ user }) {
   const isScanningRef = useRef(false);
 
   const [activeView, setActiveView] = useState("grid");
-  const [scanResult, setScanResult] = useState("");
   const [statusMsg, setStatusMsg] = useState({ text: "", type: "" });
   const [offlineCount, setOfflineCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -94,19 +93,6 @@ export default function StudentDashboard({ user }) {
   const firstName = user.email?.split("@")[0]?.split(".")[0];
   const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "Student";
 
-  useEffect(() => {
-    const handleOnline = () => { setIsOnline(true); triggerSync(); };
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-    getPendingScansCount().then(setOfflineCount);
-    fetchAttendanceSummary();
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
-
   const fetchAttendanceSummary = async () => {
     setCoursesLoading(true);
     try {
@@ -114,15 +100,6 @@ export default function StudentDashboard({ user }) {
       setCourses(res.data.courses || []);
     } catch { console.error("Failed to fetch attendance summary"); }
     finally { setCoursesLoading(false); }
-  };
-
-  const fetchCourseDetail = async (courseId) => {
-    setDetailLoading(true);
-    try {
-      const res = await API.get(`/reports/student/course/${courseId}/`);
-      setCourseDetail(res.data);
-    } catch { console.error("Failed to fetch course detail"); }
-    finally { setDetailLoading(false); }
   };
 
   const triggerSync = async () => {
@@ -136,6 +113,29 @@ export default function StudentDashboard({ user }) {
       } catch { setStatusMsg({ text: "Sync failed. Will retry later.", type: "error" }); }
     }
   };
+
+  useEffect(() => {
+    const handleOnline = () => { setIsOnline(true); triggerSync(); };
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    getPendingScansCount().then(setOfflineCount);
+    fetchAttendanceSummary();
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const fetchCourseDetail = async (courseId) => {
+    setDetailLoading(true);
+    try {
+      const res = await API.get(`/reports/student/course/${courseId}/`);
+      setCourseDetail(res.data);
+    } catch { console.error("Failed to fetch course detail"); }
+    finally { setDetailLoading(false); }
+  };
+
 
   const startScanning = async () => {
     try {
@@ -177,7 +177,6 @@ export default function StudentDashboard({ user }) {
   };
 
   const handleQRMark = async (tokenUuid) => {
-    setScanResult(tokenUuid);
     setStatusMsg({ text: "Processing attendance scan…", type: "info" });
     if (navigator.onLine) {
       try {

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import API from "../../services/api";
-import { UserCheck, Users, Search, CheckSquare, Square, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { UserCheck, Search, CheckSquare, Square, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function MultiStudentAssignmentForm({
   courses = [],
