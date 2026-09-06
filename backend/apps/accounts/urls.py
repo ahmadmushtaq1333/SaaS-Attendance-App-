@@ -10,7 +10,9 @@ from .views import (
     VerifyEmailView,
     RequestPasswordResetView,
     ConfirmPasswordResetView,
-    ResetDeviceBindingView
+    ResetDeviceBindingView,
+    RequestDeviceRebindView,
+    ConfirmDeviceRebindView,
 )
 
 urlpatterns = [
@@ -23,5 +25,7 @@ urlpatterns = [
     path("send-otp/", SendVerificationCodeView.as_view(), name="send_otp"),
     path("request-password-reset/", RequestPasswordResetView.as_view(), name="request_password_reset"),
     path("confirm-password-reset/", ConfirmPasswordResetView.as_view(), name="confirm_password_reset"),
+    path("request-device-rebind/", RequestDeviceRebindView.as_view(), name="request_device_rebind"),
+    path("confirm-device-rebind/", ConfirmDeviceRebindView.as_view(), name="confirm_device_rebind"),
     path("<int:user_id>/reset-device/", ResetDeviceBindingView.as_view(), name="reset_device_binding"),
 ]

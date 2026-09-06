@@ -81,6 +81,7 @@ class EmailVerificationCode(models.Model):
     PURPOSE_CHOICES = (
         ("verify", "Verification"),
         ("reset", "Password Reset"),
+        ("rebind", "Device Rebind"),
     )
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="verification_codes")
     code = models.CharField(max_length=6)
