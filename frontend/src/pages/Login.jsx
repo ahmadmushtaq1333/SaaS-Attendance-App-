@@ -1,5 +1,5 @@
 import { useState } from "react";
-import API from "../services/api";
+import API, { setAuthTokens } from "../services/api";
 import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon } from "lucide-react";
 import EmailVerification from "./EmailVerification";
 import ForgotPassword from "./ForgotPassword";
@@ -31,8 +31,11 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
 
     try {
       const device_id = getOrCreateDeviceId();
-      // Tokens are set as HTTPOnly cookies by the backend — no localStorage needed
-      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
+      // Support dual-auth: HTTPOnly cookies (Android/same-origin) & Bearer headers (iOS Safari ITP)
+      const loginRes = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
+      if (loginRes.data?.access) {
+        setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
+      }
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
@@ -44,6 +47,8 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       } else if (errorData?.email_unverified) {
         // Direct to activation OTP
         setViewState("verify");
+      } else if (!err.response) {
+        setError("Unable to connect to server. Please check your network connection.");
       } else {
         setError(errorData?.detail || "Invalid email or password credentials.");
       }
@@ -59,8 +64,10 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setLoading(true);
     try {
       const device_id = getOrCreateDeviceId();
-      // Tokens are set as HTTPOnly cookies by the backend
-      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
+      const loginRes = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
+      if (loginRes.data?.access) {
+        setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
+      }
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch {
@@ -78,7 +85,10 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setLoading(true);
     try {
       const device_id = getOrCreateDeviceId();
-      await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
+      const loginRes = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
+      if (loginRes.data?.access) {
+        setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
+      }
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch {
@@ -173,6 +183,9 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
                 required
                 autoFocus
               />
@@ -199,6 +212,9 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   style={{ paddingRight: 40 }}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   required
                 />
                 <button

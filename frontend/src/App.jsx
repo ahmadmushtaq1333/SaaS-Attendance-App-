@@ -4,7 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Scanner from "./pages/Scanner";
 import Reports from "./pages/Reports";
 import AdminDashboard from "./pages/AdminDashboard";
-import API from "./services/api";
+import API, { clearAuthTokens } from "./services/api";
 import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon } from "lucide-react";
 
 export default function App() {
@@ -40,6 +40,7 @@ export default function App() {
 
     // Listen for irrecoverable 401 from api.js token refresh failure
     const onLogout = () => {
+      clearAuthTokens();
       setUser(null);
       setLoading(false);
     };
@@ -53,6 +54,7 @@ export default function App() {
     } catch {
       // Ignore errors — still clear client state
     }
+    clearAuthTokens();
     setUser(null);
   };
 

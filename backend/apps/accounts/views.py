@@ -238,6 +238,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             is_secure = request.is_secure() or (not settings.DEBUG)
             samesite_policy = 'None' if is_secure else 'Lax'
             
+            # Still set cookies for same-origin / Android browsers
             if access_token:
                 response.set_cookie(
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
@@ -248,8 +249,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                     'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
                     httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
-            response.data['access'] = "set-in-cookie"
-            response.data['refresh'] = "set-in-cookie"
+            # Retain tokens in response.data for clients with cross-site cookie restrictions (iOS Safari ITP)
+            response.data['access'] = access_token
+            response.data['refresh'] = refresh_token
         return response
 
 
@@ -271,7 +273,7 @@ class CookieTokenRefreshView(TokenRefreshView):
                     'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
                     httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
-            response.data['access'] = "set-in-cookie"
+            response.data['access'] = access_token
             
             new_refresh_token = response.data.get('refresh')
             if new_refresh_token:
@@ -279,7 +281,7 @@ class CookieTokenRefreshView(TokenRefreshView):
                     'refresh_token', new_refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
                     httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
-                response.data['refresh'] = "set-in-cookie"
+                response.data['refresh'] = new_refresh_token
         return response
 
 
