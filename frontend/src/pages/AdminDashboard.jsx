@@ -394,7 +394,7 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* ── KPI CARDS WITH MINI CHARTS ──────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+      <div className="admin-kpi-grid">
         <KpiCard
           icon={Users}
           iconColor="var(--emerald)"
@@ -438,28 +438,12 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* ── SIDEBAR + CONTENT LAYOUT ─────────────────────── */}
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start", marginTop: 8 }}>
+      <div className="admin-layout">
 
         {/* ── LEFT VERTICAL SIDEBAR ───────────────────── */}
-        <div style={{
-          width: 240,
-          minWidth: 240,
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-          background: "var(--glass-a)",
-          border: "1px solid var(--glass-border)",
-          borderRadius: 16,
-          padding: 12,
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          position: "sticky",
-          top: 80,
-          boxShadow: "0 12px 32px rgba(0,0,0,0.05)"
-        }}>
+        <div className="admin-sidebar">
           {/* Sidebar header */}
-          <div style={{
+          <div className="admin-sidebar-header" style={{
             padding: "8px 14px 12px",
             borderBottom: "1px solid rgba(255,255,255,0.06)",
             marginBottom: 4,
@@ -470,17 +454,19 @@ export default function AdminDashboard({ user }) {
             </div>
           </div>
 
-          {navItems.map(item => (
-            <SideNavItem
-              key={item.id}
-              {...item}
-              active={activeTab === item.id}
-              onClick={setActiveTab}
-            />
-          ))}
+          <div className="admin-nav-list">
+            {navItems.map(item => (
+              <SideNavItem
+                key={item.id}
+                {...item}
+                active={activeTab === item.id}
+                onClick={setActiveTab}
+              />
+            ))}
+          </div>
 
           {/* Sidebar footer — quick stats */}
-          <div style={{
+          <div className="admin-sidebar-stats" style={{
             marginTop: 8,
             borderTop: "1px solid rgba(255,255,255,0.06)",
             paddingTop: 12,
@@ -506,7 +492,7 @@ export default function AdminDashboard({ user }) {
         </div>
 
         {/* ── PANEL CONTENT ───────────────────────────── */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="admin-content">
           <div key={activeTab}>
             {activeTab === "institutions" && <InstitutionsPanel user={user} />}
             {activeTab === "users"        && <UsersPanel user={user} />}

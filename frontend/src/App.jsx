@@ -139,10 +139,10 @@ export default function App() {
             <button className="nav-icon-btn" onClick={() => setLightMode(!lightMode)} title={lightMode ? "Dark Mode" : "Light Mode"} aria-label="Theme toggle">
               {lightMode ? <Moon size={15} /> : <Sun size={15} />}
             </button>
-            <button className="nav-icon-btn" title="Notifications" aria-label="Notifications" onClick={() => alert("Notifications: No new alerts.")}>
+            <button className="nav-icon-btn desktop-only" title="Notifications" aria-label="Notifications" onClick={() => alert("Notifications: No new alerts.")}>
               <Bell size={15} />
             </button>
-            <button className="nav-icon-btn" title="Settings" aria-label="Settings" onClick={() => alert("Settings panel coming soon.")}>
+            <button className="nav-icon-btn desktop-only" title="Settings" aria-label="Settings" onClick={() => alert("Settings panel coming soon.")}>
               <Settings size={15} />
             </button>
             <div
@@ -153,16 +153,32 @@ export default function App() {
               {getInitials(user.email)}
             </div>
             <button
-              className="btn-danger"
+              className="btn-danger btn-logout"
               onClick={handleLogout}
-              style={{ padding: "8px 14px", fontSize: 13 }}
+              style={{ padding: "8px 12px", fontSize: 13 }}
               title="Logout"
             >
               <LogOut size={14} />
-              Logout
+              <span className="btn-logout-text">Logout</span>
             </button>
           </div>
         </nav>
+
+        {/* Mobile Navigation Bar (visible only on screens <= 768px when navLinks > 1) */}
+        {navLinks.length > 1 && (
+          <div className="mobile-nav-bar">
+            {navLinks.map(link => (
+              <button
+                key={link.id}
+                className={`mobile-nav-link ${currentView === link.id ? "active" : ""}`}
+                onClick={() => setCurrentView(link.id)}
+              >
+                {link.icon}
+                <span>{link.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Page content with ultra-high 90+ FPS GPU acceleration */}
         <main className="page-main page-enter" key={currentView} role="main">

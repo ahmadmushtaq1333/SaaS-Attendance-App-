@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, BookOpen, UserCheck, Edit, Trash, Check, X, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { Plus, BookOpen, UserCheck, Users, Edit, Trash, Check, X, ArrowUpDown, ArrowLeft, ArrowRight } from "lucide-react";
 import AccordionSection from "../AccordionSection";
+import MultiStudentAssignmentForm from "./MultiStudentAssignmentForm";
 
 
 function DashboardActionCard({ icon: Icon, color, title, description, stats, onClick, buttonText }) {
@@ -73,9 +74,10 @@ export default function CoursesPanel({ user }) {
   const [selectedSec, setSelectedSec] = useState("");
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
 
-  // Manual enroll
+  // Student assignment
   const [enrollCourse, setEnrollCourse] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [assignmentMode, setAssignmentMode] = useState("single"); // "single" | "multi"
 
   // Edit
   const [editingId, setEditingId] = useState(null);
@@ -287,7 +289,7 @@ export default function CoursesPanel({ user }) {
             icon={UserCheck} 
             color="var(--emerald)" 
             title="Course Tools" 
-            description="Create new courses and manage manual student enrollments."
+            description="Create new courses and manage student course assignments."
             buttonText="Open Tools"
             onClick={() => setActiveView("tools")}
           />
@@ -458,34 +460,89 @@ export default function CoursesPanel({ user }) {
             </form>
           </div>
 
-          {/* MANUAL ENROLLMENT */}
+          {/* STUDENT COURSE ASSIGNMENT */}
           <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <UserCheck size={20} color="var(--cyan)" />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <UserCheck size={20} color="var(--cyan)" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Student Course Assignment</h2>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Assign students to existing courses individually or in batches</p>
+                </div>
               </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Manual Student Enrollment</h2>
-                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Add students to existing courses</p>
+
+              {/* Mode Toggle Pills */}
+              <div style={{ display: "flex", background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: 3, border: "1px solid var(--glass-border)", gap: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => setAssignmentMode("single")}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: "none",
+                    cursor: "pointer",
+                    background: assignmentMode === "single" ? "var(--cyan)" : "transparent",
+                    color: assignmentMode === "single" ? "#FFFFFF" : "var(--text-secondary)",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <UserCheck size={13} /> Single Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignmentMode("multi")}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: "none",
+                    cursor: "pointer",
+                    background: assignmentMode === "multi" ? "var(--cyan)" : "transparent",
+                    color: assignmentMode === "multi" ? "#FFFFFF" : "var(--text-secondary)",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Users size={13} /> Multi-Student Assignment
+                </button>
               </div>
             </div>
-            
-            <form onSubmit={handleManualEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label>Target Course</label>
-                  <select className="form-input" value={enrollCourse} onChange={e => setEnrollCourse(e.target.value)}>
-                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+
+            {assignmentMode === "single" ? (
+              <form onSubmit={handleManualEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div className="responsive-grid-2">
+                  <div><label>Target Course</label>
+                    <select className="form-input" value={enrollCourse} onChange={e => setEnrollCourse(e.target.value)}>
+                      {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div><label>Select Student</label>
+                    <select className="form-input" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} required>
+                      <option value="">-- Select Student --</option>
+                      {students.map(s => <option key={s.id} value={s.id}>{s.email}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <div><label>Select Student</label>
-                  <select className="form-input" value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} required>
-                    <option value="">-- Select Student --</option>
-                    {students.map(s => <option key={s.id} value={s.id}>{s.email}</option>)}
-                  </select>
-                </div>
-              </div>
-              <button type="submit" className="btn-primary" style={{ justifyContent: "center", marginTop: 4 }} disabled={loading}><UserCheck size={15} /> Enroll Student</button>
-            </form>
+                <button type="submit" className="btn-primary" style={{ justifyContent: "center", marginTop: 4 }} disabled={loading}><UserCheck size={15} /> Assign Student</button>
+              </form>
+            ) : (
+              <MultiStudentAssignmentForm
+                courses={courses}
+                students={students}
+                onAssignmentComplete={fetchCourses}
+                initialCourseId={enrollCourse}
+              />
+            )}
           </div>
         </div>
       )}
