@@ -188,8 +188,8 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       
       {/* ── Drag & Drop / File Input ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div className="glass-c" style={{ padding: 24, borderRadius: 12, border: "2px dashed rgba(255,255,255,0.15)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+      <div className="onboarding-tools-grid">
+        <div className="glass-c panel-pad" style={{ borderRadius: 12, border: "2px dashed rgba(255,255,255,0.15)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
           <Upload size={32} color="var(--cyan)" />
           <div>
             <p style={{ fontWeight: 600, fontSize: 14 }}>Upload Student/Teacher Roster</p>
@@ -207,7 +207,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
           </label>
         </div>
 
-        <div className="glass-c" style={{ padding: 20, borderRadius: 12, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div className="glass-c panel-pad" style={{ borderRadius: 12, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
             <h4 style={{ margin: "0 0 6px 0", fontSize: 14, color: "var(--text-primary)" }}>Import instructions & guidelines</h4>
             <ul style={{ paddingLeft: 16, margin: 0, fontSize: 12, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -227,7 +227,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
 
       {/* ── Mapping and configuration options ── */}
       {file && headers.length > 0 && !importResult && (
-        <div className="glass-b" style={{ padding: 20, borderRadius: 12, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="glass-b panel-pad" style={{ borderRadius: 12, display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 10 }}>
             <FileSpreadsheet size={16} color="var(--emerald)" />
             <span style={{ fontWeight: 600, fontSize: 14 }}>Roster Parsing: <code style={{ color: "var(--cyan)" }}>{file.name}</code> ({totalRows} rows)</span>
@@ -250,7 +250,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
           {/* Visual Mapper & Global Config */}
           <div>
             <h4 style={{ margin: "0 0 10px 0", fontSize: 13, color: "var(--text-secondary)" }}>1. Map Spreadsheet Columns</h4>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+            <div className="form-grid-2" style={{ gap: 10, marginBottom: 20 }}>
               <div>
                 <label style={{ fontSize: 11 }}>Email Address Column (Required)</label>
                 <select className="form-input" value={emailMap} onChange={(e) => setEmailMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
@@ -268,7 +268,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
             </div>
 
             <h4 style={{ margin: "0 0 10px 0", fontSize: 13, color: "var(--text-secondary)" }}>2. Batch Assignment — Apply to All Users</h4>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+            <div className="form-grid-2" style={{ gap: 10, background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
               <div>
                 <label style={{ fontSize: 11 }}>Role</label>
                 <select className="form-input" value={globalRole} onChange={(e) => setGlobalRole(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
@@ -308,7 +308,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
           </div>
 
           {/* 3. Additional Options (compact) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
+          <div className="form-grid-2" style={{ gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
             <div>
               <label style={{ fontSize: 11 }}>Password Strategy</label>
               <select className="form-input" value={passwordStrategy} onChange={(e) => setPasswordStrategy(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
@@ -330,7 +330,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
           </div>
 
           {/* Action button */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4, flexWrap: "wrap" }}>
             <button className="btn-primary" onClick={() => runVerification(false)} disabled={loading || validating || !emailMap} style={{ padding: "11px 28px", fontSize: 14, gap: 8 }}>
               <Upload size={16} /> {loading ? "Importing..." : "Upload & Import Roster"}
             </button>
@@ -340,11 +340,11 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
 
       {/* ── Dry Run Validation Alerts Dashboard ── */}
       {validationResult && !importResult && (
-        <div className="glass-b" style={{ padding: 20, borderRadius: 12, border: "1px solid rgba(129,140,248,0.2)" }}>
+        <div className="glass-b panel-pad" style={{ borderRadius: 12, border: "1px solid rgba(129,140,248,0.2)" }}>
           <h4 style={{ margin: "0 0 12px 0", display: "flex", alignItems: "center", gap: 8, color: "var(--cyan)" }}>
             <ShieldCheck size={18} /> Dry-Run Verification Summary
           </h4>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+          <div className="form-grid-2" style={{ gap: 12, marginBottom: 16 }}>
             <div style={{ padding: 12, background: "rgba(79,142,247,0.06)", borderRadius: 8, border: "1px solid rgba(79,142,247,0.2)" }}>
               <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Ready to Import:</span>
               <p style={{ fontSize: 24, fontWeight: 700, color: "var(--emerald)", margin: "4px 0 0" }}>{validationResult.success_count} accounts</p>
@@ -372,8 +372,8 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
 
       {/* ── Post-Import Analytics Dashboard ── */}
       {importResult && (
-        <div className="glass-b" style={{ padding: 24, borderRadius: 12, border: "1px solid rgba(79,142,247,0.25)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div className="glass-b panel-pad" style={{ borderRadius: 12, border: "1px solid rgba(79,142,247,0.25)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
             <h3 style={{ margin: 0, color: "var(--emerald)", display: "flex", alignItems: "center", gap: 8 }}>
               <CheckCircle2 size={20} /> Roster Import Successful!
             </h3>
@@ -383,7 +383,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
           </div>
 
           {/* Statistics summary */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
+          <div className="form-grid-3" style={{ gap: 14, marginBottom: 20 }}>
             <div style={{ padding: 16, background: "rgba(255,255,255,0.03)", borderRadius: 10 }}>
               <Users size={16} color="var(--cyan)" style={{ marginBottom: 6 }} />
               <span className="text-meta">Total Uploaded</span>

@@ -273,7 +273,7 @@ export default function CoursesPanel({ user }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {activeView === "grid" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <DashboardActionCard 
             icon={BookOpen} 
             color="var(--purple)" 
@@ -309,7 +309,7 @@ export default function CoursesPanel({ user }) {
       )}
 
       {activeView === "directory" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BookOpen size={20} color="var(--purple)" />
@@ -406,7 +406,7 @@ export default function CoursesPanel({ user }) {
       {activeView === "tools" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* CREATE COURSE */}
-          <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+          <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Plus size={20} color="var(--emerald)" />
@@ -418,7 +418,7 @@ export default function CoursesPanel({ user }) {
             </div>
             
             <form onSubmit={handleCreateCourse} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="form-grid-2">
                 <div><label>Course Title</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder="CS101 - Programming" required /></div>
                 <div><label>Institution</label>
                   <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)} disabled={!user?.is_superuser}>
@@ -430,7 +430,7 @@ export default function CoursesPanel({ user }) {
                   </select>
                 </div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, background: "rgba(255,255,255,0.04)", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div className="form-grid-3" style={{ background: "rgba(255,255,255,0.04)", padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
                 <div><label>Dept</label>
                   <select className="form-input" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} required>
                     <option value="">Select</option>
@@ -461,7 +461,7 @@ export default function CoursesPanel({ user }) {
           </div>
 
           {/* STUDENT COURSE ASSIGNMENT */}
-          <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+          <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -474,7 +474,7 @@ export default function CoursesPanel({ user }) {
               </div>
 
               {/* Mode Toggle Pills */}
-              <div style={{ display: "flex", background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: 3, border: "1px solid var(--glass-border)", gap: 2 }}>
+              <div style={{ display: "flex", background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: 3, border: "1px solid var(--glass-border)", gap: 2, flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => setAssignmentMode("single")}
@@ -520,7 +520,7 @@ export default function CoursesPanel({ user }) {
 
             {assignmentMode === "single" ? (
               <form onSubmit={handleManualEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div className="responsive-grid-2">
+                <div className="form-grid-2">
                   <div><label>Target Course</label>
                     <select className="form-input" value={enrollCourse} onChange={e => setEnrollCourse(e.target.value)}>
                       {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}

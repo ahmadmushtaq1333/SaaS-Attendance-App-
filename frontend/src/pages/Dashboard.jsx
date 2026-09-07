@@ -257,14 +257,14 @@ export default function Dashboard({ user, onViewReports }) {
   const sessionSparkData = recentSessions.map((s, i) => i + 1);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* ── Welcome Hero Header ── */}
-      <div className="glass-a" style={{ padding: "28px 32px", position: "relative", overflow: "hidden" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+      <div className="glass-a panel-pad" style={{ position: "relative", overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
           <div>
-            <h1 style={{ fontSize: 28, marginBottom: 6 }}>Hello, {displayName} 👋</h1>
-            <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+            <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hello, {displayName} 👋</h1>
+            <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: 13 }}>
               {activeSession ? "Live attendance session is currently active." : "No active session — pick a course and start one below."}
             </p>
           </div>
@@ -274,36 +274,36 @@ export default function Dashboard({ user, onViewReports }) {
         </div>
 
         {/* KPI Cards with sparklines */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginTop: 24 }}>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Courses Assigned</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginTop: 18 }}>
+          <div className="glass-c" style={{ padding: "12px 14px" }}>
+            <p className="text-meta" style={{ fontSize: 11 }}>Courses Assigned</p>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "var(--emerald)" }}>{courses.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "var(--emerald)" }}>{courses.length}</div>
               <Sparkline values={courseSparkData.length ? courseSparkData : [1]} color="var(--emerald)" />
             </div>
           </div>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Session Status</p>
+          <div className="glass-c" style={{ padding: "12px 14px" }}>
+            <p className="text-meta" style={{ fontSize: 11 }}>Session Status</p>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <div className={`pulse-dot ${activeSession ? "" : "amber"}`} />
-              <span style={{ fontSize: 14, fontWeight: 600, color: activeSession ? "var(--emerald)" : "var(--warning)" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: activeSession ? "var(--emerald)" : "var(--warning)" }}>
                 {activeSession ? `Active (${formatTime(sessionTimeLeft)})` : "Idle"}
               </span>
             </div>
           </div>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Recent Sessions</p>
+          <div className="glass-c" style={{ padding: "12px 14px" }}>
+            <p className="text-meta" style={{ fontSize: 11 }}>Recent Sessions</p>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: "var(--cyan)" }}>{recentSessions.length}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: "var(--cyan)" }}>{recentSessions.length}</div>
               <Sparkline values={sessionSparkData.length ? sessionSparkData : [1]} color="var(--cyan)" />
             </div>
           </div>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Attendance Alerts</p>
+          <div className="glass-c" style={{ padding: "12px 14px" }}>
+            <p className="text-meta" style={{ fontSize: 11 }}>Attendance Alerts</p>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <div className="pulse-dot amber" />
-              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--warning)" }}>
-                View details in panel
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--warning)" }}>
+                View details
               </span>
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function Dashboard({ user, onViewReports }) {
       )}
 
       {activeView === "grid" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <DashboardActionCard
             icon={Zap} color="var(--emerald)" title="Live Session"
             description="Present QR code, monitor real-time attendance, override manually."
@@ -365,13 +365,13 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* ── Live Session Panel ── */}
       {activeView === "live" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Zap size={22} color="var(--emerald)" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Live Attendance Presentation</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Live Attendance Presentation</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
                 {activeSession ? `Session active — ${formatTime(sessionTimeLeft)} remaining` : "No session running. Start one from My Courses."}
               </p>
@@ -385,21 +385,21 @@ export default function Dashboard({ user, onViewReports }) {
 
           {activeSession ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-              <div style={{ display: "flex", gap: 24, padding: "10px 24px", background: "rgba(79,142,247,0.08)", border: "1px solid rgba(79,142,247,0.2)", borderRadius: 12, width: "100%", maxWidth: 420, justifyContent: "space-around" }}>
+              <div style={{ display: "flex", gap: 16, padding: "10px 16px", background: "rgba(79,142,247,0.08)", border: "1px solid rgba(79,142,247,0.2)", borderRadius: 12, width: "100%", maxWidth: 420, justifyContent: "space-around", flexWrap: "wrap" }}>
                 <div style={{ textAlign: "center" }}>
                   <div className="text-meta">Present / Total</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--emerald)" }}>{presentCount} / {totalEnrolled}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "var(--emerald)" }}>{presentCount} / {totalEnrolled}</div>
                 </div>
                 <div style={{ height: 36, width: 1, background: "rgba(255,255,255,0.1)" }} />
                 <div style={{ textAlign: "center" }}>
                   <div className="text-meta">Attendance Rate</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--cyan)" }}>{attendancePercentage}%</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "var(--cyan)" }}>{attendancePercentage}%</div>
                 </div>
               </div>
 
               <div style={{ position: "relative", cursor: "pointer" }} onClick={() => setIsZoomed(true)} title="Click to zoom QR code">
                 <div className="qr-ring" style={{ position: "relative" }}>
-                  <img src={qrCode} alt="Attendance QR Code" style={{ width: 210, height: 210, display: "block" }} />
+                  <img src={qrCode} alt="Attendance QR Code" style={{ width: "min(210px, 70vw)", height: "auto", display: "block" }} />
                   <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(0,0,0,0.75)", color: "white", padding: 6, borderRadius: 8, display: "flex", alignItems: "center" }}>
                     <Maximize2 size={14} />
                   </div>
@@ -414,12 +414,12 @@ export default function Dashboard({ user, onViewReports }) {
                   <RefreshCw size={13} className={timeLeft <= 3 ? "animate-spin" : ""} />
                   Anti-Cheat Rotation in {timeLeft}s
                 </div>
-                <div className="progress-bar" style={{ marginTop: 8, width: 220 }}>
+                <div className="progress-bar" style={{ marginTop: 8, width: "min(220px, 70vw)" }}>
                   <div className={`progress-fill ${timeLeft <= 3 ? "danger" : ""}`} style={{ width: `${progressPct}%` }} />
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
                 <button onClick={refreshQR} className="btn-secondary" style={{ gap: 6 }}><RefreshCw size={14} /> Force Rotate</button>
                 <button onClick={stopSession} className="btn-danger" style={{ gap: 6 }}>End Session</button>
               </div>
@@ -434,7 +434,7 @@ export default function Dashboard({ user, onViewReports }) {
                     {sessionReport.students.map(s => {
                       const isPresent = s.sessions && s.sessions[activeSession.id] === true;
                       return (
-                        <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap", gap: 8 }}>
                           <span style={{ fontSize: 13, fontWeight: 500 }}>{s.email}</span>
                           <button onClick={() => toggleStudentAttendance(s.id, isPresent)} className={isPresent ? "btn-secondary" : "btn-primary"} style={{ padding: "4px 10px", fontSize: 12 }}>
                             {isPresent ? "Mark Absent" : "Mark Present"}
@@ -463,25 +463,25 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* ── My Courses Panel ── */}
       {activeView === "courses" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BookOpen size={22} color="var(--purple)" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>My Courses</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>My Courses</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{courses.length} courses assigned</p>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20, padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="chip-scroll-row" style={{ alignItems: "center", gap: 8, marginBottom: 20, padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
             <Clock size={14} color="var(--emerald)" />
             <span className="text-meta" style={{ fontWeight: 600 }}>Session Length:</span>
             <input type="number" min="1" max="480" className="form-input" value={durationMinutes}
               onChange={(e) => setDurationMinutes(Math.max(1, parseInt(e.target.value) || 1))}
-              style={{ width: 72, padding: "6px 10px", textAlign: "center", fontWeight: 700 }} />
-            <span className="text-meta" style={{ fontSize: 13 }}>Minutes</span>
-            <div style={{ display: "flex", gap: 4 }}>
+              style={{ width: 68, padding: "6px 8px", textAlign: "center", fontWeight: 700 }} />
+            <span className="text-meta" style={{ fontSize: 13 }}>Min</span>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {[15, 30, 60, 90, 120].map(mins => (
                 <button key={mins} type="button" onClick={() => setDurationMinutes(mins)}
                   className={durationMinutes === mins ? "btn-primary" : "btn-secondary"}
@@ -494,10 +494,10 @@ export default function Dashboard({ user, onViewReports }) {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {courses.map((course, i) => (
-              <div key={course.id} className="glass-c" style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div key={course.id} className="glass-c" style={{ padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: "1 1 200px" }}>
                   <div style={{
-                    width: 38, height: 38, borderRadius: 10,
+                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
                     background: `linear-gradient(135deg, ${["rgba(79,142,247,0.2)", "rgba(129,140,248,0.2)", "rgba(167,139,250,0.2)"][i % 3]}, transparent)`,
                     border: `1px solid ${["rgba(79,142,247,0.3)", "rgba(129,140,248,0.3)", "rgba(167,139,250,0.3)"][i % 3]}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -505,12 +505,12 @@ export default function Dashboard({ user, onViewReports }) {
                   }}>
                     {course.name?.charAt(0)?.toUpperCase() || "C"}
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>{course.name}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, wordBreak: "break-word" }}>{course.name}</div>
                     <div className="text-meta">{course.institution}{course.department ? ` · ${course.department}` : ""}</div>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button onClick={() => onViewReports(course.id)} className="btn-secondary" style={{ padding: "7px 14px", fontSize: 13 }}>
                     <Eye size={13} /> Reports
                   </button>
@@ -527,14 +527,14 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* ── Attendance Alerts Panel ── */}
       {activeView === "alerts" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(248,113,113,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <AlertTriangle size={22} color="var(--danger)" />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Students At Risk</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Students At Risk</h2>
                 <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Students below 75% attendance threshold</p>
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function Dashboard({ user, onViewReports }) {
                 value={selectedAlertCourseId} 
                 onChange={(e) => setSelectedAlertCourseId(e.target.value)}
                 className="form-input" 
-                style={{ width: "auto", minWidth: 200, padding: "8px 12px" }}
+                style={{ width: "auto", minWidth: 160, maxWidth: "100%", padding: "8px 12px" }}
               >
                 {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -584,13 +584,13 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* ── Session History Panel ── */}
       {activeView === "history" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(129,140,248,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <History size={22} color="var(--cyan)" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Session History</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Session History</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Recent attendance sessions</p>
             </div>
           </div>
@@ -598,7 +598,7 @@ export default function Dashboard({ user, onViewReports }) {
             {recentSessions.map(s => {
               const isPast = parseUTCDate(s.expiry_time) < new Date();
               return (
-                <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap", gap: 8 }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Session {s.session_number ?? s.id}</div>
                     <div className="text-meta">{formatLocalDate(s.start_time)}</div>
@@ -614,16 +614,16 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* Fullscreen QR Modal */}
       {isZoomed && activeSession && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <button onClick={() => setIsZoomed(false)} className="btn-secondary" style={{ position: "absolute", top: 24, right: 24, padding: "10px 14px", gap: 6 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <button onClick={() => setIsZoomed(false)} className="btn-secondary" style={{ position: "absolute", top: 16, right: 16, padding: "8px 12px", gap: 6 }}>
             <X size={18} /> Close
           </button>
-          <div style={{ background: "white", padding: 24, borderRadius: 24, boxShadow: "0 0 50px rgba(79,142,247,0.4)" }}>
-            <img src={qrCode} alt="Zoomed QR Code" style={{ width: 380, height: 380, display: "block" }} />
+          <div style={{ background: "white", padding: 16, borderRadius: 20, boxShadow: "0 0 50px rgba(79,142,247,0.4)", maxWidth: "90vw" }}>
+            <img src={qrCode} alt="Zoomed QR Code" style={{ width: "min(340px, 75vw)", height: "auto", display: "block" }} />
           </div>
-          <div style={{ marginTop: 20, color: "white", textAlign: "center" }}>
-            <h3 style={{ margin: "0 0 6px 0", fontSize: 22 }}>Scan Attendance Code</h3>
-            <p style={{ margin: 0, opacity: 0.75 }}>Code auto-rotates every 10 seconds to eliminate proxy attendance.</p>
+          <div style={{ marginTop: 16, color: "white", textAlign: "center", padding: "0 10px" }}>
+            <h3 style={{ margin: "0 0 4px 0", fontSize: 18 }}>Scan Attendance Code</h3>
+            <p style={{ margin: 0, opacity: 0.75, fontSize: 13 }}>Code auto-rotates every 10 seconds to eliminate proxy attendance.</p>
           </div>
         </div>
       )}

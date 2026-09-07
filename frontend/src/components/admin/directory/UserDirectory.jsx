@@ -113,9 +113,9 @@ export default function UserDirectory({
   };
 
   return (
-    <div style={{
+    <div className="panel-pad" style={{
       background: "var(--glass-b)", border: "1px solid var(--glass-border)",
-      borderRadius: 16, padding: "20px 22px", backdropFilter: "blur(12px)",
+      borderRadius: 16, backdropFilter: "blur(12px)",
       display: "flex", flexDirection: "column", gap: 16
     }}>
       {/* Top Header Bar */}

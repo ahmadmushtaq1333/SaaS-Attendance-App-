@@ -76,7 +76,7 @@ function SemesterBlock({ semester, onDeleteSemester, onEditSemester }) {
 
   return (
     <div style={{ marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(255,255,255,0.05)", cursor: "pointer" }}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "rgba(255,255,255,0.05)", cursor: "pointer", flexWrap: "wrap", gap: 8 }}
         onClick={() => !editing && setOpen(!open)}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {open ? <ChevronDown size={14} color="var(--emerald)" /> : <ChevronRight size={14} color="var(--emerald)" />}
@@ -98,7 +98,7 @@ function SemesterBlock({ semester, onDeleteSemester, onEditSemester }) {
           {sections.length === 0 && !addingSection && <p style={{ color: "var(--text-muted)", fontSize: 12, margin: "0 0 6px 0" }}>No sections yet.</p>}
           {sections.map(sec => <SectionRow key={sec.id} section={sec} onDelete={deleteSection} onEdit={editSection} />)}
           {addingSection ? (
-            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+            <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
               <input className="form-input" value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addSection()} placeholder="e.g. Section A" style={{ padding: "6px 10px", fontSize: 13 }} autoFocus />
               <button onClick={addSection} className="btn-primary" style={{ padding: "5px 10px", fontSize: 13 }}>Add</button>
@@ -146,7 +146,7 @@ function DepartmentBlock({ dept, onDeleteDept, onEditDept }) {
 
   return (
     <div style={{ marginBottom: 10, border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.06)", cursor: "pointer" }}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255,255,255,0.06)", cursor: "pointer", flexWrap: "wrap", gap: 8 }}
         onClick={() => !editing && setOpen(!open)}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {open ? <ChevronDown size={15} color="var(--cyan)" /> : <ChevronRight size={15} color="var(--cyan)" />}
@@ -246,7 +246,7 @@ function InstitutionBlock({ inst, onDelete, onEdit }) {
         </div>
       )}
       {/* Institution header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", background: "rgba(255,255,255,0.07)", cursor: "pointer" }}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", background: "rgba(255,255,255,0.07)", cursor: "pointer", flexWrap: "wrap", gap: 10 }}
         onClick={() => !editing && setOpen(!open)}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {open ? <ChevronDown size={17} color="var(--emerald)" /> : <ChevronRight size={17} color="var(--emerald)" />}
@@ -413,7 +413,7 @@ export default function InstitutionsPanel({ user }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {activeView === "grid" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <DashboardActionCard 
             icon={Layout} 
             color="var(--purple)" 
@@ -451,7 +451,7 @@ export default function InstitutionsPanel({ user }) {
       )}
 
       {isSuper && activeView === "create" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <School size={20} color="var(--emerald)" />
@@ -470,7 +470,7 @@ export default function InstitutionsPanel({ user }) {
                   onChange={(e) => { setName(e.target.value); setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
                   placeholder="e.g. COMSATS University" required />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="form-grid-2">
                 <div>
                   <label>Slug Identifier <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(auto-gen)</span></label>
                   <input type="text" className="form-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g. comsats" required />
@@ -489,7 +489,7 @@ export default function InstitutionsPanel({ user }) {
       )}
 
       {activeView === "hierarchy" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Layout size={20} color="var(--purple)" />

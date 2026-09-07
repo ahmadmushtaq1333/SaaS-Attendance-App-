@@ -239,7 +239,7 @@ export default function UsersPanel({ user }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {activeView === "grid" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <DashboardActionCard 
             icon={Users} 
             color="var(--purple)" 
@@ -292,7 +292,7 @@ export default function UsersPanel({ user }) {
       {activeView === "onboarding" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* REGISTER NEW USER */}
-          <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+          <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <UserPlus size={20} color="var(--emerald)" />
@@ -304,12 +304,12 @@ export default function UsersPanel({ user }) {
             </div>
             
             <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div className="form-grid-3">
                 <div><label>Email</label><input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@mit.edu" required /></div>
                 <div><label>Registration Number</label><input type="text" className="form-input" value={registrationNumber} onChange={e => setRegistrationNumber(e.target.value)} placeholder="e.g. CS-2026-105" /></div>
                 <div><label>Password</label><input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} placeholder="password123" required /></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="form-grid-2">
                 <div><label>Role</label>
                   <select className="form-input" value={role} onChange={e => setRole(e.target.value)}>
                     <option value="student">Student</option>
@@ -337,7 +337,7 @@ export default function UsersPanel({ user }) {
                   {selectedInst && departments.length === 0 && (
                     <div className="alert alert-warning" style={{ marginBottom: 10 }}><AlertTriangle size={14} />No departments yet. Set up hierarchy first.</div>
                   )}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  <div className="form-grid-3">
                     <div><label>Dept</label>
                       <select className="form-input" value={selectedDept} onChange={e => setSelectedDept(e.target.value)} disabled={!departments.length}>
                         <option value="">Select</option>
@@ -373,9 +373,9 @@ export default function UsersPanel({ user }) {
             </form>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="onboarding-tools-grid">
             {/* BULK GENERATE */}
-            <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+            <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(129,140,248,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Plus size={20} color="var(--cyan)" />
@@ -390,15 +390,15 @@ export default function UsersPanel({ user }) {
               {bulkError && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{bulkError}</div>}
               
               <form onSubmit={handleBulkGenerate} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="form-grid-2">
                   <div><label>Inst</label><select className="form-input" value={bulkInst} onChange={e => setBulkInst(e.target.value)}><option value="">--</option>{institutions.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></div>
                   <div><label>Dept</label><select className="form-input" value={bulkDept} onChange={e => setBulkDept(e.target.value)} disabled={!bulkInst}><option value="">--</option>{bulkDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="form-grid-2">
                   <div><label>Sem</label><select className="form-input" value={bulkSem} onChange={e => setBulkSem(e.target.value)} disabled={!bulkDept}><option value="">--</option>{bulkSems.map(s => <option key={s.id} value={s.id}>{s.number}</option>)}</select></div>
                   <div><label>Sec</label><select className="form-input" value={bulkSec} onChange={e => setBulkSec(e.target.value)} disabled={!bulkSem}><option value="">--</option>{bulkSecs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="form-grid-2">
                   <div><label>Prefix</label><input type="text" className="form-input" value={bulkPrefix} onChange={e => setBulkPrefix(e.target.value)} placeholder="std_" required /></div>
                   <div><label>Count</label><input type="number" className="form-input" min="1" max="100" value={bulkCount} onChange={e => setBulkCount(e.target.value)} required /></div>
                 </div>
@@ -435,7 +435,7 @@ export default function UsersPanel({ user }) {
             </div>
 
             {/* BATCH IMPORT EXCEL */}
-            <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "20px 24px", backdropFilter: "blur(12px)" }}>
+            <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <FileSpreadsheet size={20} color="var(--emerald)" />

@@ -117,7 +117,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -126,14 +126,14 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
             <ArrowLeft size={15} /> Back
           </button>
           <div>
-            <h1 style={{ margin: 0, fontSize: 24 }}>
+            <h1 style={{ margin: 0, fontSize: 22 }}>
               {report ? report.course_name : "Course Reports"}
             </h1>
             <p className="text-meta" style={{ marginTop: 2 }}>Attendance analytics &amp; management</p>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {courses.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <label htmlFor="course-select" className="text-meta" style={{ whiteSpace: "nowrap" }}>Course:</label>
@@ -142,7 +142,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
                 className="form-input"
                 value={activeCourseId}
                 onChange={(e) => setActiveCourseId(parseInt(e.target.value))}
-                style={{ width: "auto", padding: "7px 32px 7px 12px" }}
+                style={{ width: "auto", minWidth: 140, maxWidth: "100%", padding: "7px 32px 7px 12px" }}
               >
                 {courses.map(c => (
                   <option key={c.id} value={c.id}>
@@ -168,20 +168,20 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
       ) : (
         <>
           {/* KPI Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
             {[
               { label: "Sessions Held",    value: report?.total_sessions || 0,            color: "var(--cyan)",    glow: "rgba(129,140,248,0.2)" },
               { label: "Students Enrolled", value: report?.students?.length || 0,           color: "var(--emerald)", glow: "rgba(79,142,247,0.2)" },
               { label: "At-Risk (<75%)",   value: report?.defaulters_list?.length || 0,    color: "var(--danger)",  glow: "rgba(248,113,113,0.18)" },
             ].map(kpi => (
               <div key={kpi.label} className="glass-b" style={{
-                padding: "20px 22px",
+                padding: "16px 18px",
                 borderTop: `2px solid ${kpi.color}`,
                 position: "relative", overflow: "hidden",
               }}>
                 <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, background: `radial-gradient(circle, ${kpi.glow}, transparent 70%)`, borderRadius: "50%" }} />
-                <p className="text-meta" style={{ margin: "0 0 8px 0" }}>{kpi.label}</p>
-                <div style={{ fontSize: 36, fontWeight: 800, color: kpi.color, letterSpacing: -1 }}>{kpi.value}</div>
+                <p className="text-meta" style={{ margin: "0 0 6px 0", fontSize: 11 }}>{kpi.label}</p>
+                <div style={{ fontSize: 28, fontWeight: 800, color: kpi.color, letterSpacing: -1 }}>{kpi.value}</div>
               </div>
             ))}
           </div>
@@ -201,20 +201,20 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
 
           {/* Session Override Panel */}
           {sessions.length > 0 && (
-            <div className="glass-b" style={{ padding: 24 }}>
+            <div className="glass-b panel-pad">
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 18 }}>
-                <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 16 }}>
                   <BarChart2 size={17} color="var(--purple)" />
                   Session Override Panel
                 </h3>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <label htmlFor="session-select" className="text-meta" style={{ whiteSpace: "nowrap" }}>Session:</label>
                   <select
                     id="session-select"
                     className="form-input"
                     value={selectedSessionId}
                     onChange={(e) => setSelectedSessionId(parseInt(e.target.value))}
-                    style={{ width: "auto", padding: "7px 32px 7px 12px" }}
+                    style={{ width: "auto", minWidth: 140, maxWidth: "100%", padding: "7px 32px 7px 12px" }}
                   >
                     {sessions.map(s => (
                       <option key={s.id} value={s.id}>

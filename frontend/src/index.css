@@ -1057,14 +1057,14 @@ h4 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     padding: 8px 10px;
   }
   .page-main {
-    padding: 16px 10px 84px;
+    padding: 16px 12px calc(84px + env(safe-area-inset-bottom, 0px));
   }
   .mobile-nav-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 60px;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
     background: rgba(6, 11, 24, 0.94);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -1073,7 +1073,7 @@ h4 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
     align-items: center;
     justify-content: space-around;
     z-index: 1000;
-    padding: 0 12px;
+    padding: 0 12px env(safe-area-inset-bottom, 0px);
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
   }
   .mobile-nav-link {
@@ -1109,9 +1109,16 @@ h4 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 
 @media (max-width: 520px) {
   .admin-kpi-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
   }
   .admin-nav-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .admin-kpi-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1322,4 +1329,84 @@ details.acc-panel .acc-panel-body {
   }
 }
 
+/* ── Mobile Responsive Utilities ─────────────────────────────── */
 
+/* Responsive panel padding: 28px desktop → 16px mobile → 12px small */
+.panel-pad {
+  padding: 24px 28px;
+}
+@media (max-width: 768px) {
+  .panel-pad { padding: 16px; }
+}
+@media (max-width: 480px) {
+  .panel-pad { padding: 12px; }
+}
+
+/* Responsive 2-col grid that stacks on mobile */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .form-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Responsive 3-col grid that stacks on mobile */
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 700px) {
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .form-grid-3 { grid-template-columns: 1fr; }
+}
+
+/* Duration chip pill row — wraps on tablet, scrolls on phone */
+.chip-scroll-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+@media (max-width: 480px) {
+  .chip-scroll-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .chip-scroll-row::-webkit-scrollbar { display: none; }
+}
+
+/* Side-by-side onboarding tools (Bulk Generator + Excel Import) */
+.onboarding-tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .onboarding-tools-grid { grid-template-columns: 1fr; }
+}
+
+/* Mobile-safe area bottom nav */
+@media (max-width: 768px) {
+  .mobile-nav-bar {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Hide on mobile */
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+}
+
+/* Show only on mobile */
+.show-mobile { display: none; }
+@media (max-width: 768px) {
+  .show-mobile { display: block; }
+}

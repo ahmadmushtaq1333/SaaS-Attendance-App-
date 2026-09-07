@@ -226,9 +226,9 @@ function AdminChip({ user }) {
     <div style={{
       display: "flex", alignItems: "center", gap: 12,
       background: "var(--glass-b)", border: "1px solid var(--glass-border)",
-      borderRadius: 14, padding: "10px 14px",
+      borderRadius: 14, padding: "8px 12px",
       backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-      flexShrink: 0
+      flexShrink: 1, maxWidth: "100%", flexWrap: "wrap"
     }}>
       <div style={{
         width: 38, height: 38, borderRadius: 11,

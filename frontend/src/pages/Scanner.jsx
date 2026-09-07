@@ -72,12 +72,12 @@ function DashboardActionCard({ icon: Icon, color, title, description, stats, onC
   );
 }
 
-export default function StudentDashboard({ user }) {
+export default function StudentDashboard({ user, initialView = "grid" }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const isScanningRef = useRef(false);
 
-  const [activeView, setActiveView] = useState("grid");
+  const [activeView, setActiveView] = useState(initialView);
   const [statusMsg, setStatusMsg] = useState({ text: "", type: "" });
   const [offlineCount, setOfflineCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -207,14 +207,14 @@ export default function StudentDashboard({ user }) {
   const atRiskCount = courses.filter(c => c.is_at_risk).length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* ── Welcome Hero ── */}
-      <div className="glass-a" style={{ padding: "28px 32px", position: "relative", overflow: "hidden" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+      <div className="glass-a panel-pad" style={{ position: "relative", overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
           <div>
-            <h1 style={{ fontSize: 28, marginBottom: 6 }}>Hello, {displayName} 👋</h1>
-            <p style={{ color: "var(--text-secondary)", margin: 0 }}>Here's your attendance overview for all enrolled courses.</p>
+            <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hello, {displayName} 👋</h1>
+            <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: 13 }}>Here's your attendance overview for all enrolled courses.</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span className={`badge ${isOnline ? "badge-good" : "badge-defaulter"}`} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -226,25 +226,25 @@ export default function StudentDashboard({ user }) {
         </div>
 
         {/* KPI row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginTop: 24 }}>
-          <div className="glass-c" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <ProgressRing pct={overallPct} color={overallPct >= 75 ? "var(--emerald)" : "var(--danger)"} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginTop: 18 }}>
+          <div className="glass-c" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <ProgressRing pct={overallPct} size={46} color={overallPct >= 75 ? "var(--emerald)" : "var(--danger)"} />
             <div>
-              <p className="text-meta" style={{ margin: 0 }}>Overall Attendance</p>
-              <div style={{ fontSize: 22, fontWeight: 700, color: overallPct >= 75 ? "var(--emerald)" : "var(--danger)" }}>{overallPct}%</div>
+              <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>Overall</p>
+              <div style={{ fontSize: 20, fontWeight: 700, color: overallPct >= 75 ? "var(--emerald)" : "var(--danger)" }}>{overallPct}%</div>
             </div>
           </div>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Enrolled Courses</p>
-            <div style={{ fontSize: 26, fontWeight: 700, color: "var(--cyan)", marginTop: 4 }}>{courses.length}</div>
+          <div className="glass-c" style={{ padding: "12px 16px" }}>
+            <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>Enrolled</p>
+            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--cyan)", marginTop: 2 }}>{courses.length}</div>
           </div>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Courses At Risk</p>
-            <div style={{ fontSize: 26, fontWeight: 700, color: atRiskCount > 0 ? "var(--danger)" : "var(--emerald)", marginTop: 4 }}>{atRiskCount}</div>
+          <div className="glass-c" style={{ padding: "12px 16px" }}>
+            <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>At Risk</p>
+            <div style={{ fontSize: 22, fontWeight: 700, color: atRiskCount > 0 ? "var(--danger)" : "var(--emerald)", marginTop: 2 }}>{atRiskCount}</div>
           </div>
-          <div className="glass-c" style={{ padding: "14px 18px" }}>
-            <p className="text-meta">Offline Queue</p>
-            <div style={{ fontSize: 26, fontWeight: 700, color: offlineCount > 0 ? "var(--warning)" : "var(--text-muted)", marginTop: 4 }}>{offlineCount}</div>
+          <div className="glass-c" style={{ padding: "12px 16px" }}>
+            <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>Offline Queue</p>
+            <div style={{ fontSize: 22, fontWeight: 700, color: offlineCount > 0 ? "var(--warning)" : "var(--text-muted)", marginTop: 2 }}>{offlineCount}</div>
           </div>
         </div>
       </div>
@@ -261,7 +261,7 @@ export default function StudentDashboard({ user }) {
 
       {/* ── Action Card Grid ── */}
       {activeView === "grid" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <DashboardActionCard
             icon={ScanLine} color="var(--emerald)" title="Scan QR Code"
             description="Open camera to mark your attendance for an active session."
@@ -284,13 +284,13 @@ export default function StudentDashboard({ user }) {
 
       {/* ── QR Scanner Panel ── */}
       {activeView === "scanner" && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)", maxWidth: 560, margin: "0 auto", width: "100%" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)", maxWidth: 560, margin: "0 auto", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ScanLine size={22} color="var(--emerald)" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>QR Attendance Scanner</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>QR Attendance Scanner</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Point your camera at the instructor's QR code</p>
             </div>
           </div>
@@ -341,13 +341,13 @@ export default function StudentDashboard({ user }) {
 
       {/* ── My Attendance Summary ── */}
       {activeView === "attendance" && !selectedCourse && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BarChart2 size={22} color="var(--purple)" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>My Attendance</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>My Attendance</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Click any course to view session-by-session history</p>
             </div>
           </div>
@@ -364,27 +364,27 @@ export default function StudentDashboard({ user }) {
                 return (
                   <div key={course.course_id}
                     onClick={() => { setSelectedCourse(course); setActiveView("detail"); fetchCourseDetail(course.course_id); }}
-                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: `1px solid ${course.is_at_risk ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer", transition: "all 0.2s ease" }}
+                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 12, border: `1px solid ${course.is_at_risk ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer", transition: "all 0.2s ease", flexWrap: "wrap" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
                     onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
                   >
-                    <ProgressRing pct={pct} size={52} color={color} />
-                    <div style={{ flex: 1 }}>
+                    <ProgressRing pct={pct} size={48} color={color} />
+                    <div style={{ flex: "1 1 180px", minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15 }}>{course.course_name}</div>
                       <div className="text-meta">{course.institution_name || "—"}</div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                         {course.attended_count} / {course.total_sessions} sessions attended
                       </div>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 22, fontWeight: 700, color }}>{pct}%</div>
+                    <div style={{ textAlign: "right", marginLeft: "auto" }}>
+                      <div style={{ fontSize: 20, fontWeight: 700, color }}>{pct}%</div>
                       {course.is_at_risk && (
                         <div style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--danger)", fontSize: 11, marginTop: 2 }}>
                           <TrendingDown size={11} /> At Risk
                         </div>
                       )}
                     </div>
-                    <ArrowRight size={16} color="var(--text-muted)" />
+                    <ArrowRight size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
                   </div>
                 );
               })}
@@ -395,16 +395,16 @@ export default function StudentDashboard({ user }) {
 
       {/* ── Course Session Detail ── */}
       {activeView === "detail" && selectedCourse && (
-        <div style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, padding: "24px 28px", backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-            <ProgressRing pct={selectedCourse.attendance_percentage} size={52}
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
+            <ProgressRing pct={selectedCourse.attendance_percentage} size={48}
               color={selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)"} />
-            <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>{selectedCourse.course_name}</h2>
+            <div style={{ minWidth: 0, flex: "1 1 180px" }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{selectedCourse.course_name}</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{selectedCourse.institution_name}</p>
             </div>
             <div style={{ marginLeft: "auto", textAlign: "right" }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)" }}>
+              <div style={{ fontSize: 24, fontWeight: 700, color: selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)" }}>
                 {selectedCourse.attendance_percentage}%
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>

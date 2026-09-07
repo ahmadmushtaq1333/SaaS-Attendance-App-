@@ -5,7 +5,7 @@ import Scanner from "./pages/Scanner";
 import Reports from "./pages/Reports";
 import AdminDashboard from "./pages/AdminDashboard";
 import API, { clearAuthTokens } from "./services/api";
-import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon } from "lucide-react";
+import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon, ScanLine } from "lucide-react";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -71,7 +71,8 @@ export default function App() {
     { id: "admin", label: "Dashboard", icon: <Home size={14} /> },
   ];
   const studentLinks = [
-    { id: "scanner", label: "Scanner", icon: <Activity size={14} /> },
+    { id: "scanner", label: "Scan QR", icon: <ScanLine size={14} /> },
+    { id: "attendance", label: "My Attendance", icon: <BarChart2 size={14} /> },
   ];
 
   const navLinks =
@@ -185,7 +186,13 @@ export default function App() {
         {/* Page content with ultra-high 90+ FPS GPU acceleration */}
         <main className="page-main page-enter" key={currentView} role="main">
           {(user.role === "admin" || user.is_staff) && <AdminDashboard user={user} />}
-          {user.role === "student" && <Scanner user={user} />}
+          {user.role === "student" && (
+            <Scanner
+              key={currentView}
+              user={user}
+              initialView={currentView === "attendance" ? "attendance" : "scanner"}
+            />
+          )}
           {user.role === "teacher" && (
             <>
               {currentView === "dashboard" && (
