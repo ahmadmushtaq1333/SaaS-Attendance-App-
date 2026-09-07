@@ -3,7 +3,6 @@ import API, { setAuthTokens } from "../services/api";
 import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon } from "lucide-react";
 import EmailVerification from "./EmailVerification";
 import ForgotPassword from "./ForgotPassword";
-import DeviceRebind from "./DeviceRebind";
 
 const getOrCreateDeviceId = () => {
   let deviceId = localStorage.getItem("device_id");
@@ -17,7 +16,7 @@ const getOrCreateDeviceId = () => {
 };
 
 export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
-  const [viewState, setViewState] = useState("login"); // login, verify, forgot_password, device_rebind
+  const [viewState, setViewState] = useState("login"); // login, verify, forgot_password
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +40,10 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData?.device_mismatch) {
-        // Dispatch rebind OTP to user's email and switch to self-service rebind screen
-        API.post("/auth/request-device-rebind/", { email: email.trim().toLowerCase() }).catch(() => {});
-        setViewState("device_rebind");
+        setError(
+          errorData?.detail ||
+          "This account is linked to another device. Please contact your administrator to reset your device binding."
+        );
       } else if (errorData?.email_unverified) {
         // Direct to activation OTP
         setViewState("verify");
@@ -78,27 +78,6 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     }
   };
 
-  const handleRebindSuccess = async () => {
-    // Attempt automatic login after device rebind since user already provided password
-    setViewState("login");
-    setError("");
-    setLoading(true);
-    try {
-      const device_id = getOrCreateDeviceId();
-      const loginRes = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password, device_id });
-      if (loginRes.data?.access) {
-        setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
-      }
-      const userRes = await API.get("/auth/me/");
-      onLoginSuccess(userRes.data);
-    } catch {
-      setError("Device linked successfully! Please enter your password to sign in.");
-    } finally {
-      setLoading(false);
-      setPassword("");
-    }
-  };
-
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
@@ -119,15 +98,6 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
           email={email} 
           onVerificationSuccess={handleVerificationSuccess} 
           onCancel={() => setViewState("login")} 
-        />
-      )}
-
-      {viewState === "device_rebind" && (
-        <DeviceRebind
-          email={email}
-          deviceId={getOrCreateDeviceId()}
-          onRebindSuccess={handleRebindSuccess}
-          onCancel={() => setViewState("login")}
         />
       )}
 

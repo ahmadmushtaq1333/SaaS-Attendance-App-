@@ -81,9 +81,15 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(res2.data["already_enrolled_count"], 2)
         self.assertEqual(Enrollment.objects.filter(course=course).count(), 2)
 
-    def test_device_mismatch_and_rebind_flow(self):
-        from apps.accounts.models import EmailVerificationCode
-        # 1. Initial login binds device 1
+    def test_device_mismatch_and_admin_only_reset_flow(self):
+        admin = User.objects.create_superuser(
+            email="superadmin@mit.edu",
+            password="adminpassword",
+            role="admin",
+            institution=self.institution
+        )
+
+        # 1. Initial login binds device-alpha
         res1 = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
             "password": "password123",
@@ -102,37 +108,27 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(res2.status_code, 400)
         self.assertTrue(res2.data.get("device_mismatch"))
 
-        # 3. Request rebind OTP
-        res3 = self.client.post("/api/auth/request-device-rebind/", {
-            "email": "student@mit.edu"
-        })
-        self.assertEqual(res3.status_code, 200)
-        otp_record = EmailVerificationCode.objects.get(user=self.student, purpose="rebind")
-        self.assertIsNotNone(otp_record)
+        # 3. Non-admin (teacher) cannot unbind device
+        self.client.force_authenticate(user=self.teacher)
+        res3 = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
+        self.assertEqual(res3.status_code, 403)
 
-        # 4. Confirm rebind with wrong code fails
-        res4 = self.client.post("/api/auth/confirm-device-rebind/", {
-            "email": "student@mit.edu",
-            "code": "999999",
-            "device_id": "device-beta"
-        })
-        self.assertEqual(res4.status_code, 400)
+        # 4. Admin successfully unbinds device
+        self.client.force_authenticate(user=admin)
+        res4 = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
+        self.assertEqual(res4.status_code, 200)
+        self.student.refresh_from_db()
+        self.assertIsNone(self.student.bound_device_id)
 
-        # 5. Confirm rebind with correct code succeeds and rebinds
-        res5 = self.client.post("/api/auth/confirm-device-rebind/", {
+        # 5. Now student can bind device-beta on next login
+        self.client.force_authenticate(user=None)
+        res5 = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
-            "code": otp_record.code,
+            "password": "password123",
             "device_id": "device-beta"
         })
         self.assertEqual(res5.status_code, 200)
         self.student.refresh_from_db()
         self.assertEqual(self.student.bound_device_id, "device-beta")
 
-        # 6. Now login from device-beta succeeds
-        res6 = self.client.post("/api/auth/login/", {
-            "email": "student@mit.edu",
-            "password": "password123",
-            "device_id": "device-beta"
-        })
-        self.assertEqual(res6.status_code, 200)
 

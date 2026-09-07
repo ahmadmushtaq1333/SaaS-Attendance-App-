@@ -37,7 +37,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 # Device mismatch - possible proxy attendance attempt
                 raise serializers.ValidationError({
                     "device_mismatch": True,
-                    "detail": "This account is registered to another device. Please use your original device or contact your teacher to reset your device binding."
+                    "detail": "This account is registered to another device. Please use your original device or contact your administrator to reset your device binding."
                 })
                 
         return data

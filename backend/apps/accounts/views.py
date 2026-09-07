@@ -114,9 +114,6 @@ def get_otp_html_template(code, purpose="verify"):
     if purpose == "verify":
         title = "Activate Your Account"
         instructions = "Thank you for joining Quorum! Please use the 6-digit verification code below to verify your email address and activate your account."
-    elif purpose == "rebind":
-        title = "Authorize New Device"
-        instructions = "A sign-in attempt was made from a new or unrecognized device. Use the 6-digit security code below to verify your identity and link this device to your account."
     else:
         title = "Reset Your Password"
         instructions = "We received a request to reset your password. Use the 6-digit security code below to complete the verification step."
@@ -202,12 +199,7 @@ def generate_and_send_otp(user, purpose="verify"):
         expires_at=expires_at
     )
     
-    if purpose == "verify":
-        subject = "Quorum Activation Code"
-    elif purpose == "rebind":
-        subject = "Quorum Device Authorization Code"
-    else:
-        subject = "Quorum Password Reset Code"
+    subject = "Quorum Activation Code" if purpose == "verify" else "Quorum Password Reset Code"
     message = f"Your verification code is: {code}. It expires in 15 minutes."
     html_message = get_otp_html_template(code, purpose)
     
@@ -436,76 +428,19 @@ class ResetDeviceBindingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, user_id):
-        if request.user.role not in ["admin", "teacher"] and not getattr(request.user, "is_superuser", False):
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        # Account-device unbinding must only be performed by administrators
+        if request.user.role != "admin" and not getattr(request.user, "is_superuser", False):
+            return Response(
+                {"error": "Unauthorized: Device binding can only be reset by an administrator."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         try:
             student = CustomUser.objects.get(id=user_id, role="student")
-            # Verify institution scope for teachers
-            if request.user.role == "teacher" and student.get_institution != request.user.institution:
-                return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
             student.bound_device_id = None
             student.save(update_fields=["bound_device_id"])
-            return Response({"message": "Device binding reset successfully."})
+            return Response({"message": f"Device binding reset successfully for {student.email}."})
         except CustomUser.DoesNotExist:
             return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
 
-
-class RequestDeviceRebindView(APIView):
-    permission_classes = [AllowAny]
-
-    @simple_ratelimit(rate='5/m')
-    def post(self, request):
-        email = request.data.get("email")
-        if not email:
-            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            user = CustomUser.objects.get(email=email.strip().lower())
-            if user.role != "student":
-                return Response({"message": "If this account is eligible, a device authorization code has been sent."})
-
-            success, err_msg = generate_and_send_otp(user, purpose="rebind")
-            if not success:
-                return Response({"error": f"Email delivery failed: {err_msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except CustomUser.DoesNotExist:
-            pass
-
-        return Response({"message": "If this account exists, a device authorization code has been sent."})
-
-
-class ConfirmDeviceRebindView(APIView):
-    permission_classes = [AllowAny]
-
-    @simple_ratelimit(rate='10/m')
-    def post(self, request):
-        email = request.data.get("email")
-        code = request.data.get("code")
-        device_id = request.data.get("device_id")
-        if not email or not code or not device_id:
-            return Response({"error": "Email, code, and device_id are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            user = CustomUser.objects.get(email=email.strip().lower())
-        except CustomUser.DoesNotExist:
-            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            record = EmailVerificationCode.objects.get(user=user, purpose="rebind")
-            if record.failed_attempts >= 5:
-                return Response({"error": "Too many failed attempts. Request a new code."}, status=status.HTTP_400_BAD_REQUEST)
-            if record.expires_at < timezone.now():
-                return Response({"error": "Code has expired"}, status=status.HTTP_400_BAD_REQUEST)
-            if record.code != code.strip():
-                record.failed_attempts += 1
-                record.save(update_fields=["failed_attempts"])
-                return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
-
-            user.bound_device_id = device_id.strip()
-            user.save(update_fields=["bound_device_id"])
-            record.delete()
-            return Response({"message": "Device successfully verified and linked to your account. You can now sign in."})
-        except EmailVerificationCode.DoesNotExist:
-            return Response({"error": "Invalid or expired request"}, status=status.HTTP_400_BAD_REQUEST)
 
