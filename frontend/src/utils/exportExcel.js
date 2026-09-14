@@ -228,14 +228,18 @@ export async function exportAttendanceExcel(report, courses, activeCourseId) {
   ws.autoFilter = { from: { row: r, column: 1 }, to: { row: r, column: totalCols } };
   r++;
 
-  /* ── Student data rows ── */
-  students.forEach((s, idx) => {
+  /* ── Student data rows (sorted by reg number) ── */
+  const sortedStudents = [...students].sort((a, b) =>
+    regNo(a.email).localeCompare(regNo(b.email), undefined, { numeric: true, sensitivity: "base" })
+  );
+
+  sortedStudents.forEach((s, idx) => {
     ws.getRow(r).height = 18;
     
     const attended = sessions.filter((sess) => s.sessions?.[String(sess.id)] === true).length;
     const pct = report.total_sessions > 0 ? (attended / report.total_sessions) * 100 : 0;
     const isClear = pct >= 75;
-    const status = isClear ? "✔ Clear" : "✘ Short";
+    const status = isClear ? "Clear" : "Short";
 
     // #
     const cNum = ws.getCell(r, 1);

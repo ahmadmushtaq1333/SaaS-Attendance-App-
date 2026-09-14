@@ -68,10 +68,10 @@ class CourseReportView(APIView):
             for i, s in enumerate(sessions)
         ]
 
-        # All enrollments for this course
+        # All enrollments for this course, sorted by student email (reg number order)
         enrollments = Enrollment.objects.filter(
             course=course
-        ).select_related("student")
+        ).select_related("student").order_by("student__email")
 
         # Fetch all attendance records at once for O(n) performance
         records = AttendanceRecord.objects.filter(

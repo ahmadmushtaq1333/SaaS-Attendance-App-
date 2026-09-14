@@ -271,7 +271,9 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.students.map(student => {
+                    {[...report.students].sort((a, b) =>
+                      a.email.split("@")[0].localeCompare(b.email.split("@")[0], undefined, { numeric: true, sensitivity: "base" })
+                    ).map(student => {
                       const risk = getRiskConfig(student.attendance_percentage);
                       return (
                         <tr key={student.id}>
