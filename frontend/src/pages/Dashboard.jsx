@@ -99,7 +99,8 @@ export default function Dashboard({ user, onViewReports }) {
   const [sessionReport, setSessionReport] = useState(null);
   const [courseDefaulters, setCourseDefaulters] = useState(null);
   const [selectedAlertCourseId, setSelectedAlertCourseId] = useState("");
-  const [notifiedStudents, setNotifiedStudents] = useState({});
+  const [notifiedTiers, setNotifiedTiers] = useState({});
+  const [sendingTiers, setSendingTiers] = useState({});
   const [recentSessions, setRecentSessions] = useState([]);
   const [activeView, setActiveView] = useState("grid");
 
@@ -236,9 +237,20 @@ export default function Dashboard({ user, onViewReports }) {
     } catch { alert("Failed to update student attendance status"); }
   };
 
-  const sendWarningNotice = (studentId, email) => {
-    setNotifiedStudents(prev => ({ ...prev, [studentId]: true }));
-    alert(`Warning notice sent to ${email} regarding attendance shortage.`);
+  const sendBulkNotice = async (tier) => {
+    if (!selectedAlertCourseId) return;
+    setSendingTiers(prev => ({ ...prev, [tier]: true }));
+    try {
+      await API.post("/reports/notify-tier/", {
+        course_id: selectedAlertCourseId,
+        tier: tier
+      });
+      setNotifiedTiers(prev => ({ ...prev, [tier]: true }));
+    } catch (err) {
+      alert("Failed to send bulk notice for tier " + tier);
+    } finally {
+      setSendingTiers(prev => ({ ...prev, [tier]: false }));
+    }
   };
 
   const progressPct = Math.max(0, Math.min(100, (timeLeft / 10) * 100));
@@ -562,21 +574,39 @@ export default function Dashboard({ user, onViewReports }) {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {courseDefaulters.map(std => (
-                <div key={std.id} style={{ padding: "12px 16px", background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.18)", borderRadius: 10, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{std.email}</div>
+              {[
+                { tier: "CRITICAL", title: "🔴 Critical (< 25%)", color: "#dc2626", bg: "rgba(220,38,38,0.04)" },
+                { tier: "SEVERE", title: "🟠 Severe (25% - 50%)", color: "#ea580c", bg: "rgba(234,88,12,0.04)" },
+                { tier: "WARNING", title: "🟡 Warning (50% - 75%)", color: "#ca8a04", bg: "rgba(202,138,4,0.04)" }
+              ].map(({ tier, title, color, bg }) => {
+                const students = courseDefaulters.filter(s => s.tier === tier);
+                if (students.length === 0) return null;
+                
+                return (
+                  <div key={tier} style={{ marginBottom: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color }}>{title} ({students.length})</h3>
+                      <button 
+                        onClick={() => sendBulkNotice(tier)} 
+                        className="btn-secondary"
+                        style={{ padding: "5px 12px", fontSize: 12, gap: 4, borderColor: `${color}40`, color }}
+                        disabled={notifiedTiers[tier] || sendingTiers[tier]}
+                      >
+                        <Send size={11} />
+                        {sendingTiers[tier] ? "Sending..." : notifiedTiers[tier] ? "✓ Sent" : "Send Bulk Notice"}
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {students.map(std => (
+                        <div key={std.id} style={{ padding: "10px 14px", background: bg, border: `1px solid ${color}20`, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{std.email}</div>
+                          <span className="badge" style={{ backgroundColor: `${color}15`, color }}>{std.attendance_percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span className="badge badge-defaulter">{std.attendance_percentage}%</span>
-                    <button onClick={() => sendWarningNotice(std.id, std.email)} className="btn-secondary"
-                      style={{ padding: "5px 12px", fontSize: 12, gap: 4 }} disabled={notifiedStudents[std.id]}>
-                      <Send size={11} />
-                      {notifiedStudents[std.id] ? "Notice Sent" : "Send Notice"}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

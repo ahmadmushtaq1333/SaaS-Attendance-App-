@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.courses.models import Course, Enrollment
 from apps.attendance.models import AttendanceSession, AttendanceRecord
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings
+from .email_templates import get_tier_for_percentage, get_bulk_tier_email, TIER_CONFIG
 
 
 class CourseReportView(APIView):
@@ -108,9 +111,10 @@ class CourseReportView(APIView):
                 "sessions": student_sessions,
             }
 
+            student_data["tier"] = get_tier_for_percentage(attendance_percentage)
             students_report.append(student_data)
 
-            if attendance_percentage < 75.0:
+            if student_data["tier"]:
                 defaulters_list.append(student_data)
 
         return Response({
@@ -119,6 +123,84 @@ class CourseReportView(APIView):
             "session_list": session_list,
             "students": students_report,
             "defaulters_list": defaulters_list,
+        })
+
+
+class BulkNotifyTierView(APIView):
+    """
+    Sends a generic bulk email to all students in a specific attendance tier for a course.
+    POST /api/reports/notify-tier/
+    Payload: { "course_id": 1, "tier": "CRITICAL" }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        course_id = request.data.get("course_id")
+        tier = request.data.get("tier")
+
+        if not course_id or not tier:
+            return Response({"error": "course_id and tier are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if tier not in TIER_CONFIG:
+            return Response({"error": f"Invalid tier: {tier}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Authorise
+        if user.role not in ["admin", "teacher"] and not user.is_staff:
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            if user.role == "teacher":
+                course = Course.objects.get(id=course_id, course_instructors__instructor=user)
+            else:
+                course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found or access denied"}, status=status.HTTP_404_NOT_FOUND)
+
+        # 2. Re-evaluate attendance to find students in the specified tier
+        sessions = AttendanceSession.objects.filter(course=course)
+        total_sessions = sessions.count()
+
+        if total_sessions == 0:
+            return Response({"error": "No sessions recorded for this course yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        enrollments = Enrollment.objects.filter(course=course).select_related("student")
+        records = set(AttendanceRecord.objects.filter(session__course=course).values_list("enrollment_id", "session_id"))
+
+        target_student_emails = []
+
+        for enrollment in enrollments:
+            student = enrollment.student
+            attended_count = sum(1 for session in sessions if (enrollment.id, session.id) in records)
+            attendance_percentage = round((attended_count / total_sessions) * 100.0, 2)
+            
+            calculated_tier = get_tier_for_percentage(attendance_percentage)
+            if calculated_tier == tier:
+                target_student_emails.append(student.email)
+
+        if not target_student_emails:
+            return Response({"message": f"No students found in the {tier} tier."}, status=status.HTTP_200_OK)
+
+        # 3. Generate generic email content
+        subject, plain_body, html_body = get_bulk_tier_email(course.name, tier)
+
+        # 4. Send bulk email using BCC
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@quorum.com"),
+            to=[getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@quorum.com")],  # Sent to self/noreply
+            bcc=target_student_emails,
+        )
+        msg.attach_alternative(html_body, "text/html")
+        
+        try:
+            msg.send(fail_silently=False)
+        except Exception as e:
+            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "message": f"Successfully notified {len(target_student_emails)} students in the {tier} tier."
         })
 
 
