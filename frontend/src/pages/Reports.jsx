@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Download, Trash2, BarChart2 } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, FileSpreadsheet, Trash2, BarChart2 } from "lucide-react";
 import { formatLocalDate } from "../utils/date";
+import { exportAttendanceExcel } from "../utils/exportExcel";
 
 export default function Reports({ courseId: initialCourseId, onBack }) {
   const [courses, setCourses] = useState([]);
@@ -91,23 +92,14 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
     } catch { alert("Failed to delete session."); }
   };
 
-  const downloadCSV = () => {
+  const downloadExcel = async () => {
     if (!report) return;
-    let csv = "Student Email,";
-    const sl = report.session_list || [];
-    sl.forEach(s => { csv += `Session ${s.session_number ?? s.id} (${formatLocalDate(s.start_time, false)}),`; });
-    csv += "Total Attended,Attendance %,Status\n";
-    report.students.forEach(student => {
-      let row = `${student.email},`;
-      sl.forEach(s => { row += (student.sessions && student.sessions[s.id]) ? "Present," : "Absent,"; });
-      row += `${student.attended_count},${student.attendance_percentage}%,${student.attendance_percentage < 75 ? "Defaulter" : "Good"}\n`;
-      csv += row;
-    });
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `attendance_report_${activeCourseId}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    try {
+      await exportAttendanceExcel(report, courses, activeCourseId);
+    } catch (err) {
+      console.error("Excel export failed:", err);
+      alert("Export failed: " + (err?.message || "Unknown error"));
+    }
   };
 
   const getRiskConfig = (pct) => {
@@ -152,8 +144,8 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
               </select>
             </div>
           )}
-          <button onClick={downloadCSV} className="btn-primary" disabled={loading || !report} style={{ gap: 8 }}>
-            <Download size={15} /> Export CSV
+          <button onClick={downloadExcel} className="btn-primary" disabled={loading || !report} style={{ gap: 8 }}>
+            <FileSpreadsheet size={15} /> Export Excel
           </button>
         </div>
       </div>
