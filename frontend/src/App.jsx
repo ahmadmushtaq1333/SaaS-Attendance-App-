@@ -29,7 +29,7 @@ export default function App() {
     API.get("/auth/me/")
       .then((res) => {
         setUser(res.data);
-        if (res.data.role === "student") setCurrentView("scanner");
+        if (res.data.role === "student") setCurrentView("dashboard");
         else if (res.data.role === "admin" || res.data.is_staff) setCurrentView("admin");
         else setCurrentView("dashboard");
       })
@@ -71,8 +71,7 @@ export default function App() {
     { id: "admin", label: "Dashboard", icon: <Home size={14} /> },
   ];
   const studentLinks = [
-    { id: "scanner", label: "Scan QR", icon: <ScanLine size={14} /> },
-    { id: "attendance", label: "My Attendance", icon: <BarChart2 size={14} /> },
+    { id: "dashboard", label: "Dashboard", icon: <Home size={14} /> },
   ];
 
   const navLinks =
@@ -100,7 +99,7 @@ export default function App() {
   if (!user) {
     return <Login onLoginSuccess={(loggedInUser) => {
       setUser(loggedInUser);
-      if (loggedInUser.role === "student") setCurrentView("scanner");
+      if (loggedInUser.role === "student") setCurrentView("dashboard");
       else if (loggedInUser.role === "admin" || loggedInUser.is_staff) setCurrentView("admin");
       else setCurrentView("dashboard");
     }} lightMode={lightMode} setLightMode={setLightMode} />;
@@ -190,7 +189,6 @@ export default function App() {
             <Scanner
               key={currentView}
               user={user}
-              initialView={currentView === "attendance" ? "attendance" : "scanner"}
             />
           )}
           {user.role === "teacher" && (

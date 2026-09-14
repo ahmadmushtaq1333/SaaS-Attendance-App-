@@ -5,7 +5,7 @@ import { saveScanOffline, getPendingScansCount, syncOfflineScans } from "../serv
 import {
   Camera, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle, Info, ScanLine,
   ArrowLeft, ArrowRight, BarChart2, TrendingDown, Clock, CheckCircle2,
-  XCircle
+  XCircle, BookOpen
 } from "lucide-react";
 
 /* ── Mini progress ring ── */
@@ -78,6 +78,7 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
   const isScanningRef = useRef(false);
 
   const [activeView, setActiveView] = useState(initialView);
+  const [attendanceFilter, setAttendanceFilter] = useState("all");
   const [statusMsg, setStatusMsg] = useState({ text: "", type: "" });
   const [offlineCount, setOfflineCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -138,15 +139,48 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
 
 
   const startScanning = async () => {
+    // Guard: mediaDevices API unavailable (HTTP context, restrictive WebView, old browser)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatusMsg({
+        text: "Camera API unavailable. The app must be opened over HTTPS to access the camera.",
+        type: "error",
+      });
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } } });
-      videoRef.current.srcObject = stream;
-      videoRef.current.setAttribute("playsinline", true);
-      videoRef.current.play();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+
+      const video = videoRef.current;
+      // ── Fix: set attributes BEFORE attaching stream ──────────────────────────
+      // Chrome Android requires playsinline & muted to be set on the element
+      // before srcObject is assigned, otherwise play() can be blocked silently.
+      video.setAttribute("playsinline", "true");
+      video.setAttribute("muted", "true");
+      video.muted = true; // also set as property for older browsers
+      video.srcObject = stream;
+      await video.play(); // await so NotAllowedError surfaces if Chrome blocks autoplay
+
       setScanning(true);
       isScanningRef.current = true;
       requestAnimationFrame(tick);
-    } catch (err) { setStatusMsg({ text: `Camera error: ${err.message}`, type: "error" }); }
+    } catch (err) {
+      // ── Fix: typed error messages per DOMException name ──────────────────────
+      if (err.name === "NotAllowedError") {
+        setStatusMsg({
+          text: "PERMISSION_DENIED", // sentinel value — rendered as JSX below
+          type: "error",
+        });
+      } else if (err.name === "NotFoundError") {
+        setStatusMsg({ text: "No camera was found on this device.", type: "error" });
+      } else if (err.name === "NotReadableError") {
+        setStatusMsg({ text: "Camera is in use by another app. Close it and try again.", type: "error" });
+      } else {
+        setStatusMsg({ text: `Camera error: ${err.message}`, type: "error" });
+      }
+    }
   };
 
   const stopScanning = () => {
@@ -205,16 +239,18 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
     ? Math.round(courses.reduce((sum, c) => sum + c.attendance_percentage, 0) / courses.length)
     : 0;
   const atRiskCount = courses.filter(c => c.is_at_risk).length;
+  
+  const filteredCourses = courses.filter(c => attendanceFilter === "risk" ? c.is_at_risk : true);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* ── Welcome Hero ── */}
+      {/* ── Interactive Welcome Hero ── */}
       <div className="glass-a panel-pad" style={{ position: "relative", overflow: "hidden" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 14 }}>
           <div>
             <h1 style={{ fontSize: 24, marginBottom: 4 }}>Hello, {displayName} 👋</h1>
-            <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: 13 }}>Here's your attendance overview for all enrolled courses.</p>
+            <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: 13 }}>Here's your quick attendance overview.</p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span className={`badge ${isOnline ? "badge-good" : "badge-defaulter"}`} style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -225,27 +261,33 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
           </div>
         </div>
 
-        {/* KPI row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginTop: 18 }}>
-          <div className="glass-c" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <ProgressRing pct={overallPct} size={46} color={overallPct >= 75 ? "var(--emerald)" : "var(--danger)"} />
+        {/* Clickable Quick Filters */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 18 }}>
+          
+          {/* Overall Action Card */}
+          <div className="glass-c" 
+               onClick={() => { setAttendanceFilter("all"); setActiveView("attendance"); }}
+               style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "transform 0.2s ease", ':hover': { transform: 'scale(1.02)' } }}>
+            <ProgressRing pct={overallPct} size={46} color={overallPct >= 75 ? "var(--emerald)" : "var(--warning)"} />
             <div>
-              <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>Overall</p>
-              <div style={{ fontSize: 20, fontWeight: 700, color: overallPct >= 75 ? "var(--emerald)" : "var(--danger)" }}>{overallPct}%</div>
+              <p className="text-meta" style={{ margin: 0, fontSize: 11, fontWeight: 600 }}>Overall Standing</p>
+              <div style={{ fontSize: 20, fontWeight: 700, color: overallPct >= 75 ? "var(--emerald)" : "var(--warning)" }}>{overallPct}%</div>
             </div>
           </div>
-          <div className="glass-c" style={{ padding: "12px 16px" }}>
-            <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>Enrolled</p>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "var(--cyan)", marginTop: 2 }}>{courses.length}</div>
+          
+          {/* At Risk Action Card */}
+          <div className="glass-c" 
+               onClick={() => { if(atRiskCount > 0) { setAttendanceFilter("risk"); setActiveView("attendance"); } }}
+               style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: atRiskCount > 0 ? "pointer" : "default", opacity: atRiskCount === 0 ? 0.7 : 1 }}>
+            <div style={{ width: 46, height: 46, borderRadius: "50%", background: atRiskCount > 0 ? "rgba(248,113,113,0.15)" : "rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {atRiskCount > 0 ? <TrendingDown size={22} color="var(--danger)" /> : <CheckCircle2 size={22} color="var(--emerald)" />}
+            </div>
+            <div>
+              <p className="text-meta" style={{ margin: 0, fontSize: 11, fontWeight: 600 }}>Courses at Risk</p>
+              <div style={{ fontSize: 20, fontWeight: 700, color: atRiskCount > 0 ? "var(--danger)" : "var(--emerald)" }}>{atRiskCount} {atRiskCount === 0 && <span style={{fontSize: 11, fontWeight: "normal"}}>Safe</span>}</div>
+            </div>
           </div>
-          <div className="glass-c" style={{ padding: "12px 16px" }}>
-            <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>At Risk</p>
-            <div style={{ fontSize: 22, fontWeight: 700, color: atRiskCount > 0 ? "var(--danger)" : "var(--emerald)", marginTop: 2 }}>{atRiskCount}</div>
-          </div>
-          <div className="glass-c" style={{ padding: "12px 16px" }}>
-            <p className="text-meta" style={{ margin: 0, fontSize: 11 }}>Offline Queue</p>
-            <div style={{ fontSize: 22, fontWeight: 700, color: offlineCount > 0 ? "var(--warning)" : "var(--text-muted)", marginTop: 2 }}>{offlineCount}</div>
-          </div>
+
         </div>
       </div>
 
@@ -259,25 +301,20 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
         </div>
       )}
 
-      {/* ── Action Card Grid ── */}
+      {/* ── Premium Action Grid ── */}
       {activeView === "grid" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
           <DashboardActionCard
             icon={ScanLine} color="var(--emerald)" title="Scan QR Code"
-            description="Open camera to mark your attendance for an active session."
-            stats={[{ label: "Offline Queue", value: offlineCount, color: offlineCount > 0 ? "var(--warning)" : "var(--text-primary)" }]}
+            description="Tap here to instantly open your camera and mark your attendance."
             buttonText="Open Scanner"
             onClick={() => setActiveView("scanner")}
           />
           <DashboardActionCard
-            icon={BarChart2} color="var(--purple)" title="My Attendance"
-            description="View your attendance percentage across all enrolled courses."
-            stats={[
-              { label: "Enrolled", value: courses.length },
-              { label: "At Risk", value: atRiskCount, color: atRiskCount > 0 ? "var(--danger)" : "var(--emerald)" }
-            ]}
-            buttonText="View Attendance"
-            onClick={() => setActiveView("attendance")}
+            icon={BookOpen} color="var(--purple)" title="Course Details"
+            description="View your attendance history for all enrolled subjects."
+            buttonText="View Details"
+            onClick={() => { setAttendanceFilter("all"); setActiveView("attendance"); }}
           />
         </div>
       )}
@@ -298,12 +335,28 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
           {statusMsg.text && (
             <div className={`alert ${sc.cls}`} style={{ marginBottom: 20 }}>
               {sc.Icon && <sc.Icon size={16} style={{ flexShrink: 0, marginTop: 1 }} />}
-              <span>{statusMsg.text}</span>
+              {statusMsg.text === "PERMISSION_DENIED" ? (
+                <span>
+                  Camera permission denied. If you already granted permission in Settings,{" "}
+                  <button
+                    onClick={() => window.location.reload()}
+                    style={{
+                      background: "none", border: "none", color: "inherit", cursor: "pointer",
+                      textDecoration: "underline", padding: 0, font: "inherit", fontWeight: 700,
+                    }}
+                  >
+                    tap here to reload the page
+                  </button>{" "}
+                  and try again.
+                </span>
+              ) : (
+                <span>{statusMsg.text}</span>
+              )}
             </div>
           )}
 
           <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", background: "rgba(7,17,31,0.8)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", overflow: "hidden", marginBottom: 20 }}>
-            <video ref={videoRef} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <video ref={videoRef} muted playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             <canvas ref={canvasRef} style={{ display: "none" }} />
             {scanning && (
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
@@ -333,32 +386,51 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
               </button>
             )}
           </div>
-          <p className="text-meta" style={{ textAlign: "center", marginTop: 20, lineHeight: 1.6 }}>
-            Point your camera at the QR code displayed by your instructor. The code auto-rotates every 10 seconds.
-          </p>
         </div>
       )}
 
-      {/* ── My Attendance Summary ── */}
+      {/* ── Course Details & Filtered List ── */}
       {activeView === "attendance" && !selectedCourse && (
         <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <BarChart2 size={22} color="var(--purple)" />
+          
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(167,139,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BookOpen size={22} color="var(--purple)" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Course Details</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Select a course to view history</p>
+              </div>
             </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>My Attendance</h2>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Click any course to view session-by-session history</p>
+
+            {/* Smart View Toggles */}
+            <div style={{ display: "flex", gap: 8, background: "rgba(255,255,255,0.03)", padding: 4, borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)" }}>
+              <button onClick={() => setAttendanceFilter("all")} 
+                      style={{ padding: "6px 14px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
+                               background: attendanceFilter === "all" ? "var(--purple)" : "transparent",
+                               color: attendanceFilter === "all" ? "#fff" : "var(--text-secondary)" }}>
+                All Courses
+              </button>
+              <button onClick={() => setAttendanceFilter("risk")} 
+                      style={{ padding: "6px 14px", fontSize: 13, fontWeight: 600, borderRadius: 6, border: "none", cursor: "pointer",
+                               background: attendanceFilter === "risk" ? "var(--danger)" : "transparent",
+                               color: attendanceFilter === "risk" ? "#fff" : "var(--text-secondary)" }}>
+                At Risk
+              </button>
             </div>
           </div>
 
           {coursesLoading ? (
             <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>Loading attendance data…</div>
-          ) : courses.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>You are not enrolled in any courses yet.</div>
+          ) : filteredCourses.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
+              <CheckCircle2 size={32} color="var(--emerald)" style={{ margin: "0 auto 12px", opacity: 0.5 }} />
+              <p>No courses found in this category.</p>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {courses.map(course => {
+              {filteredCourses.map(course => {
                 const pct = course.attendance_percentage;
                 const color = pct >= 75 ? "var(--emerald)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
                 return (
@@ -393,7 +465,7 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
         </div>
       )}
 
-      {/* ── Course Session Detail ── */}
+      {/* ── Session History Detail ── */}
       {activeView === "detail" && selectedCourse && (
         <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
@@ -454,7 +526,7 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
 
           <button onClick={() => { setActiveView("attendance"); setSelectedCourse(null); setCourseDetail(null); }}
             className="btn-secondary" style={{ marginTop: 20, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <ArrowLeft size={14} /> Back to All Courses
+            <ArrowLeft size={14} /> Back to Courses
           </button>
         </div>
       )}

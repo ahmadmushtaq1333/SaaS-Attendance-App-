@@ -47,7 +47,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     
     # Device Binding for Students (anti-proxy attendance)
-    bound_device_id = models.CharField(max_length=255, null=True, blank=True)
+    # (Removed bound_device_id, migrated to DeviceBinding)
 
     @property
     def get_institution(self):
@@ -93,3 +93,15 @@ class EmailVerificationCode(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.code} ({self.purpose})"
 
+
+import uuid
+
+class DeviceBinding(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="device_binding")
+    token = models.UUIDField(default=uuid.uuid4, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    user_agent = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Binding for {self.user.email}"

@@ -227,6 +227,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         if response.status_code == 200:
             access_token = response.data.get('access')
             refresh_token = response.data.get('refresh')
+            device_token = response.data.pop('_device_token', None)
             is_secure = request.is_secure() or (not settings.DEBUG)
             samesite_policy = 'None' if is_secure else 'Lax'
             
@@ -239,6 +240,11 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             if refresh_token:
                 response.set_cookie(
                     'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+                    httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+                )
+            if device_token:
+                response.set_cookie(
+                    'device_token', str(device_token), max_age=31536000,
                     httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
             # Retain tokens in response.data for clients with cross-site cookie restrictions (iOS Safari ITP)
@@ -437,10 +443,65 @@ class ResetDeviceBindingView(APIView):
 
         try:
             student = CustomUser.objects.get(id=user_id, role="student")
-            student.bound_device_id = None
-            student.save(update_fields=["bound_device_id"])
+            from .models import DeviceBinding
+            DeviceBinding.objects.filter(user=student).delete()
             return Response({"message": f"Device binding reset successfully for {student.email}."})
         except CustomUser.DoesNotExist:
             return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
 
+
+class RequestDeviceRebindView(APIView):
+    permission_classes = [AllowAny]
+
+    @simple_ratelimit(rate='5/m')
+    def post(self, request):
+        email = request.data.get("email")
+        if not email:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = CustomUser.objects.get(email=email.strip().lower(), role="student")
+            from .models import DeviceBinding
+            if DeviceBinding.objects.filter(user=user).exists():
+                success, err_msg = generate_and_send_otp(user, purpose="rebind")
+                if not success:
+                    return Response({"error": f"SMTP email delivery failed: {err_msg}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except CustomUser.DoesNotExist:
+            pass
+            
+        return Response({"message": "If the account exists and is bound, a verification code has been sent."})
+
+
+class ConfirmDeviceRebindView(APIView):
+    permission_classes = [AllowAny]
+
+    @simple_ratelimit(rate='10/m')
+    def post(self, request):
+        email = request.data.get("email")
+        code = request.data.get("code")
+        if not email or not code:
+            return Response({"error": "Email and code are required"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = CustomUser.objects.get(email=email.strip().lower(), role="student")
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            record = EmailVerificationCode.objects.get(user=user, purpose="rebind")
+            if record.failed_attempts >= 5:
+                return Response({"error": "Too many failed attempts. Request a new code."}, status=status.HTTP_400_BAD_REQUEST)
+            if record.expires_at < timezone.now():
+                return Response({"error": "Code has expired"}, status=status.HTTP_400_BAD_REQUEST)
+            if record.code != code.strip():
+                record.failed_attempts += 1
+                record.save()
+                return Response({"error": "Invalid verification code"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            from .models import DeviceBinding
+            DeviceBinding.objects.filter(user=user).delete()
+            record.delete()
+            return Response({"message": "Device binding reset successfully. You can now log in."})
+        except EmailVerificationCode.DoesNotExist:
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 

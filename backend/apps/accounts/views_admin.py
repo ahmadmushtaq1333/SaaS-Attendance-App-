@@ -160,8 +160,8 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="reset-device")
     def reset_device(self, request, pk=None):
         user = self.get_object()
-        user.bound_device_id = None
-        user.save(update_fields=["bound_device_id"])
+        from .models import DeviceBinding
+        DeviceBinding.objects.filter(user=user).delete()
         return Response({"message": f"Device binding reset successfully for {user.email}."})
 
     @action(detail=False, methods=["post"], url_path="bulk-generate")

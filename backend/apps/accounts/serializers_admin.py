@@ -52,6 +52,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
     assigned_courses = serializers.SerializerMethodField()
     enrolled_courses_count = serializers.SerializerMethodField()
     has_bound_device = serializers.SerializerMethodField()
+    bound_since = serializers.SerializerMethodField()
+    device_last_seen = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -59,11 +61,11 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "id", "email", "role", "institution", "institution_name",
             "department", "department_name", "semester_number",
             "section", "section_name", "is_active", "date_joined", "password",
-            "registration_number", "is_email_verified", "bound_device_id",
-            "has_bound_device", "assigned_courses", "enrolled_courses_count",
+            "registration_number", "is_email_verified",
+            "has_bound_device", "bound_since", "device_last_seen", "assigned_courses", "enrolled_courses_count",
             "computed_institution", "computed_department", "computed_semester"
         )
-        read_only_fields = ("id", "date_joined", "has_bound_device", "assigned_courses", "enrolled_courses_count")
+        read_only_fields = ("id", "date_joined", "has_bound_device", "bound_since", "device_last_seen", "assigned_courses", "enrolled_courses_count")
 
     def get_computed_institution(self, obj):
         inst = obj.get_institution
@@ -108,7 +110,17 @@ class UserAdminSerializer(serializers.ModelSerializer):
         return 0
 
     def get_has_bound_device(self, obj):
-        return bool(obj.bound_device_id)
+        return hasattr(obj, 'device_binding')
+
+    def get_bound_since(self, obj):
+        if hasattr(obj, 'device_binding'):
+            return obj.device_binding.created_at
+        return None
+
+    def get_device_last_seen(self, obj):
+        if hasattr(obj, 'device_binding'):
+            return obj.device_binding.last_seen
+        return None
 
     def validate(self, attrs):
         role = attrs.get("role", getattr(self.instance, 'role', 'student'))

@@ -28,15 +28,15 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(self.student.institution, self.institution)
         
     def test_login_jwt(self):
-        # Obtain JWT with device_id (required for students)
+        # Obtain JWT (cookie handled automatically)
         response = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
-            "password": "password123",
-            "device_id": "test-device-uuid-1234"
+            "password": "password123"
         })
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
+        self.assertIn("device_token", response.cookies)
 
     def test_bulk_student_assignment(self):
         from apps.courses.models import Course, Enrollment
@@ -81,7 +81,8 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(res2.data["already_enrolled_count"], 2)
         self.assertEqual(Enrollment.objects.filter(course=course).count(), 2)
 
-    def test_device_mismatch_and_admin_only_reset_flow(self):
+    def test_device_binding_flow(self):
+        from .models import DeviceBinding
         admin = User.objects.create_superuser(
             email="superadmin@mit.edu",
             password="adminpassword",
@@ -89,21 +90,20 @@ class AccountsTestCase(APITestCase):
             institution=self.institution
         )
 
-        # 1. Initial login binds device-alpha
+        # 1. Initial login sets cookie
         res1 = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
-            "password": "password123",
-            "device_id": "device-alpha"
+            "password": "password123"
         })
         self.assertEqual(res1.status_code, 200)
-        self.student.refresh_from_db()
-        self.assertEqual(self.student.bound_device_id, "device-alpha")
+        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
+        device_token = res1.cookies.get("device_token").value
 
-        # 2. Login with different device fails with device_mismatch
+        # 2. Login with different (or missing) cookie fails with device_mismatch
+        self.client.cookies.clear()
         res2 = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
-            "password": "password123",
-            "device_id": "device-beta"
+            "password": "password123"
         })
         self.assertEqual(res2.status_code, 400)
         self.assertTrue(res2.data.get("device_mismatch"))
@@ -117,18 +117,48 @@ class AccountsTestCase(APITestCase):
         self.client.force_authenticate(user=admin)
         res4 = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
         self.assertEqual(res4.status_code, 200)
-        self.student.refresh_from_db()
-        self.assertIsNone(self.student.bound_device_id)
+        self.assertFalse(DeviceBinding.objects.filter(user=self.student).exists())
 
-        # 5. Now student can bind device-beta on next login
+        # 5. Now student can bind again on next login
         self.client.force_authenticate(user=None)
         res5 = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
-            "password": "password123",
-            "device_id": "device-beta"
+            "password": "password123"
         })
         self.assertEqual(res5.status_code, 200)
-        self.student.refresh_from_db()
-        self.assertEqual(self.student.bound_device_id, "device-beta")
+        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
+
+    def test_self_service_rebind_flow(self):
+        from .models import DeviceBinding, EmailVerificationCode
+        
+        # 1. Login to bind device
+        self.client.post("/api/auth/login/", {
+            "email": "student@mit.edu",
+            "password": "password123"
+        })
+        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
+        
+        # 2. Request Rebind (sends OTP)
+        res1 = self.client.post("/api/auth/rebind/request/", {
+            "email": "student@mit.edu"
+        })
+        self.assertEqual(res1.status_code, 200)
+        otp_record = EmailVerificationCode.objects.get(user=self.student, purpose="rebind")
+        
+        # 3. Confirm Rebind
+        res2 = self.client.post("/api/auth/rebind/confirm/", {
+            "email": "student@mit.edu",
+            "code": otp_record.code
+        })
+        self.assertEqual(res2.status_code, 200)
+        self.assertFalse(DeviceBinding.objects.filter(user=self.student).exists())
+        
+        # 4. Next login is successful and binds again
+        res3 = self.client.post("/api/auth/login/", {
+            "email": "student@mit.edu",
+            "password": "password123"
+        })
+        self.assertEqual(res3.status_code, 200)
+        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
 
 
