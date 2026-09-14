@@ -49,6 +49,34 @@
 
 ---
 
+## 📖 Comprehensive System Documentation
+
+### 1. Secure Live Attendance (Anti-Proxy System)
+**What it does:** Allows teachers to take attendance instantly without calling out names. It guarantees that only students physically present in the room can mark themselves as attending.
+**How it works:** When a teacher starts a class, the system generates a live QR code on the teacher's screen. This QR code automatically refreshes every **10 seconds**. Because the code changes so quickly, a student cannot simply take a photo of it and send it to a friend at home—by the time the friend tries to scan it, the code has already expired.
+
+### 2. Device Binding & Fraud Prevention
+**What it does:** Ensures that one student equals one phone. 
+**How it works:** The first time a student logs in and scans an attendance code, the system permanently "binds" their account to that specific physical smartphone. If they try to log into a friend's phone to scan a code, the system will block them. If a student legitimately loses or changes their phone, they must go through a secure "Device Rebind" process using an email verification code.
+
+### 3. Smart Attendance Alerts & Bulk Emails
+**What it does:** Automatically identifies students who are missing too many classes and allows the teacher to warn them with a single click, saving hours of manual email drafting.
+**How it works:** The system calculates every student's attendance percentage and categorizes them into three risk tiers:
+- 🔴 **Critical:** Below 25% attendance.
+- 🟠 **Severe:** Between 25% and 50% attendance.
+- 🟡 **Warning:** Between 50% and 75% attendance.
+Instead of sending 50 individual emails to 50 failing students (which wastes time and email quotas), the system groups them by tier. When the teacher clicks "Send Bulk Notice", the system sends exactly **one** generic email (e.g., *"Your attendance has fallen below 25%"*) and securely places all relevant students in the BCC (Blind Carbon Copy) field so they cannot see each other's emails.
+
+### 4. Admin Control & Excel Data Imports
+**What it does:** Allows school administrators to quickly set up the system by uploading spreadsheets of students and teachers, rather than typing them in one by one.
+**How it works:** An admin uploads an Excel file. Before saving anything, the system performs a "Dry Run" (a safe practice run). It checks every row to ensure emails are valid, no duplicates exist, and everyone is assigned to the correct department. If it spots a mistake (like a typo in an email), it highlights the exact row so the admin can fix it. If everything is perfect, it creates all the accounts at once.
+
+### 5. Multi-Tier Hierarchy (Institutions & Departments)
+**What it does:** Keeps data organized. The system isn't just a flat list of people; it understands the real-world structure of a school.
+**How it works:** The data is structured like a tree: `Institution (e.g., MIT)` ➔ `Department (e.g., Computer Science)` ➔ `Semester (e.g., Fall 2026)` ➔ `Section (e.g., Section A)` ➔ `Students`. This ensures that a teacher in the Science department only sees their specific Science students, keeping the software clean, secure, and fast.
+
+---
+
 ## ✨ Features
 
 ### 👨‍🏫 Teacher Dashboard

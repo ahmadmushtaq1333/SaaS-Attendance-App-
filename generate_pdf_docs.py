@@ -1,4 +1,4 @@
-﻿import os
+import os
 import subprocess
 import sys
 
@@ -139,7 +139,26 @@ def build_pdf():
         "- AttendanceRecord: Stores student marking status ('present' or 'absent') and timestamps for a session."
     )
     
-    # Save PDF
+    pdf.add_page()
+    pdf.set_y(25)
+    
+    # Chapter 4
+    pdf.chapter_title(4, "Core Features & Business Logic")
+    
+    pdf.section_title("1. Secure Live Attendance (Anti-Proxy System)")
+    pdf.paragraph("Allows teachers to take attendance instantly. The system generates a live QR code on the teacher's screen that automatically refreshes every 10 seconds. Because the code changes quickly, students cannot screenshot it to friends remotely.")
+    
+    pdf.section_title("2. Device Binding & Fraud Prevention")
+    pdf.paragraph("Ensures one student equals one phone. When a student first logs in, their account is permanently bound to their specific smartphone. If they switch devices legitimately, they must complete an email-verified 'Device Rebind' process.")
+    
+    pdf.section_title("3. Smart Attendance Alerts & Bulk Emails")
+    pdf.paragraph("Automatically categorizes students into three risk tiers based on their attendance percentage (Critical < 25%, Severe 25-50%, Warning 50-75%). Instead of sending individual emails, teachers can click 'Send Bulk Notice' to dispatch a single generic warning email with all at-risk students securely in the BCC field.")
+    
+    pdf.section_title("4. Admin Control & Excel Data Imports")
+    pdf.paragraph("Admins can upload Excel spreadsheets to bulk-create students and teachers. The system runs a 'Dry Run' to validate all emails and department mappings, highlighting errors before any data is permanently saved to the database.")
+    
+    pdf.section_title("5. Multi-Tier Hierarchy")
+    pdf.paragraph("Data is structured as a tree: Institution -> Department -> Semester -> Section. This ensures teachers only access their designated subset of students, keeping the software organized and secure.")
     pdf.output("SaaS_Attendance_App_Documentation.pdf")
     print("Documentation PDF created successfully!")
 
