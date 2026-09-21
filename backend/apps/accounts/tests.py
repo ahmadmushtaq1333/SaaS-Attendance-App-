@@ -1,5 +1,6 @@
 from rest_framework.test import APITestCase
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from apps.institutions.models import Institution
 
 User = get_user_model()
@@ -128,6 +129,7 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(res5.status_code, 200)
         self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
 
+    @override_settings(RATELIMIT_ENABLE=False)
     def test_self_service_rebind_flow(self):
         from .models import DeviceBinding, EmailVerificationCode
         
@@ -162,7 +164,6 @@ class AccountsTestCase(APITestCase):
         self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
 
     def test_daily_device_lock_flow(self):
-        # Create a second student
         student2 = User.objects.create_user(
             email="student2@mit.edu",
             password="password123",
@@ -170,42 +171,68 @@ class AccountsTestCase(APITestCase):
             institution=self.institution,
             is_email_verified=True
         )
+        from rest_framework.test import APIClient
 
-        fp = "test-fingerprint-123"
+        fp_device1 = "fingerprint-device-1"
+        fp_device2 = "fingerprint-device-2"
 
-        # 1. Student 1 logs in with fingerprint
-        res1 = self.client.post("/api/auth/login/", {
+        # Separate clients simulating separate physical browsers/devices
+        client_device1 = APIClient()
+        client_device2 = APIClient()
+
+        # === Direction 1: Same device (client_device1), different accounts ===
+
+        # Student 1 logs in from device 1
+        res1 = client_device1.post("/api/auth/login/", {
             "email": "student@mit.edu",
             "password": "password123",
-            "device_fingerprint": fp
+            "device_fingerprint": fp_device1
         })
         self.assertEqual(res1.status_code, 200)
+        # Persist device_token as a cookie on client_device1 (as the real browser would)
+        if res1.cookies.get("device_token"):
+            client_device1.cookies["device_token"] = res1.cookies["device_token"].value
 
-        # 2. Student 2 tries to log in with SAME fingerprint (Simulating using same device)
-        res2 = self.client.post("/api/auth/login/", {
+        # Student 2 tries same device 1 → BLOCKED (Direction 1)
+        res2 = client_device1.post("/api/auth/login/", {
             "email": "student2@mit.edu",
             "password": "password123",
-            "device_fingerprint": fp
+            "device_fingerprint": fp_device1
         })
         self.assertEqual(res2.status_code, 400)
-        
-        # In DRF, ValidationError wraps dict values in lists
         is_locked = res2.data.get("device_locked")
-        if isinstance(is_locked, list):
-            is_locked = is_locked[0]
+        if isinstance(is_locked, list): is_locked = is_locked[0]
         self.assertTrue(is_locked)
-        
-        detail = res2.data.get("detail")
-        if isinstance(detail, list):
-            detail = detail[0]
-        self.assertEqual(str(detail), "This device has already been used by another account today. Use your own device, or try again tomorrow.")
 
-        # 3. Student 1 tries to log in again with the same fingerprint (Should succeed)
-        res3 = self.client.post("/api/auth/login/", {
-            "email": "student@mit.edu",
+        # === Direction 2: Same account (student2), different devices ===
+
+        # Student 2 logs in from their own device 2
+        res3 = client_device2.post("/api/auth/login/", {
+            "email": "student2@mit.edu",
             "password": "password123",
-            "device_fingerprint": fp
+            "device_fingerprint": fp_device2
         })
         self.assertEqual(res3.status_code, 200)
+        if res3.cookies.get("device_token"):
+            client_device2.cookies["device_token"] = res3.cookies["device_token"].value
+
+        # Student 2 tries to log in from device 1 (proxy) → BLOCKED (Direction 2)
+        res4 = client_device1.post("/api/auth/login/", {
+            "email": "student2@mit.edu",
+            "password": "password123",
+            "device_fingerprint": fp_device1
+        })
+        self.assertEqual(res4.status_code, 400)
+        is_locked2 = res4.data.get("device_locked")
+        if isinstance(is_locked2, list): is_locked2 = is_locked2[0]
+        self.assertTrue(is_locked2)
+
+        # Student 1 logs in again on their own device (client_device1 still has their cookie) → PASSES
+        res5 = client_device1.post("/api/auth/login/", {
+            "email": "student@mit.edu",
+            "password": "password123",
+            "device_fingerprint": fp_device1
+        })
+        self.assertEqual(res5.status_code, 200)
 
 

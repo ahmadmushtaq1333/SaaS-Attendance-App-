@@ -27,25 +27,43 @@ class DailyDeviceLockService:
                 this fingerprint today.
         """
         if not device_fingerprint:
-            # No fingerprint supplied (e.g. teacher / admin web login).
-            # Policy only applies when a fingerprint is present.
             return
 
         from .models import DailyDeviceLock
 
         today = timezone.now().date()
 
-        lock, created = DailyDeviceLock.objects.get_or_create(
+        # --- Direction 1: Has THIS fingerprint already been used by a different account today? ---
+        try:
+            fp_lock = DailyDeviceLock.objects.get(device_fingerprint=device_fingerprint, date=today)
+            if fp_lock.user_id != user.id:
+                raise serializers.ValidationError({
+                    "device_locked": True,
+                    "detail": (
+                        "This device has already been used by another account today. "
+                        "Use your own device, or try again tomorrow."
+                    ),
+                })
+            # Same user on same device — perfectly fine
+            return
+        except DailyDeviceLock.DoesNotExist:
+            pass
+
+        # --- Direction 2: Has THIS account already logged in from a different device today? ---
+        existing_user_lock = DailyDeviceLock.objects.filter(user=user, date=today).first()
+        if existing_user_lock and existing_user_lock.device_fingerprint != device_fingerprint:
+            raise serializers.ValidationError({
+                "device_locked": True,
+                "detail": (
+                    "Your account has already been accessed from a different device today. "
+                    "Use that device, or try again tomorrow."
+                ),
+            })
+
+        # --- No lock exists for this fingerprint or user today — create one ---
+        DailyDeviceLock.objects.get_or_create(
             device_fingerprint=device_fingerprint,
             date=today,
             defaults={"user": user},
         )
 
-        if not created and lock.user_id != user.id:
-            raise serializers.ValidationError({
-                "device_locked": True,
-                "detail": (
-                    "This device has already been used by another account today. "
-                    "Use your own device, or try again tomorrow."
-                ),
-            })

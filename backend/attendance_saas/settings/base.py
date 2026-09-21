@@ -4,8 +4,12 @@ Django base settings for attendance_saas project.
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+import sys
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Detect if we're running tests
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
 SECRET_KEY = config("SECRET_KEY", default="change-me-in-production")
 
