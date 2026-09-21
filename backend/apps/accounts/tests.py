@@ -161,4 +161,51 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(res3.status_code, 200)
         self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
 
+    def test_daily_device_lock_flow(self):
+        # Create a second student
+        student2 = User.objects.create_user(
+            email="student2@mit.edu",
+            password="password123",
+            role="student",
+            institution=self.institution,
+            is_email_verified=True
+        )
+
+        fp = "test-fingerprint-123"
+
+        # 1. Student 1 logs in with fingerprint
+        res1 = self.client.post("/api/auth/login/", {
+            "email": "student@mit.edu",
+            "password": "password123",
+            "device_fingerprint": fp
+        })
+        self.assertEqual(res1.status_code, 200)
+
+        # 2. Student 2 tries to log in with SAME fingerprint (Simulating using same device)
+        res2 = self.client.post("/api/auth/login/", {
+            "email": "student2@mit.edu",
+            "password": "password123",
+            "device_fingerprint": fp
+        })
+        self.assertEqual(res2.status_code, 400)
+        
+        # In DRF, ValidationError wraps dict values in lists
+        is_locked = res2.data.get("device_locked")
+        if isinstance(is_locked, list):
+            is_locked = is_locked[0]
+        self.assertTrue(is_locked)
+        
+        detail = res2.data.get("detail")
+        if isinstance(detail, list):
+            detail = detail[0]
+        self.assertEqual(str(detail), "This device has already been used by another account today. Use your own device, or try again tomorrow.")
+
+        # 3. Student 1 tries to log in again with the same fingerprint (Should succeed)
+        res3 = self.client.post("/api/auth/login/", {
+            "email": "student@mit.edu",
+            "password": "password123",
+            "device_fingerprint": fp
+        })
+        self.assertEqual(res3.status_code, 200)
+
 

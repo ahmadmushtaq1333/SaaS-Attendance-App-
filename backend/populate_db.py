@@ -3,7 +3,7 @@ import sys
 import django
 
 # Set settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "attendance_saas.settings.prod")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "attendance_saas.settings.dev")
 django.setup()
 
 from django.contrib.auth import get_user_model
@@ -22,7 +22,8 @@ def populate():
         defaults={
             "role": "teacher",
             "institution": inst,
-            "is_active": True
+            "is_active": True,
+            "is_email_verified": True,
         }
     )
     if created:
@@ -38,7 +39,8 @@ def populate():
         defaults={
             "role": "student",
             "institution": inst,
-            "is_active": True
+            "is_active": True,
+            "is_email_verified": True,
         }
     )
     if created:

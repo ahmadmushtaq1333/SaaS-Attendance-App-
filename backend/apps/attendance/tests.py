@@ -44,21 +44,22 @@ class AttendanceTestCase(APITestCase):
         self.client.force_authenticate(user=self.student_unenrolled)
         response = self.client.post("/api/attendance/mark/", {"token_uuid": str(token.token_uuid)})
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["error"], "Student not enrolled")
+        self.assertEqual(response.data["error"], "You are not enrolled in this course.")
 
         # Test enrolled student (success)
         self.client.force_authenticate(user=self.student)
         response = self.client.post("/api/attendance/mark/", {"token_uuid": str(token.token_uuid)})
         self.assertEqual(response.status_code, 201)
         
-        # Test duplicate marking
+        # Test duplicate marking (Should now return 200 with already_recorded flag)
         response = self.client.post("/api/attendance/mark/", {"token_uuid": str(token.token_uuid)})
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["error"], "Attendance already recorded")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["already_recorded"])
         
         # Test expired QR token
         expired_session = AttendanceSession.objects.create(course=self.course, expiry_time=now - timedelta(seconds=1))
-        expired_token = QRToken.objects.create(session=expired_session, expiry_time=now - timedelta(seconds=1))
+        # Note: QR_GRACE_SECONDS = 5, so we need to set expiry 6 seconds in the past to truly expire it
+        expired_token = QRToken.objects.create(session=expired_session, expiry_time=now - timedelta(seconds=6))
         response = self.client.post("/api/attendance/mark/", {"token_uuid": str(expired_token.token_uuid)})
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["error"], "QR code expired")
+        self.assertEqual(response.data["error"], "QR code expired \u2014 please scan the latest code.")

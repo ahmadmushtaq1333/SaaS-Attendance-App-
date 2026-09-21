@@ -105,3 +105,25 @@ class DeviceBinding(models.Model):
 
     def __str__(self):
         return f"Binding for {self.user.email}"
+
+
+class DailyDeviceLock(models.Model):
+    """
+    Enforces one-account-per-device-per-day policy for students.
+    Records the first student account that logs in from a given device
+    fingerprint on a given UTC calendar date. Any subsequent login attempt
+    from the same fingerprint on the same day with a DIFFERENT account is
+    rejected, preventing proxy attendance via a friend's phone.
+
+    The fingerprint is a SHA-256 hash of stable browser/device signals
+    computed client-side and sent in the login request body.
+    """
+    device_fingerprint = models.CharField(max_length=64, db_index=True)  # SHA-256 hex = 64 chars
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="daily_device_locks")
+    date = models.DateField()  # UTC calendar date of first login
+
+    class Meta:
+        unique_together = ("device_fingerprint", "date")
+
+    def __str__(self):
+        return f"{self.user.email} on {self.date} [{self.device_fingerprint[:8]}…]"

@@ -200,8 +200,86 @@ class BulkNotifyTierView(APIView):
             return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
-            "message": f"Successfully notified {len(target_student_emails)} students in the {tier} tier."
+            "message": f"Successfully notified {len(target_student_emails)} students in the {tier} tier.",
+            "notified": target_student_emails,  # lets the frontend mark per-row "✓ sent"
         })
+
+
+class NotifyStudentView(APIView):
+    """
+    Re-sends an attendance warning email to a single student on demand.
+    POST /api/reports/notify-student/
+    Payload: { "course_id": 1, "student_id": 42 }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user = request.user
+        course_id = request.data.get("course_id")
+        student_id = request.data.get("student_id")
+
+        if not course_id or not student_id:
+            return Response({"error": "course_id and student_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.role not in ["admin", "teacher"] and not user.is_staff:
+            return Response({"error": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Authorise course access
+        try:
+            if user.role == "teacher":
+                course = Course.objects.get(id=course_id, course_instructors__instructor=user)
+            else:
+                course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found or access denied."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Resolve student
+        try:
+            student = User.objects.get(id=student_id, role="student")
+        except User.DoesNotExist:
+            return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Re-calculate this student's current attendance percentage
+        sessions = AttendanceSession.objects.filter(course=course)
+        total_sessions = sessions.count()
+        if total_sessions == 0:
+            return Response({"error": "No sessions recorded for this course yet."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            enrollment = Enrollment.objects.get(student=student, course=course)
+        except Enrollment.DoesNotExist:
+            return Response({"error": "Student is not enrolled in this course."}, status=status.HTTP_400_BAD_REQUEST)
+
+        attended = AttendanceRecord.objects.filter(enrollment=enrollment).count()
+        attendance_pct = round((attended / total_sessions) * 100.0, 2)
+        tier = get_tier_for_percentage(attendance_pct)
+
+        if not tier:
+            return Response({"message": "Student meets the attendance threshold — no notice needed."}, status=status.HTTP_200_OK)
+
+        subject, plain_body, html_body = get_bulk_tier_email(course.name, tier)
+
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_body,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@quorum.com"),
+            to=[student.email],
+        )
+        msg.attach_alternative(html_body, "text/html")
+
+        try:
+            msg.send(fail_silently=False)
+        except Exception as e:
+            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "message": f"Notice sent to {student.email} ({tier} tier).",
+            "tier": tier,
+        })
+
 
 
 class StudentAttendanceReportView(APIView):

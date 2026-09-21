@@ -3,6 +3,7 @@ import API from "../services/api";
 import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, FileSpreadsheet, Trash2, BarChart2 } from "lucide-react";
 import { formatLocalDate } from "../utils/date";
 import { exportAttendanceExcel } from "../utils/exportExcel";
+import SessionOverridePanel from "../components/SessionOverridePanel";
 
 export default function Reports({ courseId: initialCourseId, onBack }) {
   const [courses, setCourses] = useState([]);
@@ -74,6 +75,9 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchSessionAttendance(); }, [selectedSessionId, report]);
 
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+
   const toggleAttendance = async (studentId, currentStatus) => {
     if (!selectedSessionId) return;
     try {
@@ -84,6 +88,33 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
       setSessionAttendance(prev => prev.map(s => s.id === studentId ? { ...s, isPresent: !currentStatus } : s));
       fetchReports();
     } catch { alert("Failed to override attendance status"); }
+  };
+
+  const handleBulkOverride = async (studentIds, action) => {
+    if (!selectedSessionId) return;
+    setBulkLoading(true);
+    setBulkError("");
+    
+    // Optimistic UI update
+    const previousAttendance = [...sessionAttendance];
+    setSessionAttendance(prev => prev.map(s => 
+      studentIds.includes(s.id) ? { ...s, isPresent: action === 'present' } : s
+    ));
+
+    try {
+      await API.post("/attendance/override/", {
+        student_ids: studentIds, // New array-based backend param
+        session_id: selectedSessionId,
+        action: action,
+      });
+      fetchReports();
+    } catch (err) {
+      // Revert optimistic update on failure
+      setSessionAttendance(previousAttendance);
+      setBulkError(err.response?.data?.error || "Bulk override failed. Please try again.");
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const deleteSession = async () => {
@@ -195,69 +226,17 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
           )}
 
           {/* Session Override Panel */}
-          {sessions.length > 0 && (
-            <div className="glass-b panel-pad">
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 18 }}>
-                <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 16 }}>
-                  <BarChart2 size={17} color="var(--purple)" />
-                  Session Override Panel
-                </h3>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <label htmlFor="session-select" className="text-meta" style={{ whiteSpace: "nowrap" }}>Session:</label>
-                  <select
-                    id="session-select"
-                    className="form-input"
-                    value={selectedSessionId}
-                    onChange={(e) => setSelectedSessionId(parseInt(e.target.value))}
-                    style={{ width: "auto", minWidth: 140, maxWidth: "100%", padding: "7px 32px 7px 12px" }}
-                  >
-                    {sessions.map(s => (
-                      <option key={s.id} value={s.id}>
-                        Session {s.session_number ?? s.id} · {formatLocalDate(s.start_time, false)}
-                      </option>
-                    ))}
-                  </select>
-                  <button onClick={deleteSession} className="btn-danger" style={{ padding: "8px 10px" }} title="Delete Session">
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Status</th>
-                      <th>Override</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sessionAttendance.map(student => (
-                      <tr key={student.id}>
-                        <td style={{ fontWeight: 500 }}>{student.email}</td>
-                        <td>
-                          <span className={`badge ${student.isPresent ? "badge-good" : "badge-defaulter"}`}>
-                            {student.isPresent ? <CheckCircle size={11} /> : <XCircle size={11} />}
-                            {student.isPresent ? "Present" : "Absent"}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => toggleAttendance(student.id, student.isPresent)}
-                            className={student.isPresent ? "btn-danger" : "btn-secondary"}
-                            style={{ padding: "6px 14px", fontSize: 12 }}
-                          >
-                            {student.isPresent ? "Mark Absent" : "Mark Present"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          <SessionOverridePanel 
+            sessions={sessions}
+            selectedSessionId={selectedSessionId}
+            onSessionChange={setSelectedSessionId}
+            onDeleteSession={deleteSession}
+            sessionAttendance={sessionAttendance}
+            onToggle={toggleAttendance}
+            onBulkOverride={handleBulkOverride}
+            bulkLoading={bulkLoading}
+            bulkError={bulkError}
+          />
 
           {/* Student Summary Table */}
           {report?.students && report.students.length > 0 && (

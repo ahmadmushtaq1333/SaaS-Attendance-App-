@@ -214,10 +214,23 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
     setStatusMsg({ text: "Processing attendance scan…", type: "info" });
     if (navigator.onLine) {
       try {
-        await API.post("/attendance/mark/", { token_uuid: tokenUuid });
-        setStatusMsg({ text: "Attendance marked successfully! ✓", type: "success" });
+        const res = await API.post("/attendance/mark/", { token_uuid: tokenUuid });
+        
+        if (res.data?.already_recorded) {
+          setStatusMsg({ text: "You're already marked present for this session ✓", type: "success" });
+        } else {
+          setStatusMsg({ text: "Attendance marked successfully! ✓", type: "success" });
+        }
+        
         fetchAttendanceSummary(); // refresh percentages after scan
-      } catch (err) { setStatusMsg({ text: err.response?.data?.error || "Error marking attendance", type: "error" }); }
+      } catch (err) {
+        const data = err.response?.data;
+        if (data?.error === "QR code expired — please scan the latest code.") {
+          setStatusMsg({ text: "QR code just rotated — please scan the new code.", type: "info" });
+        } else {
+          setStatusMsg({ text: data?.error || "Error marking attendance", type: "error" });
+        }
+      }
     } else {
       try {
         await saveScanOffline(tokenUuid);

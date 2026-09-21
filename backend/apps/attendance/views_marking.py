@@ -7,7 +7,13 @@ from apps.courses.models import Enrollment
 from .models import QRToken, AttendanceRecord
 from .serializers import AttendanceRecordSerializer
 from django.utils import timezone
+from datetime import timedelta
 from dateutil import parser as date_parser
+
+# Grace window (seconds) to absorb network latency around QR rotation.
+# A token scanned within its final QR_GRACE_SECONDS is still accepted.
+QR_GRACE_SECONDS = 5
+
 
 class MarkAttendanceView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]
@@ -16,40 +22,44 @@ class MarkAttendanceView(APIView):
         token_uuid = request.data.get("token_uuid")
         if not token_uuid:
             return Response({"error": "token_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
-            token = QRToken.objects.get(token_uuid=token_uuid)
+            token = QRToken.objects.select_related("session").get(token_uuid=token_uuid)
         except (QRToken.DoesNotExist, ValueError):
             return Response({"error": "Invalid QR code token"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 1. Check expiration
-        if token.expiry_time < timezone.now() or token.session.expiry_time < timezone.now():
-            return Response({"error": "QR code expired"}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Expiry check with grace period for the rotating token.
+        # The session itself never gets a grace period — it must be truly active.
+        now = timezone.now()
+        grace_deadline = token.expiry_time + timedelta(seconds=QR_GRACE_SECONDS)
+        if grace_deadline < now:
+            return Response({"error": "QR code expired — please scan the latest code."}, status=status.HTTP_400_BAD_REQUEST)
+        if token.session.expiry_time < now:
+            return Response({"error": "This attendance session has ended."}, status=status.HTTP_400_BAD_REQUEST)
+
         session = token.session
         course = session.course
-        
-        # 2. Check enrollment
+
+        # Enrollment check
         try:
             enrollment = Enrollment.objects.get(student=request.user, course=course)
         except Enrollment.DoesNotExist:
-            return Response({"error": "Student not enrolled"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 3. Check duplicate
-        exists = AttendanceRecord.objects.filter(enrollment=enrollment, session=session).exists()
-        if exists:
-            return Response({"error": "Attendance already recorded"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 4. Create record
+            return Response({"error": "You are not enrolled in this course."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Duplicate check — return 200 so the frontend shows success, not an error
+        if AttendanceRecord.objects.filter(enrollment=enrollment, session=session).exists():
+            return Response({"already_recorded": True}, status=status.HTTP_200_OK)
+
+        # Create record
         record = AttendanceRecord.objects.create(
             enrollment=enrollment,
             session=session,
-            timestamp=timezone.now(),
-            sync_status="synced"
+            timestamp=now,
+            sync_status="synced",
         )
-        
         serializer = AttendanceRecordSerializer(record)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class SyncAttendanceView(APIView):
     permission_classes = [IsAuthenticated, IsStudent]

@@ -19,8 +19,16 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setLoading(true);
 
     try {
+      // Get device fingerprint for the anti-proxy daily lock
+      const { getDeviceFingerprint } = await import("../utils/deviceFingerprint");
+      const deviceFingerprint = await getDeviceFingerprint();
+
       // Support dual-auth: HTTPOnly cookies (Android/same-origin) & Bearer headers (iOS Safari ITP)
-      const loginRes = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
+      const loginRes = await API.post("/auth/login/", { 
+        email: email.trim().toLowerCase(), 
+        password,
+        device_fingerprint: deviceFingerprint
+      });
       if (loginRes.data?.access) {
         setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
       }
@@ -31,6 +39,9 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       if (errorData?.device_mismatch) {
         // Direct to self-service rebind OTP
         setViewState("rebind");
+      } else if (errorData?.device_locked) {
+        // Daily device lock triggered
+        setError(errorData?.detail || "This device has already been used by another account today.");
       } else if (errorData?.email_unverified) {
         // Direct to activation OTP
         setViewState("verify");
@@ -50,7 +61,14 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setError("");
     setLoading(true);
     try {
-      const loginRes = await API.post("/auth/login/", { email: email.trim().toLowerCase(), password });
+      const { getDeviceFingerprint } = await import("../utils/deviceFingerprint");
+      const deviceFingerprint = await getDeviceFingerprint();
+
+      const loginRes = await API.post("/auth/login/", { 
+        email: email.trim().toLowerCase(), 
+        password,
+        device_fingerprint: deviceFingerprint
+      });
       if (loginRes.data?.access) {
         setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
       }
@@ -60,6 +78,8 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       const errorData = err?.response?.data;
       if (errorData?.device_mismatch) {
          setViewState("rebind");
+      } else if (errorData?.device_locked) {
+         setError(errorData?.detail || "This device has already been used by another account today.");
       } else {
          setError("Email verified successfully! Please log in now.");
       }

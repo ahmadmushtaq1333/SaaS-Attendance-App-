@@ -6,6 +6,7 @@ import {
   ArrowLeft, ArrowRight, History
 } from "lucide-react";
 import { formatLocalDate, parseUTCDate } from "../utils/date";
+import AttendanceAlertsPanel from "../components/AttendanceAlertsPanel";
 
 /* ── Sparkline mini-chart ── */
 function Sparkline({ values = [], color = "var(--emerald)", height = 36, width = 80 }) {
@@ -99,8 +100,6 @@ export default function Dashboard({ user, onViewReports }) {
   const [sessionReport, setSessionReport] = useState(null);
   const [courseDefaulters, setCourseDefaulters] = useState(null);
   const [selectedAlertCourseId, setSelectedAlertCourseId] = useState("");
-  const [notifiedTiers, setNotifiedTiers] = useState({});
-  const [sendingTiers, setSendingTiers] = useState({});
   const [recentSessions, setRecentSessions] = useState([]);
   const [activeView, setActiveView] = useState("grid");
 
@@ -235,22 +234,6 @@ export default function Dashboard({ user, onViewReports }) {
       });
       fetchLiveReport();
     } catch { alert("Failed to update student attendance status"); }
-  };
-
-  const sendBulkNotice = async (tier) => {
-    if (!selectedAlertCourseId) return;
-    setSendingTiers(prev => ({ ...prev, [tier]: true }));
-    try {
-      await API.post("/reports/notify-tier/", {
-        course_id: selectedAlertCourseId,
-        tier: tier
-      });
-      setNotifiedTiers(prev => ({ ...prev, [tier]: true }));
-    } catch (err) {
-      alert("Failed to send bulk notice for tier " + tier);
-    } finally {
-      setSendingTiers(prev => ({ ...prev, [tier]: false }));
-    }
   };
 
   const progressPct = Math.max(0, Math.min(100, (timeLeft / 10) * 100));
@@ -539,77 +522,13 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* ── Attendance Alerts Panel ── */}
       {activeView === "alerts" && (
-        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 14, marginBottom: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(248,113,113,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <AlertTriangle size={22} color="var(--danger)" />
-              </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Students At Risk</h2>
-                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Students below 75% attendance threshold</p>
-              </div>
-            </div>
-            {courses.length > 0 && (
-              <select 
-                value={selectedAlertCourseId} 
-                onChange={(e) => setSelectedAlertCourseId(e.target.value)}
-                className="form-input" 
-                style={{ width: "auto", minWidth: 160, maxWidth: "100%", padding: "8px 12px" }}
-              >
-                {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            )}
-          </div>
-
-          {!selectedAlertCourseId ? (
-            <p className="text-meta">Please select a course.</p>
-          ) : courseDefaulters === null ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 14, padding: "16px 0" }}>
-              <RefreshCw size={14} className="animate-spin" /> Fetching defaulters...
-            </div>
-          ) : courseDefaulters.length === 0 ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--emerald)", fontSize: 14, padding: "16px 0" }}>
-              <CheckCircle2 size={18} /> All students meet the 75% attendance threshold for this course.
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                { tier: "CRITICAL", title: "🔴 Critical (< 25%)", color: "#dc2626", bg: "rgba(220,38,38,0.04)" },
-                { tier: "SEVERE", title: "🟠 Severe (25% - 50%)", color: "#ea580c", bg: "rgba(234,88,12,0.04)" },
-                { tier: "WARNING", title: "🟡 Warning (50% - 75%)", color: "#ca8a04", bg: "rgba(202,138,4,0.04)" }
-              ].map(({ tier, title, color, bg }) => {
-                const students = courseDefaulters.filter(s => s.tier === tier);
-                if (students.length === 0) return null;
-                
-                return (
-                  <div key={tier} style={{ marginBottom: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color }}>{title} ({students.length})</h3>
-                      <button 
-                        onClick={() => sendBulkNotice(tier)} 
-                        className="btn-secondary"
-                        style={{ padding: "5px 12px", fontSize: 12, gap: 4, borderColor: `${color}40`, color }}
-                        disabled={notifiedTiers[tier] || sendingTiers[tier]}
-                      >
-                        <Send size={11} />
-                        {sendingTiers[tier] ? "Sending..." : notifiedTiers[tier] ? "✓ Sent" : "Send Bulk Notice"}
-                      </button>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {students.map(std => (
-                        <div key={std.id} style={{ padding: "10px 14px", background: bg, border: `1px solid ${color}20`, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{std.email}</div>
-                          <span className="badge" style={{ backgroundColor: `${color}15`, color }}>{std.attendance_percentage}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <AttendanceAlertsPanel 
+          courses={courses}
+          selectedCourseId={selectedAlertCourseId}
+          onCourseSelect={setSelectedAlertCourseId}
+          courseDefaulters={courseDefaulters}
+          loading={courseDefaulters === null && selectedAlertCourseId !== ""}
+        />
       )}
 
       {/* ── Session History Panel ── */}
