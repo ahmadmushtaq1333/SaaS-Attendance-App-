@@ -43,7 +43,10 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
       const courseSessions = res.data.session_list || [];
       setSessions(courseSessions);
       if (courseSessions.length > 0) {
-        setSelectedSessionId(prev => prev || courseSessions[courseSessions.length - 1].id);
+        setSelectedSessionId(prev => {
+          const exists = courseSessions.find(s => s.id === prev);
+          return exists ? prev : courseSessions[courseSessions.length - 1].id;
+        });
       } else {
         setSelectedSessionId("");
       }

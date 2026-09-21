@@ -235,9 +235,15 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
   };
   const sc = statusConfig[statusMsg.type] || {};
 
-  const overallPct = courses.length > 0
-    ? Math.round(courses.reduce((sum, c) => sum + c.attendance_percentage, 0) / courses.length)
-    : 0;
+  let totalAttended = 0;
+  let totalSessions = 0;
+  courses.forEach(c => {
+    totalAttended += c.attended_count || 0;
+    totalSessions += c.total_sessions || 0;
+  });
+  const overallPct = totalSessions > 0
+    ? Math.round((totalAttended / totalSessions) * 100)
+    : 100;
   const atRiskCount = courses.filter(c => c.is_at_risk).length;
   
   const filteredCourses = courses.filter(c => attendanceFilter === "risk" ? c.is_at_risk : true);
@@ -268,10 +274,10 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
           <div className="glass-c" 
                onClick={() => { setAttendanceFilter("all"); setActiveView("attendance"); }}
                style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "transform 0.2s ease", ':hover': { transform: 'scale(1.02)' } }}>
-            <ProgressRing pct={overallPct} size={46} color={overallPct >= 75 ? "var(--emerald)" : "var(--warning)"} />
+            <ProgressRing pct={totalSessions === 0 ? 100 : overallPct} size={46} color={totalSessions === 0 ? "var(--text-muted)" : overallPct >= 75 ? "var(--emerald)" : "var(--warning)"} />
             <div>
               <p className="text-meta" style={{ margin: 0, fontSize: 11, fontWeight: 600 }}>Overall Standing</p>
-              <div style={{ fontSize: 20, fontWeight: 700, color: overallPct >= 75 ? "var(--emerald)" : "var(--warning)" }}>{overallPct}%</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: totalSessions === 0 ? "var(--text-primary)" : overallPct >= 75 ? "var(--emerald)" : "var(--warning)" }}>{totalSessions === 0 ? "—" : `${overallPct}%`}</div>
             </div>
           </div>
           
@@ -431,8 +437,9 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {filteredCourses.map(course => {
-                const pct = course.attendance_percentage;
-                const color = pct >= 75 ? "var(--emerald)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
+                const pct = course.total_sessions > 0 ? course.attendance_percentage : 100;
+                const displayPct = course.total_sessions > 0 ? `${pct}%` : "—";
+                const color = course.total_sessions === 0 ? "var(--text-muted)" : pct >= 75 ? "var(--emerald)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
                 return (
                   <div key={course.course_id}
                     onClick={() => { setSelectedCourse(course); setActiveView("detail"); fetchCourseDetail(course.course_id); }}
@@ -449,7 +456,7 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
                       </div>
                     </div>
                     <div style={{ textAlign: "right", marginLeft: "auto" }}>
-                      <div style={{ fontSize: 20, fontWeight: 700, color }}>{pct}%</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color }}>{displayPct}</div>
                       {course.is_at_risk && (
                         <div style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--danger)", fontSize: 11, marginTop: 2 }}>
                           <TrendingDown size={11} /> At Risk
@@ -469,15 +476,15 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
       {activeView === "detail" && selectedCourse && (
         <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-            <ProgressRing pct={selectedCourse.attendance_percentage} size={48}
-              color={selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)"} />
+            <ProgressRing pct={selectedCourse.total_sessions > 0 ? selectedCourse.attendance_percentage : 100} size={48}
+              color={selectedCourse.total_sessions === 0 ? "var(--text-muted)" : selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)"} />
             <div style={{ minWidth: 0, flex: "1 1 180px" }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{selectedCourse.course_name}</h2>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{selectedCourse.institution_name}</p>
             </div>
             <div style={{ marginLeft: "auto", textAlign: "right" }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)" }}>
-                {selectedCourse.attendance_percentage}%
+              <div style={{ fontSize: 24, fontWeight: 700, color: selectedCourse.total_sessions === 0 ? "var(--text-muted)" : selectedCourse.attendance_percentage >= 75 ? "var(--emerald)" : "var(--danger)" }}>
+                {selectedCourse.total_sessions > 0 ? `${selectedCourse.attendance_percentage}%` : "—"}
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                 {selectedCourse.attended_count} / {selectedCourse.total_sessions} sessions
