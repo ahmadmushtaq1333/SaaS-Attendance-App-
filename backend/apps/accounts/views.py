@@ -448,8 +448,16 @@ class ResetDeviceBindingView(APIView):
 
         try:
             student = CustomUser.objects.get(id=user_id, role="student")
-            from .models import DeviceBinding
+            from .models import DeviceBinding, DailyDeviceLock
+            from django.utils import timezone
+            
+            # 1. Remove permanent device binding
             DeviceBinding.objects.filter(user=student).delete()
+            
+            # 2. Clear any daily device locks for today so they can log in immediately
+            today = timezone.now().date()
+            DailyDeviceLock.objects.filter(user=student, date=today).delete()
+            
             return Response({"message": f"Device binding reset successfully for {student.email}."})
         except CustomUser.DoesNotExist:
             return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
