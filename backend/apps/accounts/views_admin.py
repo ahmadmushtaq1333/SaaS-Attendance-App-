@@ -1,99 +1,20 @@
-from rest_framework import viewsets, status, views
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from apps.accounts.permissions import IsAdminUser, IsGlobalAdmin
-from apps.institutions.models import Institution, Department, Semester, Section
-from apps.courses.models import Course, Enrollment
-from apps.attendance.models import AttendanceSession
-from django.contrib.auth import get_user_model
-from django.db.models import Count, Q
 from rest_framework.decorators import action
-from django.utils import timezone
-from .serializers_admin import (
-    InstitutionAdminSerializer,
-    UserAdminSerializer,
-    CourseAdminReadSerializer,
-    CourseAdminWriteSerializer,
-    EnrollmentAdminSerializer,
-    SessionAdminSerializer,
-    DepartmentAdminSerializer,
-    SemesterAdminSerializer,
-    SectionAdminSerializer
-)
-from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth import get_user_model
+from django.db.models import Q
+import csv, json, openpyxl, random, string
+from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from apps.accounts.permissions import IsAdminUser
+from apps.institutions.models import Institution, Department, Semester, Section
+from apps.courses.services import enroll_student_in_course
+from apps.courses.models import Course
+from .serializers_admin import UserAdminSerializer
 
 User = get_user_model()
-
-class AdminInstitutionViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = InstitutionAdminSerializer
-
-    def get_permissions(self):
-        # Only Global Super Admins can create, edit, or delete institutions
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsGlobalAdmin()]
-        return [IsAuthenticated(), IsAdminUser()]
-
-    def get_queryset(self):
-        qs = Institution.objects.all().annotate(
-            user_count=Count("users", distinct=True),
-            course_count=Count("courses", distinct=True)
-        )
-        # Institution-specific admins are scoped to their assigned institution
-        if not self.request.user.is_superuser and self.request.user.institution:
-            qs = qs.filter(id=self.request.user.institution.id)
-        return qs
-
-class AdminDepartmentViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = DepartmentAdminSerializer
-    
-    def get_queryset(self):
-        queryset = Department.objects.all()
-        if not self.request.user.is_superuser:
-            if self.request.user.institution:
-                queryset = queryset.filter(institution=self.request.user.institution)
-            if self.request.user.department:
-                queryset = queryset.filter(id=self.request.user.department.id)
-        
-        inst_id = self.request.query_params.get("institution")
-        if inst_id:
-            queryset = queryset.filter(institution_id=inst_id)
-        return queryset
-
-class AdminSemesterViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = SemesterAdminSerializer
-    
-    def get_queryset(self):
-        queryset = Semester.objects.all()
-        if not self.request.user.is_superuser:
-            if self.request.user.institution:
-                queryset = queryset.filter(department__institution=self.request.user.institution)
-            if self.request.user.department:
-                queryset = queryset.filter(department=self.request.user.department)
-        
-        dept_id = self.request.query_params.get("department")
-        if dept_id:
-            queryset = queryset.filter(department_id=dept_id)
-        return queryset
-
-class AdminSectionViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = SectionAdminSerializer
-    
-    def get_queryset(self):
-        queryset = Section.objects.all()
-        if not self.request.user.is_superuser:
-            if self.request.user.institution:
-                queryset = queryset.filter(semester__department__institution=self.request.user.institution)
-            if self.request.user.department:
-                queryset = queryset.filter(semester__department=self.request.user.department)
-        
-        sem_id = self.request.query_params.get("semester")
-        if sem_id:
-            queryset = queryset.filter(semester_id=sem_id)
-        return queryset
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -164,6 +85,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         DeviceBinding.objects.filter(user=user).delete()
         return Response({"message": f"Device binding reset successfully for {user.email}."})
 
+    @action(detail=True, methods=["post"], url_path="reset-daily-lock")
+    def reset_daily_lock(self, request, pk=None):
+        user = self.get_object()
+        from .models import DailyDeviceLock
+        from django.utils import timezone
+        today = timezone.now().date()
+        DailyDeviceLock.objects.filter(user=user, date=today).delete()
+        return Response({"message": f"Daily device lock reset successfully for {user.email}."})
+
     @action(detail=False, methods=["post"], url_path="bulk-generate")
     def bulk_generate(self, request):
         section_id = request.data.get("section_id")
@@ -189,18 +119,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
         # Check permissions for scoped admin
         if not request.user.is_superuser:
-            if request.user.institution and section.semester.department.institution != request.user.institution:
+            if request.user.institution and section.get_institution() != request.user.institution:
                 return Response({"error": "Permission denied for this institution"}, status=status.HTTP_403_FORBIDDEN)
-            if request.user.department and section.semester.department != request.user.department:
+            if request.user.department and section.get_department() != request.user.department:
                 return Response({"error": "Permission denied for this department"}, status=status.HTTP_403_FORBIDDEN)
 
-        institution = section.semester.department.institution
+        institution = section.get_institution()
         domain = institution.slug or "uni"
         
         created_users = []
-        import string
-        import random
-        from django.db import transaction
         
         try:
             with transaction.atomic():
@@ -229,10 +156,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     )
                     
                     if course:
-                        Enrollment.objects.create(
-                            student=user,
-                            course=course
-                        )
+                        enroll_student_in_course(student_id=user.id, course_id=course.id)
 
                     created_users.append({
                         "email": email,
@@ -240,7 +164,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         "role": "student",
                         "section_name": section.name,
                         "semester_number": section.semester.number,
-                        "department_name": section.semester.department.name,
+                        "department_name": section.get_department().name,
                         "enrolled_course": course.name if course else None
                     })
 
@@ -251,11 +175,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="import-file")
     def import_file(self, request):
-        import csv
-        import json
-        import openpyxl
-        from django.db import transaction
-        from apps.accounts.views import generate_and_send_otp
+        from apps.accounts.views_otp import generate_and_send_otp
 
         file_obj = request.FILES.get("file")
         dry_run = request.data.get("dry_run", "false").lower() == "true"
@@ -361,11 +281,6 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             except Course.DoesNotExist:
                 return Response({"error": "Selected enrollment course not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        import random
-        import string
-        from django.core.exceptions import ValidationError
-        from django.core.validators import validate_email
-
         try:
             with transaction.atomic():
                 for row_num, row in enumerate(rows, start=2):
@@ -465,7 +380,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         )
 
                         if role_val == "student" and target_course:
-                            Enrollment.objects.create(student=user, course=target_course)
+                            enroll_student_in_course(student_id=user.id, course_id=target_course.id)
 
                         generate_and_send_otp(user, purpose="verify")
 
@@ -495,130 +410,3 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             "errors": error_list,
             "imported_users": success_list
         }, status=status.HTTP_200_OK)
-
-
-class AdminCourseViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = CourseAdminReadSerializer
-
-    def get_serializer_class(self):
-        if self.action in ["create", "update", "partial_update"]:
-            return CourseAdminWriteSerializer
-        return CourseAdminReadSerializer
-
-    def get_queryset(self):
-        queryset = Course.objects.all().annotate(
-            enrollment_count=Count("enrollments", distinct=True)
-        )
-        if not self.request.user.is_superuser:
-            if self.request.user.institution:
-                queryset = queryset.filter(institution=self.request.user.institution)
-            if self.request.user.department:
-                queryset = queryset.filter(department=self.request.user.department)
-        return queryset
-
-class AdminEnrollmentViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = EnrollmentAdminSerializer
-    
-    def get_queryset(self):
-        queryset = Enrollment.objects.all()
-        if not self.request.user.is_superuser:
-            if self.request.user.institution:
-                queryset = queryset.filter(course__institution=self.request.user.institution)
-            if self.request.user.department:
-                queryset = queryset.filter(course__department=self.request.user.department)
-        return queryset
-
-    @action(detail=False, methods=["post"], url_path="bulk")
-    def bulk_assign(self, request):
-        course_id = request.data.get("course") or request.data.get("course_id")
-        student_ids = request.data.get("student_ids")
-
-        if not course_id:
-            return Response({"error": "course is required."}, status=status.HTTP_400_BAD_REQUEST)
-        if not isinstance(student_ids, list) or len(student_ids) == 0:
-            return Response({"error": "student_ids must be a non-empty list of IDs."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            course = Course.objects.get(id=course_id)
-        except Course.DoesNotExist:
-            return Response({"error": "Course not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        if not request.user.is_superuser:
-            if request.user.institution and course.institution != request.user.institution:
-                return Response({"error": "Permission denied: Course belongs to another institution."}, status=status.HTTP_403_FORBIDDEN)
-            if request.user.department and course.department != request.user.department:
-                return Response({"error": "Permission denied: Course belongs to another department."}, status=status.HTTP_403_FORBIDDEN)
-
-        students_qs = User.objects.filter(id__in=student_ids, role="student")
-        if not request.user.is_superuser and request.user.institution:
-            students_qs = students_qs.filter(institution=request.user.institution)
-
-        valid_students = list(students_qs)
-        if not valid_students:
-            return Response({"error": "No valid eligible students found for this assignment."}, status=status.HTTP_400_BAD_REQUEST)
-
-        valid_student_ids = [s.id for s in valid_students]
-        already_enrolled_ids = set(
-            Enrollment.objects.filter(course=course, student_id__in=valid_student_ids).values_list("student_id", flat=True)
-        )
-
-        to_create = [
-            Enrollment(course=course, student=student)
-            for student in valid_students
-            if student.id not in already_enrolled_ids
-        ]
-
-        if to_create:
-            Enrollment.objects.bulk_create(to_create)
-
-        return Response({
-            "success": True,
-            "enrolled_count": len(to_create),
-            "already_enrolled_count": len(already_enrolled_ids),
-            "total_requested": len(student_ids),
-            "course_id": course.id,
-            "course_name": course.name,
-            "message": f"Successfully assigned {len(to_create)} student(s) to {course.name}. ({len(already_enrolled_ids)} already assigned)."
-        }, status=status.HTTP_201_CREATED if to_create else status.HTTP_200_OK)
-
-class AdminSessionResetView(views.APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-
-    def post(self, request):
-        session_id = request.data.get("session_id")
-        if not session_id:
-            return Response({"error": "session_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        try:
-            session = AttendanceSession.objects.get(id=session_id)
-            if not request.user.is_superuser:
-                if request.user.institution and session.course.institution != request.user.institution:
-                    return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
-                if request.user.department and session.course.department != request.user.department:
-                    return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
-            
-            session.expiry_time = timezone.now()
-            session.save()
-            session.qr_tokens.all().update(expiry_time=timezone.now())
-            # Clean up all attendance records associated with this session to fully reset it
-            deleted_count, _ = session.records.all().delete()
-            return Response({"message": f"Session {session_id} has been reset successfully. All {deleted_count} marked records have been cleared."})
-        except AttendanceSession.DoesNotExist:
-            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
-
-class AdminSessionViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    serializer_class = SessionAdminSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["course"]
-
-    def get_queryset(self):
-        queryset = AttendanceSession.objects.all().order_by("-start_time")
-        if not self.request.user.is_superuser:
-            if self.request.user.institution:
-                queryset = queryset.filter(course__institution=self.request.user.institution)
-            if self.request.user.department:
-                queryset = queryset.filter(course__department=self.request.user.department)
-        return queryset

@@ -8,7 +8,7 @@ import {
 
 export default function UserInspectorPane({
   user,
-  institutions: _institutions = [],
+  institutions = [],
   departments = [],
   onRefresh,
   onCloseMobile,
@@ -63,8 +63,8 @@ export default function UserInspectorPane({
   const startEditing = () => {
     setEditEmail(user.email || "");
     setEditRole(user.role || "student");
-    setEditInst(user.institution ? String(user.institution) : "");
-    setEditDept(user.department ? String(user.department) : "");
+    setEditInst(user.computed_institution ? String(user.computed_institution) : (user.institution ? String(user.institution) : ""));
+    setEditDept(user.computed_department ? String(user.computed_department) : (user.department ? String(user.department) : ""));
     setEditRegNum(user.registration_number || "");
     setEditIsActive(user.is_active ?? true);
     setEditIsEmailVerified(user.is_email_verified ?? false);
@@ -89,7 +89,7 @@ export default function UserInspectorPane({
       if (newPassword.trim()) {
         payload.password = newPassword.trim();
       }
-      await API.put(`/admin/users/${user.id}/`, payload);
+      await API.patch(`/admin/users/${user.id}/`, payload);
       setMessage({ text: "User profile updated successfully.", type: "success" });
       setIsEditing(false);
       if (onRefresh) onRefresh();
@@ -111,6 +111,22 @@ export default function UserInspectorPane({
       if (onRefresh) onRefresh();
     } catch {
       setMessage({ text: "Failed to reset device binding.", type: "error" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResetDailyLock = async () => {
+    if (!window.confirm(`Clear daily device lock for ${user.email}? This will allow the student to log in from a new device today.`)) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await API.post(`/admin/users/${user.id}/reset-daily-lock/`);
+      setMessage({ text: res.data?.message || "Daily lock cleared successfully.", type: "success" });
+      if (onRefresh) onRefresh();
+    } catch {
+      setMessage({ text: "Failed to clear daily lock.", type: "error" });
     } finally {
       setActionLoading(false);
     }
@@ -280,6 +296,20 @@ export default function UserInspectorPane({
                 onChange={e => setEditEmail(e.target.value)}
                 style={{ width: "100%", padding: "7px 10px", fontSize: 13 }}
               />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Institution</label>
+              <select
+                className="form-input"
+                value={editInst}
+                onChange={e => setEditInst(e.target.value)}
+                style={{ width: "100%", padding: "7px 10px", fontSize: 13 }}
+              >
+                <option value="">None / Unassigned</option>
+                {institutions.map(i => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Role</label>
@@ -466,6 +496,20 @@ export default function UserInspectorPane({
                 }}
               >
                 <RefreshCw size={12} /> Reset Device
+              </button>
+            )}
+
+            {user.role === "student" && (
+              <button
+                onClick={handleResetDailyLock}
+                disabled={actionLoading}
+                className="btn-secondary"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", fontSize: 12, borderRadius: 8, color: "var(--blue)"
+                }}
+              >
+                <RefreshCw size={12} /> Clear Daily Lock
               </button>
             )}
           </div>
