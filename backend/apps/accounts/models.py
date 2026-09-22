@@ -52,13 +52,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     @property
     def get_institution(self):
         if self.role == "student" and self.section:
-            return self.section.semester.department.institution
+            return self.section.get_institution()
         return self.institution
 
     @property
     def get_department(self):
         if self.role == "student" and self.section:
-            return self.section.semester.department
+            return self.section.get_department()
         return self.department
 
     @property

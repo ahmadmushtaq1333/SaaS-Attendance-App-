@@ -1,20 +1,10 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import (
-    MeView,
-    UserCoursesView,
-    CustomTokenObtainPairView,
-    CookieTokenRefreshView,
-    LogoutView,
-    SendVerificationCodeView,
-    VerifyEmailView,
-    RequestPasswordResetView,
-    ConfirmPasswordResetView,
-    ResetDeviceBindingView,
-    ResetDailyDeviceLockView,
-    RequestDeviceRebindView,
-    ConfirmDeviceRebindView,
-)
+from .views_auth import MeView, CustomTokenObtainPairView, CookieTokenRefreshView, LogoutView
+from .views_otp import SendVerificationCodeView, VerifyEmailView
+from .views_password import RequestPasswordResetView, ConfirmPasswordResetView
+from .views_device import RequestDeviceRebindView, ConfirmDeviceRebindView, ResetDeviceBindingView, ResetDailyDeviceLockView
+from .views_courses import UserCoursesView
 
 urlpatterns = [
     path("login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),

@@ -4,9 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.courses.models import Course, Enrollment
 from apps.attendance.models import AttendanceSession, AttendanceRecord
-from django.core.mail import EmailMultiAlternatives
-from django.conf import settings
-from .email_templates import get_tier_for_percentage, get_bulk_tier_email, TIER_CONFIG
+from .email_templates import get_tier_for_percentage, TIER_CONFIG
+from shared.attendance_utils import calculate_attendance_percentage
 
 
 class CourseReportView(APIView):
@@ -97,11 +96,7 @@ class CourseReportView(APIView):
                 if is_present:
                     attended_count += 1
 
-            attendance_percentage = 0.0
-            if total_sessions > 0:
-                attendance_percentage = round(
-                    (attended_count / total_sessions) * 100.0, 2
-                )
+            attendance_percentage = calculate_attendance_percentage(attended_count, total_sessions)
 
             student_data = {
                 "id": student.id,
@@ -157,45 +152,21 @@ class BulkNotifyTierView(APIView):
         except Course.DoesNotExist:
             return Response({"error": "Course not found or access denied"}, status=status.HTTP_404_NOT_FOUND)
 
-        # 2. Re-evaluate attendance to find students in the specified tier
+        from apps.reports.services import get_students_in_tier, send_tier_notification
+        
         sessions = AttendanceSession.objects.filter(course=course)
         total_sessions = sessions.count()
 
         if total_sessions == 0:
             return Response({"error": "No sessions recorded for this course yet."}, status=status.HTTP_400_BAD_REQUEST)
 
-        enrollments = Enrollment.objects.filter(course=course).select_related("student")
-        records = set(AttendanceRecord.objects.filter(session__course=course).values_list("enrollment_id", "session_id"))
-
-        target_student_emails = []
-
-        for enrollment in enrollments:
-            student = enrollment.student
-            attended_count = sum(1 for session in sessions if (enrollment.id, session.id) in records)
-            attendance_percentage = round((attended_count / total_sessions) * 100.0, 2)
-            
-            calculated_tier = get_tier_for_percentage(attendance_percentage)
-            if calculated_tier == tier:
-                target_student_emails.append(student.email)
+        target_student_emails = get_students_in_tier(course, tier)
 
         if not target_student_emails:
             return Response({"message": f"No students found in the {tier} tier."}, status=status.HTTP_200_OK)
 
-        # 3. Generate generic email content
-        subject, plain_body, html_body = get_bulk_tier_email(course.name, tier)
-
-        # 4. Send bulk email using BCC
-        msg = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_body,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@quorum.com"),
-            to=[getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@quorum.com")],  # Sent to self/noreply
-            bcc=target_student_emails,
-        )
-        msg.attach_alternative(html_body, "text/html")
-        
         try:
-            msg.send(fail_silently=False)
+            send_tier_notification(course, tier, target_student_emails)
         except Exception as e:
             return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -242,38 +213,15 @@ class NotifyStudentView(APIView):
         except User.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Re-calculate this student's current attendance percentage
-        sessions = AttendanceSession.objects.filter(course=course)
-        total_sessions = sessions.count()
-        if total_sessions == 0:
-            return Response({"error": "No sessions recorded for this course yet."}, status=status.HTTP_400_BAD_REQUEST)
-
+        from apps.reports.services import notify_student_attendance
+        
         try:
-            enrollment = Enrollment.objects.get(student=student, course=course)
-        except Enrollment.DoesNotExist:
-            return Response({"error": "Student is not enrolled in this course."}, status=status.HTTP_400_BAD_REQUEST)
-
-        attended = AttendanceRecord.objects.filter(enrollment=enrollment).count()
-        attendance_pct = round((attended / total_sessions) * 100.0, 2)
-        tier = get_tier_for_percentage(attendance_pct)
+            tier = notify_student_attendance(course, student)
+        except Exception as e:
+            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         if not tier:
             return Response({"message": "Student meets the attendance threshold — no notice needed."}, status=status.HTTP_200_OK)
-
-        subject, plain_body, html_body = get_bulk_tier_email(course.name, tier)
-
-        msg = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_body,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@quorum.com"),
-            to=[student.email],
-        )
-        msg.attach_alternative(html_body, "text/html")
-
-        try:
-            msg.send(fail_silently=False)
-        except Exception as e:
-            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
             "message": f"Notice sent to {student.email} ({tier} tier).",
@@ -316,9 +264,7 @@ class StudentAttendanceReportView(APIView):
                 enrollment=enrollment
             ).count()
 
-            attendance_percentage = 0.0
-            if total_sessions > 0:
-                attendance_percentage = round((attended_count / total_sessions) * 100.0, 2)
+            attendance_percentage = calculate_attendance_percentage(attended_count, total_sessions)
 
             summary.append({
                 "course_id": course.id,
@@ -378,7 +324,7 @@ class StudentCourseDetailView(APIView):
 
         total_sessions = sessions.count()
         attended_count = len(attended_session_ids)
-        attendance_percentage = round((attended_count / total_sessions) * 100.0, 2) if total_sessions > 0 else 0.0
+        attendance_percentage = calculate_attendance_percentage(attended_count, total_sessions)
 
         return Response({
             "course_id": course.id,

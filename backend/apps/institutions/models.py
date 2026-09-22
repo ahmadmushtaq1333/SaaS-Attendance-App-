@@ -42,3 +42,10 @@ class Section(models.Model):
     def __str__(self):
         return f"{self.name} ({self.semester.number})"
 
+    def get_institution(self):
+        """Encapsulates the section->semester->department->institution traversal."""
+        return self.semester.department.institution
+
+    def get_department(self):
+        """Encapsulates the section->semester->department traversal."""
+        return self.semester.department

@@ -6,6 +6,8 @@ import Reports from "./pages/Reports";
 import AdminDashboard from "./pages/AdminDashboard";
 import API, { clearAuthTokens } from "./services/api";
 import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon, ScanLine } from "lucide-react";
+import RoleRouter from "./components/RoleRouter";
+import { AUTH_EVENTS } from "./constants/events";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -44,8 +46,8 @@ export default function App() {
       setUser(null);
       setLoading(false);
     };
-    window.addEventListener("auth:logout", onLogout);
-    return () => window.removeEventListener("auth:logout", onLogout);
+    window.addEventListener(AUTH_EVENTS.LOGOUT, onLogout);
+    return () => window.removeEventListener(AUTH_EVENTS.LOGOUT, onLogout);
   }, []);
 
   const handleLogout = async () => {
@@ -182,34 +184,17 @@ export default function App() {
           </div>
         )}
 
-        {/* Page content with ultra-high 90+ FPS GPU acceleration */}
         <main className="page-main page-enter" key={currentView} role="main">
-          {(user.role === "admin" || user.is_staff) && <AdminDashboard user={user} />}
-          {user.role === "student" && (
-            <Scanner
-              key={currentView}
-              user={user}
-            />
-          )}
-          {user.role === "teacher" && (
-            <>
-              {currentView === "dashboard" && (
-                <Dashboard
-                  user={user}
-                  onViewReports={(courseId) => {
-                    setSelectedCourseId(courseId);
-                    setCurrentView("reports");
-                  }}
-                />
-              )}
-              {currentView === "reports" && (
-                <Reports
-                  courseId={selectedCourseId}
-                  onBack={() => setCurrentView("dashboard")}
-                />
-              )}
-            </>
-          )}
+          <RoleRouter
+            user={user}
+            currentView={currentView}
+            selectedCourseId={selectedCourseId}
+            onViewReports={(courseId) => {
+              setSelectedCourseId(courseId);
+              setCurrentView("reports");
+            }}
+            onBack={() => setCurrentView("dashboard")}
+          />
         </main>
       </div>
     </>

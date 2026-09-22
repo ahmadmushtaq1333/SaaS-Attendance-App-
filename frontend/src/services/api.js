@@ -1,4 +1,5 @@
 import axios from "axios";
+import { AUTH_EVENTS } from "../constants/events";
 
 const TOKEN_KEY = "quorum_access_token";
 const REFRESH_KEY = "quorum_refresh_token";
@@ -94,7 +95,7 @@ API.interceptors.response.use(
       // Refresh itself failed → force logout
       if (originalRequest.url?.includes("/auth/refresh/")) {
         clearAuthTokens();
-        window.dispatchEvent(new Event("auth:logout"));
+        window.dispatchEvent(new Event(AUTH_EVENTS.LOGOUT));
         return Promise.reject(error);
       }
 
@@ -136,7 +137,7 @@ API.interceptors.response.use(
       } catch (refreshError) {
         clearAuthTokens();
         processQueue(refreshError, null);
-        window.dispatchEvent(new Event("auth:logout"));
+        window.dispatchEvent(new Event(AUTH_EVENTS.LOGOUT));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
