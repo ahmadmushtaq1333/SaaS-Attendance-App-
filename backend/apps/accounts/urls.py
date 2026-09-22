@@ -11,6 +11,7 @@ from .views import (
     RequestPasswordResetView,
     ConfirmPasswordResetView,
     ResetDeviceBindingView,
+    ResetDailyDeviceLockView,
     RequestDeviceRebindView,
     ConfirmDeviceRebindView,
 )
@@ -28,4 +29,5 @@ urlpatterns = [
     path("rebind/request/", RequestDeviceRebindView.as_view(), name="rebind_request"),
     path("rebind/confirm/", ConfirmDeviceRebindView.as_view(), name="rebind_confirm"),
     path("<int:user_id>/reset-device/", ResetDeviceBindingView.as_view(), name="reset_device_binding"),
+    path("<int:user_id>/reset-daily-lock/", ResetDailyDeviceLockView.as_view(), name="reset_daily_device_lock"),
 ]

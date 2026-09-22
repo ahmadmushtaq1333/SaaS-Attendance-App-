@@ -128,18 +128,3 @@ class DailyDeviceLock(models.Model):
     def __str__(self):
         return f"{self.user.email} on {self.date} [{self.device_fingerprint[:8]}…]"
 
-
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
-from django.utils import timezone
-
-@receiver(post_delete, sender=DeviceBinding)
-def clear_daily_locks_on_binding_reset(sender, instance, **kwargs):
-    """
-    When a DeviceBinding is deleted (e.g. from the Django Admin by an administrator),
-    automatically clear the student's DailyDeviceLock for today so they can
-    log in from a new device immediately.
-    """
-    today = timezone.now().date()
-    DailyDeviceLock.objects.filter(user=instance.user, date=today).delete()
-

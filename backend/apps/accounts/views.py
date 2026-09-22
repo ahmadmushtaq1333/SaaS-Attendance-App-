@@ -448,17 +448,34 @@ class ResetDeviceBindingView(APIView):
 
         try:
             student = CustomUser.objects.get(id=user_id, role="student")
-            from .models import DeviceBinding, DailyDeviceLock
+            from .models import DeviceBinding
+            # 1. Remove permanent device binding ONLY
+            DeviceBinding.objects.filter(user=student).delete()
+            return Response({"message": f"Device binding reset successfully for {student.email}."})
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
+class ResetDailyDeviceLockView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        # Daily lock reset must only be performed by administrators
+        if request.user.role != "admin" and not getattr(request.user, "is_superuser", False):
+            return Response(
+                {"error": "Unauthorized: Daily device lock can only be reset by an administrator."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            student = CustomUser.objects.get(id=user_id, role="student")
+            from .models import DailyDeviceLock
             from django.utils import timezone
             
-            # 1. Remove permanent device binding
-            DeviceBinding.objects.filter(user=student).delete()
-            
-            # 2. Clear any daily device locks for today so they can log in immediately
+            # Clear any daily device locks for today
             today = timezone.now().date()
             DailyDeviceLock.objects.filter(user=student, date=today).delete()
-            
-            return Response({"message": f"Device binding reset successfully for {student.email}."})
+            return Response({"message": f"Daily device lock reset successfully for {student.email}."})
         except CustomUser.DoesNotExist:
             return Response({"error": "Student not found"}, status=status.HTTP_404_NOT_FOUND)
 
