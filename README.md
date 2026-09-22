@@ -112,6 +112,7 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 | 📚 **Course Management** | Assign courses to sections and instructors; enroll students |
 | 📅 **Session Monitoring** | View all active and past attendance sessions across the platform |
 | 🔑 **Email Verification Control** | Manually trigger or bypass verification for bulk-created accounts |
+| 🔓 **Device Management** | Clear Daily Locks and reset Device Bindings for student accounts |
 
 ### 📈 Reports & Analytics
 | Feature | Description |
@@ -212,23 +213,29 @@ SaaS-Attendance-App/
 │   │   │   ├── models.py              # CustomUser with role + section FK hierarchy
 │   │   │   ├── serializers.py         # UserSerializer + CustomTokenObtainPairSerializer
 │   │   │   ├── serializers_admin.py   # Admin-facing serializers with computed_ fields
-│   │   │   ├── views.py               # Login (cookie), refresh, OTP verify, password reset
+│   │   │   ├── views_auth.py          # Login (cookie), refresh
+│   │   │   ├── views_otp.py           # OTP verify
+│   │   │   ├── views_password.py      # Password reset
+│   │   │   ├── views_device.py        # Device binding management
 │   │   │   ├── views_admin.py         # AdminUserViewSet: CRUD, bulk generate, Excel import
 │   │   │   ├── urls.py                # /auth/* routes
-│   │   │   ├── urls_admin.py          # /admin/users/* routes
 │   │   │   └── permissions.py         # IsTeacher, IsStudent, IsAdminUser
 │   │   ├── attendance/
 │   │   │   ├── models.py              # AttendanceSession, QRToken, AttendanceRecord
+│   │   │   ├── qr_service.py          # Service for QR code generation and rotation
 │   │   │   ├── views_sessions.py      # Session CRUD + QR token rotation
 │   │   │   ├── views_marking.py       # QR scan validation + manual override
 │   │   │   └── views_override.py      # Retroactive attendance correction
 │   │   ├── courses/
 │   │   │   ├── models.py              # Course, Enrollment, CourseInstructor
-│   │   │   └── views.py              # Course & enrollment management
+│   │   │   ├── services.py            # Course management service layer
+│   │   │   └── views_admin.py         # Course & enrollment management
 │   │   ├── institutions/
 │   │   │   └── models.py              # Institution, Department, Semester, Section
 │   │   └── reports/
+│   │       ├── services.py            # Report generation logic
 │   │       └── views.py               # Per-course reports, defaulters, CSV export
+│   ├── shared/                        # Shared utility layer (email, rate limiting, utils)
 │   ├── attendance_saas/
 │   │   ├── settings/
 │   │   │   ├── base.py                # Shared settings (JWT, CORS, apps, rate limits)
@@ -246,6 +253,10 @@ SaaS-Attendance-App/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── AccordionSection.jsx   # Reusable collapsible section
+│   │   │   ├── DashboardActionCard.jsx# Reusable dashboard UI cards
+│   │   │   ├── RoleRouter.jsx         # Role-based route protection
+│   │   │   ├── ProgressRing.jsx       # Circular progress visualization
+│   │   │   ├── Sparkline.jsx          # Sparkline charts for analytics
 │   │   │   └── admin/
 │   │   │       ├── UsersPanel.jsx     # User CRUD + hierarchical filter dropdowns
 │   │   │       ├── CoursesPanel.jsx   # Course & enrollment management
@@ -521,7 +532,7 @@ Student (role=student, section-scoped)
 | **Role-based Permissions** | `IsTeacher`, `IsStudent`, `IsAdminUser` Django permission classes enforce access at every view |
 | **Scope Isolation** | Institution-scoped admins can only access data within their own institution |
 | **Email Enumeration Prevention** | Auth endpoints return generic messages regardless of whether an email exists |
-| **Device Binding** | Associates a student's account with their primary device using a persistent local identifier (`device_id`). Prevents "buddy punching" / proxy attendance by blocking login on secondary devices. Admins can reset this binding if a device is lost. |
+| **Device Binding & Salt** | Associates a student's account with their primary device using a persisted random salt to prevent fingerprint collisions. Admins can clear Daily Locks or reset Device Bindings via the UI. |
 
 ---
 
