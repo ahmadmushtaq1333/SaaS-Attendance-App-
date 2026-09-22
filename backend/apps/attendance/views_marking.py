@@ -9,6 +9,7 @@ from .serializers import AttendanceRecordSerializer
 from django.utils import timezone
 from datetime import timedelta
 from dateutil import parser as date_parser
+from django.core.exceptions import ValidationError
 
 # Grace window (seconds) to absorb network latency around QR rotation.
 # A token scanned within its final QR_GRACE_SECONDS is still accepted.
@@ -25,7 +26,7 @@ class MarkAttendanceView(APIView):
 
         try:
             token = QRToken.objects.select_related("session").get(token_uuid=token_uuid)
-        except (QRToken.DoesNotExist, ValueError):
+        except (QRToken.DoesNotExist, ValueError, ValidationError):
             return Response({"error": "Invalid QR code token"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Expiry check with grace period for the rotating token.
@@ -92,7 +93,7 @@ class SyncAttendanceView(APIView):
             
             try:
                 token = QRToken.objects.get(token_uuid=token_uuid)
-            except (QRToken.DoesNotExist, ValueError):
+            except (QRToken.DoesNotExist, ValueError, ValidationError):
                 errors.append({"index": index, "token_uuid": token_uuid, "error": "Invalid QR code token"})
                 continue
             
