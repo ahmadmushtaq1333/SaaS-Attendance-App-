@@ -24,10 +24,10 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
   const [conflictModal,   setConflictModal]   = useState(false);
   const [pendingStrategy, setPendingStrategy] = useState(null);
 
-  // Feature is invisible when no links are configured
-  if (!linkedCourses || linkedCourses.length === 0) return null;
-
-  const selectedCourse = linkedCourses.find(c => c.id === selectedId);
+  // We will no longer hide the button if linkedCourses is empty. 
+  // Instead, we will show it as disabled in the UI.
+  const hasLinks = linkedCourses && linkedCourses.length > 0;
+  const selectedCourse = hasLinks ? linkedCourses.find(c => c.id === selectedId) : null;
 
   const reset = () => {
     setSelectedId(null);
@@ -78,12 +78,17 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
       {/* ── Trigger Button ─────────────────────────────────────────────── */}
       <button
         onClick={handleOpen}
+        disabled={!hasLinks}
+        title={!hasLinks ? "No linked courses configured for this subject." : "Replicate to linked course"}
         className="btn-secondary"
         style={{
           display: "inline-flex", alignItems: "center", gap: 7,
           padding: "8px 16px", fontSize: 13,
-          color: "var(--purple)", borderColor: "rgba(167,139,250,0.4)",
-          background: "rgba(167,139,250,0.08)",
+          color: hasLinks ? "var(--purple)" : "var(--text-muted)", 
+          borderColor: hasLinks ? "rgba(167,139,250,0.4)" : "rgba(255,255,255,0.1)",
+          background: hasLinks ? "rgba(167,139,250,0.08)" : "transparent",
+          opacity: hasLinks ? 1 : 0.6,
+          cursor: hasLinks ? "pointer" : "not-allowed"
         }}
       >
         <Repeat2 size={15} />
