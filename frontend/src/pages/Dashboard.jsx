@@ -482,13 +482,28 @@ export default function Dashboard({ user, onViewReports }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {recentSessions.map(s => {
               const isPast = parseUTCDate(s.expiry_time) < new Date();
+              const sessionCourse = courses.find(c => c.id === s.course);
+              const linkedCourses = sessionCourse?.linked_courses || [];
               return (
                 <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap", gap: 8 }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>Session {s.session_number ?? s.id}</div>
                     <div className="text-meta">{formatLocalDate(s.start_time)}</div>
+                    {s.present_count !== undefined && (
+                      <div style={{ fontSize: 12, color: "var(--emerald)", marginTop: 2 }}>{s.present_count} students present</div>
+                    )}
                   </div>
-                  <span className={`badge ${isPast ? "badge-defaulter" : "badge-good"}`}>{isPast ? "Ended" : "Active"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span className={`badge ${isPast ? "badge-defaulter" : "badge-good"}`}>{isPast ? "Ended" : "Active"}</span>
+                    <ReplicateAttendanceButton
+                      sourceSessionId={s.id}
+                      linkedCourses={linkedCourses}
+                      onSuccess={(result) => {
+                        alert(`Replicated ${result.records_cloned} records to ${result.target_course_name}.`);
+                        fetchRecentSessions();
+                      }}
+                    />
+                  </div>
                 </div>
               );
             })}

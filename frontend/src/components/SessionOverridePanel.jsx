@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart2, Trash2, CheckCircle, XCircle, CheckSquare, Square, MinusSquare } from 'lucide-react';
+import { BarChart2, Trash2, CheckCircle, XCircle, CheckSquare, Square, MinusSquare, Repeat2 } from 'lucide-react';
 import { formatLocalDate } from '../utils/date';
+import ReplicateAttendanceButton from './ReplicateAttendanceButton';
 
 export default function SessionOverridePanel({
   sessions,
@@ -11,7 +12,10 @@ export default function SessionOverridePanel({
   onToggle,
   onBulkOverride,
   bulkLoading,
-  bulkError
+  bulkError,
+  // New optional props for replication
+  courses,
+  activeCourseId,
 }) {
   const [selectedStudentIds, setSelectedStudentIds] = useState(new Set());
 
@@ -46,6 +50,11 @@ export default function SessionOverridePanel({
   const isAllSelected = sessionAttendance.length > 0 && selectedStudentIds.size === sessionAttendance.length;
   const isSomeSelected = selectedStudentIds.size > 0 && selectedStudentIds.size < sessionAttendance.length;
 
+  // Figure out the linked courses for the active course
+  const activeCourse = courses?.find(c => c.id === activeCourseId || c.id === Number(activeCourseId));
+  const linkedCourses = activeCourse?.linked_courses || [];
+  const selectedSession = sessions.find(s => s.id === selectedSessionId || s.id === Number(selectedSessionId));
+
   return (
     <div className="glass-b panel-pad">
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 14, marginBottom: 18 }}>
@@ -60,11 +69,12 @@ export default function SessionOverridePanel({
             className="form-input"
             value={selectedSessionId}
             onChange={(e) => onSessionChange(parseInt(e.target.value))}
-            style={{ width: "auto", minWidth: 140, maxWidth: "100%", padding: "7px 32px 7px 12px" }}
+            style={{ width: "auto", minWidth: 200, maxWidth: "100%", padding: "7px 32px 7px 12px" }}
           >
             {sessions.map(s => (
               <option key={s.id} value={s.id}>
                 Session {s.session_number ?? s.id} · {formatLocalDate(s.start_time, false)}
+                {s.present_count !== undefined ? ` · ${s.present_count} present` : ''}
               </option>
             ))}
           </select>
@@ -73,6 +83,45 @@ export default function SessionOverridePanel({
           </button>
         </div>
       </div>
+
+      {/* Session stats bar */}
+      {selectedSession && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 20, padding: '10px 16px',
+          background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)',
+          borderRadius: 10, marginBottom: 16, flexWrap: 'wrap', gap: 12,
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Present</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--emerald)' }}>
+              {selectedSession.present_count ?? sessionAttendance.filter(s => s.isPresent).length}
+            </span>
+          </div>
+          <div style={{ height: 32, width: 1, background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Absent</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--danger)' }}>
+              {sessionAttendance.length - (selectedSession.present_count ?? sessionAttendance.filter(s => s.isPresent).length)}
+            </span>
+          </div>
+          <div style={{ height: 32, width: 1, background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</span>
+            <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--cyan)' }}>{sessionAttendance.length}</span>
+          </div>
+
+          {/* Replicate button for past sessions */}
+          <div style={{ marginLeft: 'auto' }}>
+            <ReplicateAttendanceButton
+              sourceSessionId={selectedSessionId}
+              linkedCourses={linkedCourses}
+              onSuccess={(result) => {
+                alert(`Replicated ${result.records_cloned} records to ${result.target_course_name}.`);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {bulkError && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{bulkError}</div>}
 

@@ -12,17 +12,18 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
     qr_code = serializers.SerializerMethodField()
     session_number = serializers.SerializerMethodField()
     course_name = serializers.CharField(source="course.name", read_only=True)
+    present_count = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceSession
         fields = (
             "id", "course", "course_name", "session_number",
             "start_time", "expiry_time", "qr_code",
-            "is_replicated", "replicated_from",
+            "is_replicated", "replicated_from", "present_count",
         )
         read_only_fields = (
             "id", "course_name", "session_number", "start_time", "expiry_time",
-            "qr_code", "is_replicated", "replicated_from",
+            "qr_code", "is_replicated", "replicated_from", "present_count",
         )
 
     def get_session_number(self, obj):
@@ -30,6 +31,9 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
             course=obj.course,
             start_time__lte=obj.start_time
         ).count()
+
+    def get_present_count(self, obj):
+        return obj.attendance_records.count()
 
     def get_qr_code(self, obj):
         from .qr_service import get_session_qr_code

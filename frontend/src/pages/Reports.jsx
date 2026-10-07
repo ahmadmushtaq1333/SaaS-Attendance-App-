@@ -236,6 +236,8 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
             onBulkOverride={handleBulkOverride}
             bulkLoading={bulkLoading}
             bulkError={bulkError}
+            courses={courses}
+            activeCourseId={activeCourseId}
           />
 
           {/* Student Summary Table */}
