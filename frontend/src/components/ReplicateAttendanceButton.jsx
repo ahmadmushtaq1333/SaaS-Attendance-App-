@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import API from "../services/api";
 import { Repeat2, X, Loader2, AlertCircle, CheckCircle2, Layers, ChevronRight } from "lucide-react";
 
@@ -20,7 +21,13 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
     setLoading(false);
   };
 
-  const handleOpen  = () => { reset(); setOpen(true); };
+  const handleOpen  = () => { 
+    reset(); 
+    if (linkedCourses && linkedCourses.length > 0) {
+      setSelectedId(linkedCourses[0].id);
+    }
+    setOpen(true); 
+  };
   const handleClose = () => { setOpen(false); reset(); };
 
   const doReplicate = async (strategy = "replace") => {
@@ -64,8 +71,8 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-          border: `1px solid ${hasLinks ? "rgba(167,139,250,0.45)" : "rgba(255,255,255,0.1)"}`,
-          background: hasLinks ? "rgba(167,139,250,0.1)" : "transparent",
+          border: `1px solid ${hasLinks ? "var(--purple-glow)" : "var(--glass-border)"}`,
+          background: hasLinks ? "var(--purple-glow)" : "transparent",
           color: hasLinks ? "var(--purple)" : "var(--text-muted)",
           opacity: hasLinks ? 1 : 0.55,
           cursor: hasLinks ? "pointer" : "not-allowed",
@@ -78,12 +85,12 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
         Replicate
       </button>
 
-      {/* ── Backdrop ── */}
-      {open && (
+      {/* ── Backdrop and Modal via Portal ── */}
+      {open && typeof document !== "undefined" && createPortal(
         <div
           onClick={handleClose}
           style={{
-            position: "fixed", inset: 0, zIndex: 1100,
+            position: "fixed", inset: 0, zIndex: 9999,
             background: "rgba(0,0,0,0.6)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
@@ -114,7 +121,7 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
                 <Layers size={24} color="#07111F" strokeWidth={2.5} />
               </div>
               <div>
-                <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, margin: 0 }}>
+                <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5, margin: 0, color: "var(--text-primary)" }}>
                   {done ? "Replicated!" : conflict ? "Session Exists" : "Replicate Attendance"}
                 </h1>
                 <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
@@ -177,15 +184,15 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
                       style={{
                         display: "flex", alignItems: "center", gap: 12,
                         padding: "13px 16px", borderRadius: 12, width: "100%",
-                        border: `1.5px solid ${active ? "var(--purple)" : "rgba(255,255,255,0.08)"}`,
-                        background: active ? "rgba(167,139,250,0.1)" : "rgba(255,255,255,0.03)",
+                        border: `1.5px solid ${active ? "var(--purple)" : "var(--glass-border)"}`,
+                        background: active ? "var(--purple-glow)" : "var(--glass-c)",
                         cursor: "pointer", fontFamily: "inherit",
                         transition: "border-color 0.15s, background 0.15s",
                       }}
                     >
                       <div style={{
                         width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                        background: active ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.07)",
+                        background: active ? "var(--purple-glow)" : "var(--glass-inner)",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontWeight: 800, fontSize: 14,
                         color: active ? "var(--purple)" : "var(--text-muted)",
@@ -197,7 +204,7 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
                       </span>
                       <div style={{
                         width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
-                        border: `2px solid ${active ? "var(--purple)" : "rgba(255,255,255,0.2)"}`,
+                        border: `2px solid ${active ? "var(--purple)" : "var(--text-muted)"}`,
                         background: active ? "var(--purple)" : "transparent",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         transition: "all 0.15s",
@@ -249,7 +256,7 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
       <style>{`
         @keyframes popIn { from { transform: scale(0.92); opacity: 0 } to { transform: scale(1); opacity: 1 } }
@@ -262,8 +269,8 @@ export default function ReplicateAttendanceButton({ sourceSessionId, linkedCours
 const conflictBtnStyle = {
   display: "flex", alignItems: "center", gap: 12,
   padding: "13px 16px", borderRadius: 12, width: "100%",
-  border: "1.5px solid rgba(255,255,255,0.08)",
-  background: "rgba(255,255,255,0.03)",
+  border: "1.5px solid var(--glass-border)",
+  background: "var(--glass-c)",
   cursor: "pointer", fontFamily: "inherit",
   transition: "border-color 0.15s, background 0.15s",
 };
