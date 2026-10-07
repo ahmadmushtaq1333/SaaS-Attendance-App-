@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import API from "../../services/api";
-import { Plus, BookOpen, UserCheck, Users, Edit, Trash, Check, X, ArrowLeft, ArrowRight } from "lucide-react";
+import { Plus, BookOpen, UserCheck, Users, Edit, Trash, Check, X, ArrowLeft, ArrowRight, Link as LinkIcon } from "lucide-react";
 import MultiStudentAssignmentForm from "./MultiStudentAssignmentForm";
 
 
@@ -90,13 +90,57 @@ export default function CoursesPanel({ user }) {
   const [editSems, setEditSems] = useState([]);
   const [editSecs, setEditSecs] = useState([]);
 
+  // Course Links
+  const [courseLinks, setCourseLinks] = useState([]);
+  const [linkSource, setLinkSource] = useState("");
+  const [linkTarget, setLinkTarget] = useState("");
+  const [linkType, setLinkType] = useState("theory_lab");
+
   const [sortField, setSortField] = useState("name");
   const [sortDesc, setSortDesc] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchCourses(); fetchInitialData(); }, []);
+  useEffect(() => { fetchCourses(); fetchInitialData(); fetchCourseLinks(); }, []);
+
+  const fetchCourseLinks = async () => {
+    try {
+      const res = await API.get("/admin/course-links/");
+      setCourseLinks(res.data.results || res.data);
+    } catch {
+      console.error("Failed to fetch course links");
+    }
+  };
+
+  const handleCreateLink = async (e) => {
+    e.preventDefault();
+    if (!linkSource || !linkTarget) return;
+    setLoading(true); setError("");
+    try {
+      await API.post("/admin/course-links/", {
+        source_course: parseInt(linkSource),
+        target_course: parseInt(linkTarget),
+        link_type: linkType
+      });
+      setLinkSource(""); setLinkTarget("");
+      fetchCourseLinks();
+    } catch (err) {
+      setError(err.response?.data?.error || "Error creating course link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteLink = async (id) => {
+    if (!window.confirm("Delete this course link?")) return;
+    try {
+      await API.delete(`/admin/course-links/${id}/`);
+      fetchCourseLinks();
+    } catch {
+      setError("Failed to delete link");
+    }
+  };
 
   // Creation cascades
   useEffect(() => {
@@ -292,6 +336,17 @@ export default function CoursesPanel({ user }) {
             description="Create new courses and manage student course assignments."
             buttonText="Open Tools"
             onClick={() => setActiveView("tools")}
+          />
+          <DashboardActionCard 
+            icon={LinkIcon} 
+            color="var(--cyan)" 
+            title="Course Links" 
+            description="Link Theory and Lab courses together for attendance replication."
+            stats={[
+              { label: "Active Links", value: courseLinks.length }
+            ]}
+            buttonText="Manage Links"
+            onClick={() => setActiveView("links")}
           />
         </div>
       )}
@@ -543,6 +598,85 @@ export default function CoursesPanel({ user }) {
                 initialCourseId={enrollCourse}
               />
             )}
+          </div>
+        </div>
+      )}
+
+      {activeView === "links" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(34,211,238,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <LinkIcon size={20} color="var(--cyan)" />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Course Link Rules</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Configure Theory ↔ Lab pairs for cross-replication</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateLink} style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
+              <div className="form-grid-3">
+                <div><label>Source Course</label>
+                  <select className="form-input" value={linkSource} onChange={e => setLinkSource(e.target.value)} required>
+                    <option value="">-- Select Source --</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div><label>Target Course</label>
+                  <select className="form-input" value={linkTarget} onChange={e => setLinkTarget(e.target.value)} required>
+                    <option value="">-- Select Target --</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div><label>Link Type</label>
+                  <select className="form-input" value={linkType} onChange={e => setLinkType(e.target.value)} required>
+                    <option value="theory_lab">Theory & Lab</option>
+                    <option value="parallel">Parallel Sections</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" className="btn-primary" style={{ alignSelf: "flex-start" }} disabled={loading}>
+                <Plus size={14} /> Create Link
+              </button>
+            </form>
+
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Source Course</th>
+                    <th>Target Course</th>
+                    <th>Type</th>
+                    <th>Created By</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courseLinks.map(link => (
+                    <tr key={link.id}>
+                      <td style={{ fontWeight: 600 }}>{link.source_course_name}</td>
+                      <td style={{ fontWeight: 600 }}>{link.target_course_name}</td>
+                      <td>
+                        <span className="badge badge-good">
+                          {link.link_type === 'theory_lab' ? 'Theory & Lab' : link.link_type}
+                        </span>
+                      </td>
+                      <td style={{ color: "var(--text-muted)", fontSize: 12 }}>{link.created_by_email}</td>
+                      <td>
+                        <button onClick={() => handleDeleteLink(link.id)} className="btn-danger" style={{ padding: "6px 10px" }} title="Delete Link">
+                          <Trash size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {courseLinks.length === 0 && (
+                    <tr><td colSpan="5" style={{ textAlign: "center", padding: "30px 0", color: "var(--text-muted)" }}>No course links exist.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

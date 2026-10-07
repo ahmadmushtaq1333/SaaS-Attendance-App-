@@ -87,3 +87,18 @@ class EnrollmentAdminSerializer(serializers.ModelSerializer):
         model = Enrollment
         fields = ("id", "student", "student_email", "course", "course_name", "enrolled_at")
         read_only_fields = ("id", "student_email", "course_name", "enrolled_at")
+
+class CourseLinkAdminSerializer(serializers.ModelSerializer):
+    source_course_name = serializers.CharField(source="source_course.name", read_only=True)
+    target_course_name = serializers.CharField(source="target_course.name", read_only=True)
+    created_by_email = serializers.EmailField(source="created_by.email", read_only=True)
+
+    class Meta:
+        from apps.courses.models import CourseLink
+        model = CourseLink
+        fields = (
+            "id", "source_course", "source_course_name",
+            "target_course", "target_course_name",
+            "link_type", "created_by", "created_by_email", "created_at"
+        )
+        read_only_fields = ("created_by", "created_at")

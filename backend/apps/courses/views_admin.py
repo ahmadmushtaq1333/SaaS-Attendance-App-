@@ -97,3 +97,26 @@ class AdminEnrollmentViewSet(viewsets.ModelViewSet):
             "course_name": course.name,
             "message": f"Successfully assigned {len(to_create)} student(s) to {course.name}. ({len(already_enrolled_ids)} already assigned)."
         }, status=status.HTTP_201_CREATED if to_create else status.HTTP_200_OK)
+
+
+class AdminCourseLinkViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get_serializer_class(self):
+        from .serializers_admin import CourseLinkAdminSerializer
+        return CourseLinkAdminSerializer
+
+    def get_queryset(self):
+        from apps.courses.models import CourseLink
+        queryset = CourseLink.objects.select_related("source_course", "target_course", "created_by")
+        # Reuse existing scope logic targeting the source_course's institution
+        queryset = scope_for_admin(
+            self.request.user, 
+            queryset,
+            institution_field="source_course__institution",
+            department_field="source_course__department"
+        )
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
