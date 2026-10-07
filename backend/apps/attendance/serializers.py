@@ -33,7 +33,7 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         ).count()
 
     def get_present_count(self, obj):
-        return obj.attendance_records.count()
+        return obj.records.count()
 
     def get_qr_code(self, obj):
         from .qr_service import get_session_qr_code
