@@ -1,9 +1,16 @@
 from django.urls import path
-from .views_sessions import AttendanceSessionCreateView, AttendanceSessionQRView, AttendanceSessionStopView, AttendanceSessionDetailView
+from .views_sessions import (
+    AttendanceSessionCreateView,
+    AttendanceSessionQRView,
+    AttendanceSessionStopView,
+    AttendanceSessionDetailView,
+)
+from .views_replication import ReplicateAttendanceView
 
 urlpatterns = [
-    path("", AttendanceSessionCreateView.as_view(), name="session_create"),
-    path("<int:pk>/", AttendanceSessionDetailView.as_view(), name="session_detail"),
-    path("<int:pk>/qr/", AttendanceSessionQRView.as_view(), name="session_qr"),
-    path("<int:pk>/stop/", AttendanceSessionStopView.as_view(), name="session_stop"),
+    path("",                   AttendanceSessionCreateView.as_view(), name="session_create"),
+    path("<int:pk>/",          AttendanceSessionDetailView.as_view(), name="session_detail"),
+    path("<int:pk>/qr/",       AttendanceSessionQRView.as_view(),     name="session_qr"),
+    path("<int:pk>/stop/",     AttendanceSessionStopView.as_view(),   name="session_stop"),
+    path("replicate/",         ReplicateAttendanceView.as_view(),     name="session_replicate"),
 ]

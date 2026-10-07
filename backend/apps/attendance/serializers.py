@@ -15,8 +15,15 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AttendanceSession
-        fields = ("id", "course", "course_name", "session_number", "start_time", "expiry_time", "qr_code")
-        read_only_fields = ("id", "course_name", "session_number", "start_time", "expiry_time", "qr_code")
+        fields = (
+            "id", "course", "course_name", "session_number",
+            "start_time", "expiry_time", "qr_code",
+            "is_replicated", "replicated_from",
+        )
+        read_only_fields = (
+            "id", "course_name", "session_number", "start_time", "expiry_time",
+            "qr_code", "is_replicated", "replicated_from",
+        )
 
     def get_session_number(self, obj):
         return AttendanceSession.objects.filter(

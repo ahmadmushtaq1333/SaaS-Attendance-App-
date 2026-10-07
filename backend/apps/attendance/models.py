@@ -7,6 +7,12 @@ class AttendanceSession(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sessions")
     start_time = models.DateTimeField(auto_now_add=True)
     expiry_time = models.DateTimeField()
+    # Replication audit fields
+    is_replicated = models.BooleanField(default=False)
+    replicated_from = models.ForeignKey(
+        "self", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="replications"
+    )
 
     def __str__(self):
         return f"Session for {self.course.name} ({self.id})"

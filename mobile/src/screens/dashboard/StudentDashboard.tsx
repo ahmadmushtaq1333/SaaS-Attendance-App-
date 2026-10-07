@@ -10,6 +10,8 @@ import { Colors, Radius, FontSize } from '@/shared/constants/theme';
 import { studentApi, StudentCourse, CourseDetail } from '@/entities/session/api/student-api';
 import { useAuthStore } from '@/entities/user';
 import { QRScannerModal } from './QRScannerModal';
+import NetInfo from '@react-native-community/netinfo';
+import { offlineSync } from '@/shared/offline/offlineSync';
 
 // ── Progress Ring (pure RN, no SVG lib needed) ──────────────────────────
 const ProgressRing = ({ pct, size = 52, color = Colors.emerald }: { pct: number; size?: number; color?: string }) => (
@@ -51,11 +53,11 @@ const ActionCard = ({ icon, color, title, description, onPress, buttonText }: an
   </TouchableOpacity>
 );
 
-type View = 'grid' | 'attendance' | 'detail';
+type ViewMode = 'grid' | 'attendance' | 'detail';
 
 export const StudentDashboard = () => {
   const { user, logout } = useAuthStore();
-  const [activeView, setActiveView] = useState<View>('grid');
+  const [activeView, setActiveView] = useState<ViewMode>('grid');
   const [scannerVisible, setScannerVisible] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [courses, setCourses] = useState<StudentCourse[]>([]);
@@ -65,6 +67,9 @@ export const StudentDashboard = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'risk'>('all');
   const [refreshing, setRefreshing] = useState(false);
+  
+  const [isOnline, setIsOnline] = useState(true);
+  const [offlineCount, setOfflineCount] = useState(0);
 
   const displayName = user?.first_name
     ? user.first_name.charAt(0).toUpperCase() + user.first_name.slice(1)
@@ -82,6 +87,33 @@ export const StudentDashboard = () => {
     }
   }, []);
 
+  const triggerSync = async () => {
+    const count = await offlineSync.getPendingScansCount();
+    if (count > 0) {
+      setStatusMsg({ text: 'Syncing offline records...', type: 'info' });
+      try {
+        const res = await offlineSync.syncOfflineScans();
+        setStatusMsg({ text: `✓ Successfully synced ${res.success_count} scans!`, type: 'success' });
+        setOfflineCount(0);
+        fetchSummary();
+      } catch {
+        setStatusMsg({ text: 'Sync failed. Will retry later.', type: 'error' });
+      }
+      setTimeout(() => setStatusMsg(null), 4000);
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      const online = !!state.isConnected;
+      setIsOnline(online);
+      if (online) {
+        triggerSync();
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchSummary();
@@ -89,6 +121,10 @@ export const StudentDashboard = () => {
   }, [fetchSummary]);
 
   useEffect(() => { fetchSummary(); }, [fetchSummary]);
+  
+  useEffect(() => {
+    offlineSync.getPendingScansCount().then(setOfflineCount);
+  }, []);
 
   const fetchCourseDetail = async (courseId: number) => {
     setDetailLoading(true);
@@ -104,6 +140,15 @@ export const StudentDashboard = () => {
 
   const handleQRScanned = async (tokenUuid: string) => {
     setScannerVisible(false);
+    
+    if (!isOnline) {
+      await offlineSync.saveScanOffline(tokenUuid);
+      setOfflineCount(prev => prev + 1);
+      setStatusMsg({ text: 'Saved offline. Will sync when back online.', type: 'info' });
+      setTimeout(() => setStatusMsg(null), 4000);
+      return;
+    }
+
     setStatusMsg({ text: 'Processing attendance scan…', type: 'info' });
     try {
       await studentApi.markAttendance(tokenUuid);
@@ -194,6 +239,22 @@ export const StudentDashboard = () => {
               color: statusMsg.type === 'success' ? Colors.emerald :
                 statusMsg.type === 'error' ? Colors.danger : Colors.purple,
             }]}>{statusMsg.text}</Text>
+          </View>
+        )}
+
+        {/* ── Offline & Sync Banner ──────────────────────────── */}
+        {(!isOnline || offlineCount > 0) && (
+          <View style={[styles.statusBanner, { backgroundColor: 'rgba(234, 88, 12, 0.15)', borderColor: '#EA580C', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+            <Text style={[styles.statusText, { color: '#EA580C', flex: 1 }]}>
+              {!isOnline 
+                ? 'Offline mode. You can still scan QR codes.'
+                : `${offlineCount} scan(s) waiting to sync.`}
+            </Text>
+            {isOnline && offlineCount > 0 && (
+              <TouchableOpacity onPress={triggerSync} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#EA580C', borderRadius: 4 }}>
+                <Text style={{ color: 'white', fontSize: 12, fontWeight: '700' }}>Sync Now</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 

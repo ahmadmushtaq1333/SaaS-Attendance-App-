@@ -97,9 +97,11 @@ export const TeacherDashboard = () => {
   // --- SUB-PANEL RENDERING ---
   
   if (activeView === 'live') {
+    const activeCourseMeta = courses.find(c => c.id === activeSession?.course);
     return (
       <LiveSessionPanel
         session={activeSession!}
+        linkedCourses={activeCourseMeta?.linked_courses ?? []}
         onBack={() => setActiveView('grid')}
         onStopSession={handleStopSession}
       />

@@ -1,10 +1,17 @@
 import { apiClient } from '@/shared/api';
 
+export interface LinkedCourse {
+  id: number;
+  name: string;
+}
+
 export interface Course {
   id: number;
   name: string;
   institution: string;
   department: string;
+  /** Populated by the backend when the teacher has linked courses configured. */
+  linked_courses: LinkedCourse[];
 }
 
 export interface Session {
@@ -13,6 +20,8 @@ export interface Session {
   start_time: string;
   expiry_time: string;
   qr_code: string;
+  is_replicated: boolean;
+  replicated_from: number | null;
 }
 
 export const teacherApi = {

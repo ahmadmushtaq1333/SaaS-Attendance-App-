@@ -55,3 +55,36 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.email} in {self.course.name}"
+
+
+class CourseLink(models.Model):
+    """
+    Admin-configured pairing between two courses (e.g. Theory ↔ Lab).
+    The replication feature uses this as the single source of truth.
+    Only one entry is needed per pair — the service checks both directions.
+    """
+    LINK_TYPES = [
+        ("theory_lab", "Theory & Lab"),
+        ("parallel",   "Parallel Sections"),
+        ("other",      "Other"),
+    ]
+    source_course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="links_as_source"
+    )
+    target_course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name="links_as_target"
+    )
+    link_type = models.CharField(max_length=20, choices=LINK_TYPES, default="theory_lab")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="course_links_created"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("source_course", "target_course")
+        verbose_name = "Course Link"
+        verbose_name_plural = "Course Links"
+
+    def __str__(self):
+        return f"{self.source_course.name} <-> {self.target_course.name} ({self.get_link_type_display()})"

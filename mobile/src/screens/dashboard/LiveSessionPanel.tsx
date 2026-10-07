@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, ActivityIndicator,
+  Image, ActivityIndicator, Alert,
 } from 'react-native';
-import { Session, teacherApi } from '@/entities/session/api/teacher-api';
+import { Session, LinkedCourse, teacherApi } from '@/entities/session/api/teacher-api';
 import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { ReplicateAttendanceButton } from '@/features/replicate-attendance';
 
 interface LiveSessionPanelProps {
   session: Session;
+  linkedCourses: LinkedCourse[];
   onBack: () => void;
   onStopSession: () => void;
 }
 
-export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({ session, onBack, onStopSession }) => {
+export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({
+  session,
+  linkedCourses,
+  onBack,
+  onStopSession,
+}) => {
   const [report, setReport] = useState<any>(null);
   // qrData is the base64 PNG string returned by the backend serializer
   const [qrData, setQrData] = useState<string>(session.qr_code || '');
@@ -130,9 +137,12 @@ export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({ session, onB
           {/* Countdown */}
           <View style={styles.countdownRow}>
             <View style={[styles.countdownDot, { backgroundColor: ringColor }]} />
-            <Text style={[styles.countdownText, { color: ringColor }]}>
+            <Text style={[styles.countdownText, { color: ringColor, flex: 1 }]}>
               Refreshes in {timeLeft}s
             </Text>
+            <TouchableOpacity onPress={refreshQR} style={styles.forceBtn} disabled={loadingQR}>
+              <Text style={styles.forceBtnText}>Force Rotate</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -170,6 +180,19 @@ export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({ session, onB
             <ActivityIndicator color={Colors.emerald} style={{ marginTop: 24 }} />
           )}
         </View>
+
+        {/* Replicate Attendance — only visible when linked courses exist */}
+        <ReplicateAttendanceButton
+          sourceSessionId={session.id}
+          linkedCourses={linkedCourses}
+          onSuccess={(result, targetCourseName) => {
+            Alert.alert(
+              '✅ Attendance Replicated',
+              `${result.records_cloned} student(s) marked present in ${targetCourseName}.`,
+              [{ text: 'OK' }],
+            );
+          }}
+        />
       </ScrollView>
     </View>
   );
@@ -218,6 +241,11 @@ const styles = StyleSheet.create({
   countdownRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   countdownDot: { width: 8, height: 8, borderRadius: 4 },
   countdownText: { fontSize: FontSize.sm, fontWeight: '600' },
+  forceBtn: { 
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm, 
+    borderWidth: 1, borderColor: Colors.glassBorder, backgroundColor: 'rgba(255,255,255,0.05)'
+  },
+  forceBtnText: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600' },
 
   rosterHeader: { marginBottom: 12 },
   rosterTitle: { color: Colors.textPrimary, fontSize: FontSize.lg, fontWeight: '700', marginBottom: 2 },

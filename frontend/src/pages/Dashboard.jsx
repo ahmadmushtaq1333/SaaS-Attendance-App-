@@ -11,6 +11,7 @@ import AttendanceAlertsPanel from "../components/AttendanceAlertsPanel";
 import Sparkline from "../components/Sparkline";
 
 import DashboardActionCard from "../components/DashboardActionCard";
+import ReplicateAttendanceButton from "../components/ReplicateAttendanceButton";
 
 export default function Dashboard({ user, onViewReports }) {
   const [courses, setCourses] = useState([]);
@@ -342,6 +343,16 @@ export default function Dashboard({ user, onViewReports }) {
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
                 <button onClick={refreshQR} className="btn-secondary" style={{ gap: 6 }}><RefreshCw size={14} /> Force Rotate</button>
                 <button onClick={stopSession} className="btn-danger" style={{ gap: 6 }}>End Session</button>
+                
+                {/* Replicate Attendance Button (only renders if linked courses exist) */}
+                <ReplicateAttendanceButton
+                  sourceSessionId={activeSession.id}
+                  linkedCourses={courses.find(c => c.id === activeSession.course)?.linked_courses || []}
+                  onSuccess={(result) => {
+                    alert(`✅ Successfully replicated ${result.records_cloned} attendance records to ${result.target_course_name}.`);
+                    fetchRecentSessions();
+                  }}
+                />
               </div>
 
               {sessionReport?.students?.length > 0 && (
