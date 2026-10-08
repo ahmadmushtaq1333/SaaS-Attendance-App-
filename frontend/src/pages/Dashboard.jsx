@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import API from "../services/api";
 import {
   RefreshCw, Eye, ShieldCheck, Clock, Zap, BookOpen,
-  Maximize2, X, Users, AlertTriangle, Send, CheckCircle2, Play,
-  ArrowLeft, ArrowRight, History
+  Maximize2, X, Users, AlertTriangle, Play,
+  ArrowLeft, History
 } from "lucide-react";
 import { formatLocalDate, parseUTCDate } from "../utils/date";
 import AttendanceAlertsPanel from "../components/AttendanceAlertsPanel";

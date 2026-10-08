@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart2, Trash2, CheckCircle, XCircle, CheckSquare, Square, MinusSquare, Repeat2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BarChart2, Trash2, CheckCircle, XCircle, CheckSquare, Square, MinusSquare } from 'lucide-react';
 import { formatLocalDate } from '../utils/date';
 import ReplicateAttendanceButton from './ReplicateAttendanceButton';
 
@@ -87,7 +87,7 @@ export default function SessionOverridePanel({
       {/* Session stats bar */}
       {selectedSession && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 20, padding: '10px 16px',
+          display: 'flex', alignItems: 'center', padding: '10px 16px',
           background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)',
           borderRadius: 10, marginBottom: 16, flexWrap: 'wrap', gap: 12,
         }}>

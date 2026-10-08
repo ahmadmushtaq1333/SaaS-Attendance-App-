@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, FileSpreadsheet, Trash2, BarChart2 } from "lucide-react";
-import { formatLocalDate } from "../utils/date";
+import { ArrowLeft, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import { exportAttendanceExcel } from "../utils/exportExcel";
 import SessionOverridePanel from "../components/SessionOverridePanel";
 

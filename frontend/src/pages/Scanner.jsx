@@ -4,7 +4,7 @@ import API from "../services/api";
 import { saveScanOffline, getPendingScansCount, syncOfflineScans } from "../services/offline";
 import {
   Camera, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle, Info, ScanLine,
-  ArrowLeft, ArrowRight, BarChart2, TrendingDown, Clock, CheckCircle2,
+  ArrowLeft, ArrowRight, TrendingDown, Clock, CheckCircle2,
   XCircle, BookOpen
 } from "lucide-react";
 

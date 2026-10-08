@@ -1,11 +1,7 @@
 import { useState, useEffect } from "react";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Scanner from "./pages/Scanner";
-import Reports from "./pages/Reports";
-import AdminDashboard from "./pages/AdminDashboard";
 import API, { clearAuthTokens } from "./services/api";
-import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon, ScanLine } from "lucide-react";
+import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon } from "lucide-react";
 import RoleRouter from "./components/RoleRouter";
 import { AUTH_EVENTS } from "./constants/events";
 

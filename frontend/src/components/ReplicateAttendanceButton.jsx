@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import API from "../services/api";
-import { Repeat2, X, Loader2, AlertCircle, CheckCircle2, Layers, ChevronRight } from "lucide-react";
+import { Repeat2, Loader2, AlertCircle, CheckCircle2, Layers, ChevronRight } from "lucide-react";
 
 export default function ReplicateAttendanceButton({ sourceSessionId, linkedCourses, onSuccess }) {
   const [open,       setOpen]       = useState(false);

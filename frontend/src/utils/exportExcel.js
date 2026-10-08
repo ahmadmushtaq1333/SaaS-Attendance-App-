@@ -11,7 +11,6 @@ import { Workbook } from "exceljs";
 const NAVY   = "23376D";    // UET Primary Deep Blue
 const ORANGE = "FD7A00";    // UET Secondary Orange
 const LGRAY  = "F1F5F9";
-const DGRAY  = "E2E8F0";
 const GREEN  = "065F46";
 const GFILL  = "D1FAE5";
 const RED    = "991B1B";

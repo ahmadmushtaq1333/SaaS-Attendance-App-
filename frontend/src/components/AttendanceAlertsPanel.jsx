@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertTriangle, Send, RefreshCw, CheckCircle2 } from 'lucide-react';
 import API from '../services/api';
 import Toast from './Toast';
@@ -35,7 +35,7 @@ export default function AttendanceAlertsPanel({ courses, selectedCourseId, onCou
         }
       }));
       showToast(`Successfully sent bulk notice to ${notified.length} students.`, "success");
-    } catch (err) {
+    } catch {
       showToast("Failed to send bulk notice for tier " + tier, "error");
     } finally {
       setSendingTiers(prev => ({ ...prev, [tier]: false }));
@@ -63,7 +63,7 @@ export default function AttendanceAlertsPanel({ courses, selectedCourseId, onCou
         }
         return newResults;
       });
-    } catch (err) {
+    } catch {
       showToast(`Failed to resend notice to ${email}`, "error");
     } finally {
       setResendingStudents(prev => {
