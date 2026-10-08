@@ -5,6 +5,11 @@ from .views_otp import SendVerificationCodeView, VerifyEmailView
 from .views_password import RequestPasswordResetView, ConfirmPasswordResetView
 from .views_device import RequestDeviceRebindView, ConfirmDeviceRebindView, ResetDeviceBindingView, ResetDailyDeviceLockView
 from .views_courses import UserCoursesView
+from .views_webauthn import (
+    WebAuthnRegistrationChallengeView, WebAuthnRegistrationVerifyView,
+    WebAuthnAuthenticationChallengeView, WebAuthnAuthenticationVerifyView,
+    WebAuthnCredentialDeleteView
+)
 
 urlpatterns = [
     path("login/", CustomTokenObtainPairView.as_view(), name="token_obtain_pair"),
@@ -20,4 +25,11 @@ urlpatterns = [
     path("rebind/confirm/", ConfirmDeviceRebindView.as_view(), name="rebind_confirm"),
     path("<int:user_id>/reset-device/", ResetDeviceBindingView.as_view(), name="reset_device_binding"),
     path("<int:user_id>/reset-daily-lock/", ResetDailyDeviceLockView.as_view(), name="reset_daily_device_lock"),
+    
+    # WebAuthn
+    path("webauthn/register/challenge/", WebAuthnRegistrationChallengeView.as_view(), name="webauthn_register_challenge"),
+    path("webauthn/register/verify/", WebAuthnRegistrationVerifyView.as_view(), name="webauthn_register_verify"),
+    path("webauthn/auth/challenge/", WebAuthnAuthenticationChallengeView.as_view(), name="webauthn_auth_challenge"),
+    path("webauthn/auth/verify/", WebAuthnAuthenticationVerifyView.as_view(), name="webauthn_auth_verify"),
+    path("webauthn/credential/<int:pk>/", WebAuthnCredentialDeleteView.as_view(), name="webauthn_delete"),
 ]

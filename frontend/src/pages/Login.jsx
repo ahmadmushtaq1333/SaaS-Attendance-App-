@@ -1,17 +1,19 @@
 import { useState } from "react";
 import API, { setAuthTokens } from "../services/api";
-import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon, Fingerprint } from "lucide-react";
 import EmailVerification from "./EmailVerification";
 import ForgotPassword from "./ForgotPassword";
 import DeviceRebind from "./DeviceRebind";
+import { WebAuthnClient } from "../utils/webauthn";
 
 export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
-  const [viewState, setViewState] = useState("login"); // login, verify, forgot_password, rebind
+  const [viewState, setViewState] = useState("login"); // login, verify, forgot_password, rebind, webauthn_register, webauthn_verify
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [preAuthToken, setPreAuthToken] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,16 +21,29 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     setLoading(true);
 
     try {
-      // Get device fingerprint for the anti-proxy daily lock
       const { getDeviceFingerprint } = await import("../utils/deviceFingerprint");
       const deviceFingerprint = await getDeviceFingerprint();
 
-      // Support dual-auth: HTTPOnly cookies (Android/same-origin) & Bearer headers (iOS Safari ITP)
-      const loginRes = await API.post("/auth/login/", { 
-        email: email.trim().toLowerCase(), 
+      const loginRes = await API.post("/auth/login/", {
+        email: email.trim().toLowerCase(),
         password,
         device_fingerprint: deviceFingerprint
       });
+
+      if (loginRes.data?.requires_webauthn) {
+        if (!WebAuthnClient.isSupported()) {
+          setError("Biometric login isn't supported in this browser. Open the app in Safari (iOS) or Chrome (Android), or add it to your Home Screen for the best experience.");
+          return;
+        }
+        setPreAuthToken(loginRes.data.pre_auth_token);
+        if (loginRes.data.is_registered) {
+          setViewState("webauthn_verify");
+        } else {
+          setViewState("webauthn_register");
+        }
+        return;
+      }
+
       if (loginRes.data?.access) {
         setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
       }
@@ -37,13 +52,10 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     } catch (err) {
       const errorData = err.response?.data;
       if (errorData?.device_mismatch) {
-        // Direct to self-service rebind OTP
         setViewState("rebind");
       } else if (errorData?.device_locked) {
-        // Daily device lock triggered
         setError(errorData?.detail || "This device has already been used by another account today.");
       } else if (errorData?.email_unverified) {
-        // Direct to activation OTP
         setViewState("verify");
       } else if (!err.response) {
         setError("Unable to connect to server. Please check your network connection.");
@@ -55,38 +67,76 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     }
   };
 
-  const handleVerificationSuccess = async () => {
-    // Attempt automatic login after verification since user knows password
-    setViewState("login");
+  const handleWebAuthnRegister = async () => {
     setError("");
     setLoading(true);
     try {
-      const { getDeviceFingerprint } = await import("../utils/deviceFingerprint");
-      const deviceFingerprint = await getDeviceFingerprint();
-
-      const loginRes = await API.post("/auth/login/", { 
-        email: email.trim().toLowerCase(), 
-        password,
-        device_fingerprint: deviceFingerprint
+      // 1. Get challenge
+      const challengeRes = await API.get("auth/webauthn/register/challenge/", {
+        headers: { Authorization: `Bearer ${preAuthToken}` },
       });
-      if (loginRes.data?.access) {
-        setAuthTokens({ access: loginRes.data.access, refresh: loginRes.data.refresh });
-      }
+
+      // 2. Client Face ID / Touch ID interaction
+      const credential = await WebAuthnClient.register(challengeRes.data);
+
+      // 3. Verify on server & receive final tokens
+      const verifyRes = await API.post("auth/webauthn/register/verify/", credential, {
+        headers: { Authorization: `Bearer ${preAuthToken}` },
+      });
+
+      setAuthTokens({ access: verifyRes.data.access, refresh: verifyRes.data.refresh });
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
-      const errorData = err?.response?.data;
-      if (errorData?.device_mismatch) {
-         setViewState("rebind");
-      } else if (errorData?.device_locked) {
-         setError(errorData?.detail || "This device has already been used by another account today.");
+      if (err.name === "NotAllowedError") {
+        setError("Biometric prompt dismissed. Please try again.");
       } else {
-         setError("Email verified successfully! Please log in now.");
+        setError(err.response?.data?.error || "Registration failed. Please try again.");
       }
     } finally {
       setLoading(false);
-      setPassword(""); // Clear password from state after login attempt
     }
+  };
+
+  const handleWebAuthnVerify = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      // 1. Get challenge
+      const challengeRes = await API.get("auth/webauthn/auth/challenge/", {
+        headers: { Authorization: `Bearer ${preAuthToken}` },
+      });
+
+      // 2. Client Face ID / Touch ID interaction
+      const credential = await WebAuthnClient.authenticate(challengeRes.data);
+
+      // 3. Verify on server & receive final tokens
+      const verifyRes = await API.post("auth/webauthn/auth/verify/", credential, {
+        headers: { Authorization: `Bearer ${preAuthToken}` },
+      });
+
+      setAuthTokens({ access: verifyRes.data.access, refresh: verifyRes.data.refresh });
+      const userRes = await API.get("/auth/me/");
+      onLoginSuccess(userRes.data);
+    } catch (err) {
+      if (err.response?.data?.error === "WebAuthn credential not found for this user.") {
+        // is_registered changed mid-flow — redirect to register
+        setViewState("webauthn_register");
+        setError("No device found for this account. Please register this device instead.");
+      } else if (err.name === "NotAllowedError") {
+        setError("Biometric prompt dismissed. Please try again.");
+      } else {
+        setError(err.response?.data?.error || "Authentication failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const handleVerificationSuccess = async () => {
+    setViewState("login");
+    setError("");
   };
 
   return (
@@ -94,7 +144,6 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
       padding: 24, position: "relative", zIndex: 1,
     }}>
-      {/* Theme toggle in corner */}
       <button
         onClick={() => setLightMode(!lightMode)}
         className="nav-icon-btn"
@@ -127,6 +176,65 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
           }}
           onCancel={() => setViewState("login")} 
         />
+      )}
+
+      {(viewState === "webauthn_register" || viewState === "webauthn_verify") && (
+        <div className="glass-a" style={{
+          width: "100%", maxWidth: 440, padding: "44px 36px",
+          display: "flex", flexDirection: "column", gap: 28, textAlign: "center",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: "50%",
+              background: "linear-gradient(135deg, var(--purple), var(--cyan))",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 32px rgba(168, 85, 247, 0.4)",
+            }}>
+              <Fingerprint size={32} color="white" />
+            </div>
+          </div>
+          
+          <div>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: 22, fontWeight: 700 }}>
+              {viewState === "webauthn_register" ? "Register this Device" : "Verify Device"}
+            </h2>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.5 }}>
+              {viewState === "webauthn_register" 
+                ? "This device is not registered. Please set up a Passkey (Face ID/Touch ID) to securely bind it to your account."
+                : "Please verify your Passkey (Face ID/Touch ID) to log in securely."}
+            </p>
+          </div>
+
+          {error && (
+            <div className="alert alert-danger" style={{ margin: 0, textAlign: "left" }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <button
+              onClick={viewState === "webauthn_register" ? handleWebAuthnRegister : handleWebAuthnVerify}
+              className="btn-primary"
+              disabled={loading}
+              style={{ width: "100%", justifyContent: "center", padding: "12px 20px" }}
+            >
+              {loading ? "Waiting..." : (viewState === "webauthn_register" ? "Set up Passkey" : "Verify Passkey")}
+            </button>
+            <button
+              onClick={() => {
+                setViewState("login");
+                setPreAuthToken("");
+                setError("");
+              }}
+              className="btn-secondary"
+              disabled={loading}
+              style={{ width: "100%", justifyContent: "center", padding: "12px 20px" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {viewState === "login" && (

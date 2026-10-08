@@ -128,3 +128,5 @@ class DailyDeviceLock(models.Model):
     def __str__(self):
         return f"{self.user.email} on {self.date} [{self.device_fingerprint[:8]}…]"
 
+
+from .webauthn import WebAuthnCredential

@@ -5,7 +5,7 @@ import { saveScanOffline, getPendingScansCount, syncOfflineScans } from "../serv
 import {
   Camera, RefreshCw, Wifi, WifiOff, CheckCircle, AlertCircle, Info, ScanLine,
   ArrowLeft, ArrowRight, TrendingDown, Clock, CheckCircle2,
-  XCircle, BookOpen
+  XCircle, BookOpen, Shield
 } from "lucide-react";
 
 import ProgressRing from "../components/ProgressRing";
