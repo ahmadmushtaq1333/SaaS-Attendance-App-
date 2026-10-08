@@ -67,4 +67,5 @@ django-ratelimit>=4.1.0
 # IMPORTANT: sentry-sdk had no version at all before — adding a safe minimum.
 # Pin to exact version after prod pip freeze.
 sentry-sdk>=2.0.0,<3.0.0
-colorama==0.4.6webauthn==2.2.0
+colorama==0.4.6
+webauthn==2.2.0
