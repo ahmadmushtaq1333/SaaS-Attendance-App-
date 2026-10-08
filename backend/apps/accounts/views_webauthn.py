@@ -10,6 +10,7 @@ from .models.webauthn import WebAuthnCredential
 from .services.webauthn_service import WebAuthnService
 from rest_framework_simplejwt.tokens import RefreshToken
 import json
+from webauthn import options_to_json
 
 
 class PreAuthMixin:
@@ -58,7 +59,7 @@ class WebAuthnRegistrationChallengeView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         options = WebAuthnService.generate_registration_challenge(user)
-        return Response(json.loads(options.json()))
+        return Response(json.loads(options_to_json(options)))
 
 
 class WebAuthnRegistrationVerifyView(APIView, PreAuthMixin):
@@ -104,7 +105,7 @@ class WebAuthnAuthenticationChallengeView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         options = WebAuthnService.generate_authentication_challenge(user)
-        return Response(json.loads(options.json()))
+        return Response(json.loads(options_to_json(options)))
 
 
 class WebAuthnAuthenticationVerifyView(APIView, PreAuthMixin):
