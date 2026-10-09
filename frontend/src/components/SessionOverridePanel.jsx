@@ -189,7 +189,10 @@ export default function SessionOverridePanel({
                     {selectedStudentIds.has(student.id) ? <CheckSquare size={16} color="var(--cyan)" /> : <Square size={16} />}
                   </button>
                 </td>
-                <td style={{ fontWeight: 500 }}>{student.email}</td>
+                <td style={{ fontWeight: 500 }}>
+                  <div style={{ fontSize: 14 }}>{student.full_name || student.email.split('@')[0]}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{student.email}</div>
+                </td>
                 <td>
                   <span className={`badge ${student.isPresent ? "badge-good" : "badge-defaulter"}`}>
                     {student.isPresent ? <CheckCircle size={11} /> : <XCircle size={11} />}

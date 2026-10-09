@@ -112,6 +112,7 @@ export async function exportAttendanceExcel(report, courses, activeCourseId) {
   const cols = [
     { key: "a", width: 5  },   // #
     { key: "b", width: 22 },   // Reg No.
+    { key: "n", width: 25 },   // Name
   ];
   sessions.forEach(() => cols.push({ width: 9 })); // Session P/A columns
   cols.push(
@@ -208,7 +209,7 @@ export async function exportAttendanceExcel(report, courses, activeCourseId) {
 
   /* ── Table column headers ── */
   ws.getRow(r).height = 32;
-  const hCells = ["#", "Registration No."];
+  const hCells = ["#", "Registration No.", "Name"];
   sessions.forEach((s, si) => hCells.push(`S-${s.session_number ?? si + 1}\n${fmtShortDate(s.start_time)}`));
   hCells.push("Total", "Attend %", "Status");
 
@@ -250,7 +251,12 @@ export async function exportAttendanceExcel(report, courses, activeCourseId) {
     cReg.value = regNo(s.email);
     style(cReg, { f: fill(WHITE), fnt: font({ hex: DARK, sz: 10 }), aln: align("left", "middle"), brdr: thinBorder });
 
-    let colIdx = 3;
+    // Name
+    const cName = ws.getCell(r, 3);
+    cName.value = s.full_name || s.email.split("@")[0];
+    style(cName, { f: fill(WHITE), fnt: font({ hex: DARK, sz: 10 }), aln: align("left", "middle"), brdr: thinBorder });
+
+    let colIdx = 4;
     
     // Session P/A cells
     sessions.forEach((sess) => {

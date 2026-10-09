@@ -101,6 +101,7 @@ class CourseReportView(APIView):
             student_data = {
                 "id": student.id,
                 "email": student.email,
+                "full_name": student.full_name,
                 "attended_count": attended_count,
                 "attendance_percentage": attendance_percentage,
                 "sessions": student_sessions,

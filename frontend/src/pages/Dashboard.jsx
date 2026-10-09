@@ -166,8 +166,8 @@ export default function Dashboard({ user, onViewReports }) {
   const formatTime = (secs) => `${Math.floor(secs / 60)}m ${(secs % 60).toString().padStart(2, "0")}s`;
 
   const todayStr = new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const firstName = user.email?.split("@")[0]?.split(".")[0];
-  const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "Teacher";
+  const fallbackName = user.email?.split("@")[0]?.split(".")[0];
+  const displayName = user.full_name || (fallbackName ? fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1) : "Teacher");
 
   const totalEnrolled = sessionReport?.students?.length || 0;
   const presentCount = sessionReport?.students?.filter(s => s.sessions && s.sessions[activeSession?.id])?.length || 0;

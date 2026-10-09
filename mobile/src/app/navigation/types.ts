@@ -10,6 +10,7 @@ export type AuthNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 // 2. Main Stack Types
 export type MainStackParamList = {
+  NameSetup: undefined;
   Dashboard: undefined;
   // Scanner: undefined; // Future expansion
 };

@@ -146,7 +146,9 @@ export default function AttendanceAlertsPanel({ courses, selectedCourseId, onCou
                     
                     return (
                       <div key={std.id} style={{ padding: "10px 14px", background: bg, border: `1px solid ${color}20`, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: 'wrap', gap: 8 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13 }}>{std.email}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>
+                          {std.full_name ? `${std.full_name} (${std.email})` : std.email}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <span className="badge" style={{ backgroundColor: `${color}15`, color }}>{std.attendance_percentage}%</span>
                           <button 

@@ -253,7 +253,7 @@ export default function MultiStudentAssignmentForm({
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {s.email}
+                      {s.full_name ? `${s.full_name} (${s.email})` : s.email}
                       {s.registration_number ? (
                         <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 6 }}>
                           ({s.registration_number})

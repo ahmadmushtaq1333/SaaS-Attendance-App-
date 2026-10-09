@@ -228,7 +228,7 @@ export default function UserListPane({
                         color: "var(--text-primary)", whiteSpace: "nowrap",
                         overflow: "hidden", textOverflow: "ellipsis"
                       }}>
-                        {u.email}
+                        {u.full_name ? `${u.full_name} (${u.email})` : u.email}
                       </div>
                       {u.registration_number && (
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>

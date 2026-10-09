@@ -4,6 +4,7 @@ import API, { clearAuthTokens } from "./services/api";
 import { LogOut, Bell, Settings, Activity, BarChart2, Home, Sun, Moon } from "lucide-react";
 import RoleRouter from "./components/RoleRouter";
 import { AUTH_EVENTS } from "./constants/events";
+import SetNameModal from "./components/SetNameModal";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -178,6 +179,14 @@ export default function App() {
               </button>
             ))}
           </div>
+        )}
+
+        {/* Require Name Setup */}
+        {!user.full_name && (
+          <SetNameModal
+            user={user}
+            onNameSet={(updatedUser) => setUser(updatedUser)}
+          />
         )}
 
         <main className="page-main page-enter" key={currentView} role="main">

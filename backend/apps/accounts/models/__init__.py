@@ -25,6 +25,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ("student", "Student"),
     )
     email = models.EmailField(unique=True)
+    full_name = models.CharField(max_length=255, blank=True, null=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="student")
     registration_number = models.CharField(max_length=50, blank=True, null=True, unique=True)
     is_email_verified = models.BooleanField(default=False)

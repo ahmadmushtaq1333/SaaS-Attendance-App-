@@ -198,12 +198,12 @@ export default function UserInspectorPane({
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 20, fontWeight: 700, color: roleStyle.text
             }}>
-              {user.email ? user.email.charAt(0).toUpperCase() : "U"}
+              {(user.full_name || user.email)?.charAt(0).toUpperCase()}
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all" }}>
-                  {user.email}
+                  {user.full_name ? `${user.full_name} (${user.email})` : user.email}
                 </h3>
                 <button
                   onClick={copyEmail}

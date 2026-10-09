@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ("id", "email", "role", "institution", "institution_name", "date_joined", "is_superuser", "registration_number", "is_email_verified", "webauthn_credentials")
+        fields = ("id", "email", "full_name", "role", "institution", "institution_name", "date_joined", "is_superuser", "registration_number", "is_email_verified", "webauthn_credentials")
         read_only_fields = ("id", "date_joined", "is_superuser")
 
 

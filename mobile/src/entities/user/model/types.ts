@@ -3,9 +3,8 @@ export type Role = 'student' | 'teacher' | 'admin';
 export interface User {
   id: number;
   email: string;
+  full_name: string | null;
   role: Role;
-  first_name: string;
-  last_name: string;
   is_email_verified: boolean;
   institution?: {
     id: number;

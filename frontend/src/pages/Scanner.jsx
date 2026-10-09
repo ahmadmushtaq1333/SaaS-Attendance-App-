@@ -31,8 +31,8 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
   const [courseDetail, setCourseDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const firstName = user.email?.split("@")[0]?.split(".")[0];
-  const displayName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "Student";
+  const fallbackName = user.email?.split("@")[0]?.split(".")[0];
+  const displayName = user.full_name || (fallbackName ? fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1) : "Student");
 
   const fetchAttendanceSummary = async () => {
     setCoursesLoading(true);

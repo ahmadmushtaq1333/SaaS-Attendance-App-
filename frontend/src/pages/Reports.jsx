@@ -254,13 +254,18 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...report.students].sort((a, b) =>
-                      a.email.split("@")[0].localeCompare(b.email.split("@")[0], undefined, { numeric: true, sensitivity: "base" })
-                    ).map(student => {
+                    {[...report.students].sort((a, b) => {
+                      const nameA = a.full_name || a.email.split("@")[0];
+                      const nameB = b.full_name || b.email.split("@")[0];
+                      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
+                    }).map(student => {
                       const risk = getRiskConfig(student.attendance_percentage);
                       return (
                         <tr key={student.id}>
-                          <td style={{ fontWeight: 500 }}>{student.email}</td>
+                          <td style={{ fontWeight: 500 }}>
+                            <div style={{ fontSize: 14 }}>{student.full_name || student.email.split('@')[0]}</div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{student.email}</div>
+                          </td>
                           <td style={{ color: "var(--text-secondary)" }}>{student.attended_count} / {report.total_sessions}</td>
                           <td>
                             <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 100 }}>

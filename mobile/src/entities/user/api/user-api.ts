@@ -9,5 +9,10 @@ export const userApi = {
   async getCurrentUser(): Promise<User> {
     const response = await apiClient.get<User>('/auth/me/');
     return response.data;
+  },
+
+  async updateName(full_name: string): Promise<User> {
+    const response = await apiClient.patch<User>('/auth/me/', { full_name });
+    return response.data;
   }
 };

@@ -221,7 +221,8 @@ function SideNavItem({ id, label, Icon, count, description, active, color, onCli
    ADMIN INFO CHIP
 ───────────────────────────────────────────────────────────────── */
 function AdminChip({ user }) {
-  const initials = user.email.slice(0, 2).toUpperCase();
+  const nameToDisplay = user.full_name || user.email.split("@")[0];
+  const initials = nameToDisplay.slice(0, 2).toUpperCase();
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 12,
@@ -239,7 +240,7 @@ function AdminChip({ user }) {
       }}>{initials}</div>
       <div>
         <div style={{ fontSize: 13, fontWeight: 700 }}>
-          {user.email.split("@")[0]}
+          {nameToDisplay}
         </div>
         <span style={{
           fontSize: 10,
