@@ -261,9 +261,11 @@ class TestPreAuthValidation(TestCase):
         self.assertEqual(resp.status_code, 401)
         self.assertIn("consumed", resp.data.get("error", "").lower())
 
+    @patch("apps.accounts.views_webauthn.options_to_json",
+           return_value='{"challenge":"dGVzdA","rp":{"id":"localhost","name":"Quorum"}}')
     @patch("apps.accounts.services.webauthn_service.generate_registration_options")
-    def test_valid_pre_auth_token_accepted(self, mock_gen):
-        mock_gen.return_value = MagicMock(challenge=b"c", json=lambda: '{"challenge":"c"}')
+    def test_valid_pre_auth_token_accepted(self, mock_gen, mock_options_json):
+        mock_gen.return_value = MagicMock(challenge=b"c")
         token, _ = make_pre_auth_token(self.user)
         resp = self.client.get(self.challenge_url, HTTP_AUTHORIZATION=f"Bearer {token}")
         self.assertEqual(resp.status_code, 200)
@@ -279,12 +281,11 @@ class TestWebAuthnRegistrationFlow(TestCase):
         self.user = make_user("regflow@test.com", role="student")
         cache.clear()
 
+    @patch("apps.accounts.views_webauthn.options_to_json",
+           return_value='{"challenge":"dGVzdA","rp":{"id":"localhost","name":"Quorum"}}')
     @patch("apps.accounts.services.webauthn_service.generate_registration_options")
-    def test_challenge_view_returns_options(self, mock_gen):
-        mock_gen.return_value = MagicMock(
-            challenge=b"c",
-            json=lambda: '{"challenge":"dGVzdA","rp":{"id":"localhost","name":"Quorum"}}'
-        )
+    def test_challenge_view_returns_options(self, mock_gen, mock_options_json):
+        mock_gen.return_value = MagicMock(challenge=b"c")
         token, _ = make_pre_auth_token(self.user)
         resp = self.client.get("/api/auth/webauthn/register/challenge/",
                                HTTP_AUTHORIZATION=f"Bearer {token}")
@@ -338,12 +339,11 @@ class TestWebAuthnAuthenticationFlow(TestCase):
         )
         cache.clear()
 
+    @patch("apps.accounts.views_webauthn.options_to_json",
+           return_value='{"challenge":"dGVzdA","allowCredentials":[]}')
     @patch("apps.accounts.services.webauthn_service.generate_authentication_options")
-    def test_challenge_view_returns_options(self, mock_gen):
-        mock_gen.return_value = MagicMock(
-            challenge=b"c",
-            json=lambda: '{"challenge":"dGVzdA","allowCredentials":[]}'
-        )
+    def test_challenge_view_returns_options(self, mock_gen, mock_options_json):
+        mock_gen.return_value = MagicMock(challenge=b"c")
         token, _ = make_pre_auth_token(self.user)
         resp = self.client.get("/api/auth/webauthn/auth/challenge/",
                                HTTP_AUTHORIZATION=f"Bearer {token}")

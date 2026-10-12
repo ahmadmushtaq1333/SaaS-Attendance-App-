@@ -8,9 +8,14 @@ from ..models.webauthn import WebAuthnCredential
 from django.db import transaction
 
 # Environment configuration for WebAuthn
-RP_ID = os.environ.get("RP_ID", "localhost")
+# RP_ID must be the bare domain (no scheme, no port) that students visit.
+# EXPECTED_ORIGIN must be the full origin (scheme + domain) students visit.
+# If not explicitly set, fall back to deriving them from VERCEL_DOMAIN (the
+# frontend domain already required for CORS), so Railway only needs one var.
+_vercel_domain = os.environ.get("VERCEL_DOMAIN", "")
+RP_ID = os.environ.get("RP_ID") or _vercel_domain or "localhost"
 RP_NAME = os.environ.get("RP_NAME", "Quorum Attendance")
-ORIGIN = os.environ.get("EXPECTED_ORIGIN", "http://localhost:5173")
+ORIGIN = os.environ.get("EXPECTED_ORIGIN") or (f"https://{_vercel_domain}" if _vercel_domain else "http://localhost:5173")
 
 class WebAuthnService:
     @staticmethod
@@ -33,9 +38,6 @@ class WebAuthnService:
         expected_challenge = cache.get(f"webauthn_register_challenge_{user.id}")
         if not expected_challenge:
             raise ValueError("Registration challenge expired or not found.")
-            
-        # Delete on read (single-use)
-        cache.delete(f"webauthn_register_challenge_{user.id}")
 
         verification = verify_registration_response(
             credential=response_data,
@@ -44,6 +46,11 @@ class WebAuthnService:
             expected_rp_id=RP_ID,
             require_user_verification=False
         )
+
+        # Delete only after successful verification (single-use)
+        # Deleting before verification means a dismissed/failed biometric prompt
+        # permanently destroys the challenge, making retries impossible.
+        cache.delete(f"webauthn_register_challenge_{user.id}")
 
         return verification
 
@@ -70,9 +77,6 @@ class WebAuthnService:
         expected_challenge = cache.get(f"webauthn_auth_challenge_{user.id}")
         if not expected_challenge:
             raise ValueError("Authentication challenge expired or not found.")
-            
-        # Delete on read (single-use)
-        cache.delete(f"webauthn_auth_challenge_{user.id}")
 
         credential_id = response_data.get("id")
         if not credential_id:
@@ -111,7 +115,12 @@ class WebAuthnService:
                 # If it's > 0, we must strictly enforce it.
                 if verification.new_sign_count > 0:
                     raise ValueError("Sign count is less than or equal to stored sign count. Potential replay attack.")
-            
+
+            # Delete only after successful verification (single-use)
+            # Deleting before verification means a dismissed/failed biometric prompt
+            # permanently destroys the challenge, making retries impossible.
+            cache.delete(f"webauthn_auth_challenge_{user.id}")
+
             # Update sign count
             cred.sign_count = verification.new_sign_count
             cred.save(update_fields=['sign_count', 'last_used'])
