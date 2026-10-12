@@ -3,7 +3,7 @@ import API from "../../../services/api";
 import {
   User, BookOpen, Smartphone,
   AlertCircle, CheckCircle2, Trash2, Edit3, Save, X,
-  Building, Copy, Check, ArrowLeft, RefreshCw, AlertTriangle
+  Building, Copy, Check, ArrowLeft, RefreshCw, AlertTriangle, Fingerprint
 } from "lucide-react";
 
 export default function UserInspectorPane({
@@ -111,6 +111,22 @@ export default function UserInspectorPane({
       if (onRefresh) onRefresh();
     } catch {
       setMessage({ text: "Failed to reset device binding.", type: "error" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResetPasskey = async () => {
+    if (!window.confirm(`Reset passkey for ${user.email}?\n\nUse this if the student lost or replaced their phone. On their next sign-in, they will be prompted to register their new device.`)) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await API.post(`/admin/users/${user.id}/reset-passkey/`);
+      setMessage({ text: res.data?.message || "Passkey reset successfully.", type: "success" });
+      if (onRefresh) onRefresh();
+    } catch {
+      setMessage({ text: "Failed to reset passkey.", type: "error" });
     } finally {
       setActionLoading(false);
     }
@@ -510,6 +526,46 @@ export default function UserInspectorPane({
                 }}
               >
                 <RefreshCw size={12} /> Clear Daily Lock
+              </button>
+            )}
+          </div>
+
+          {/* Passkey / WebAuthn Device Card */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "12px 14px", background: "rgba(255,255,255,0.02)",
+            border: "1px solid var(--glass-border)", borderRadius: 10, flexWrap: "wrap", gap: 10,
+            marginTop: 10
+          }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: user.has_passkey ? "var(--purple)" : "var(--text-muted)"
+                }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                  {user.has_passkey ? "Passkey Active (Biometric Bound)" : "No Passkey Registered"}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                {user.has_passkey
+                  ? "Student logs in with their device biometric passkey (Face ID/Fingerprint)."
+                  : "Student will be prompted to register their device on next sign-in."}
+              </div>
+            </div>
+
+            {user.has_passkey && (
+              <button
+                onClick={handleResetPasskey}
+                disabled={actionLoading}
+                className="btn-secondary"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px", fontSize: 12, borderRadius: 8, color: "var(--purple)"
+                }}
+                title="Reset passkey if student lost or replaced their phone"
+              >
+                <Fingerprint size={12} /> Reset Passkey
               </button>
             )}
           </div>

@@ -43,7 +43,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             
             # Generate pre-auth JWT
             jti = str(uuid.uuid4())
-            exp = datetime.now(timezone.utc) + timedelta(seconds=90)
+            exp = datetime.now(timezone.utc) + timedelta(seconds=300)
             payload = {
                 "token_type": "pre_auth",
                 "user_id": self.user.id,
@@ -53,7 +53,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             pre_auth_token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
             
             # Store JTI in cache for single-use verification
-            cache.set(f"pre_auth_jti_{jti}", True, timeout=90)
+            cache.set(f"pre_auth_jti_{jti}", True, timeout=300)
             
             data["pre_auth_token"] = pre_auth_token
             data["requires_webauthn"] = True

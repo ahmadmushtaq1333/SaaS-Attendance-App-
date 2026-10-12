@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import API, { setAuthTokens } from "../services/api";
-import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon, Fingerprint } from "lucide-react";
+import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon, Fingerprint, Sparkles } from "lucide-react";
 import EmailVerification from "./EmailVerification";
 import ForgotPassword from "./ForgotPassword";
 import DeviceRebind from "./DeviceRebind";
@@ -14,6 +14,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [preAuthToken, setPreAuthToken] = useState("");
+  const autoTriggeredRef = useRef(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,10 +33,11 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
 
       if (loginRes.data?.requires_webauthn) {
         if (!WebAuthnClient.isSupported()) {
-          setError("Biometric login isn't supported in this browser. Open the app in Safari (iOS) or Chrome (Android), or add it to your Home Screen for the best experience.");
+          setError("Biometric sign-in isn't supported in this browser. If you opened this link inside WhatsApp or Instagram, tap the three dots (⋮) and choose 'Open in Chrome' or 'Open in Safari'.");
           return;
         }
         setPreAuthToken(loginRes.data.pre_auth_token);
+        autoTriggeredRef.current = false;
         if (loginRes.data.is_registered) {
           setViewState("webauthn_verify");
         } else {
@@ -88,8 +90,12 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
-      if (err.name === "NotAllowedError") {
-        setError("Biometric prompt dismissed. Please try again.");
+      if (err.response?.status === 401 || err.response?.data?.error?.includes("expired")) {
+        setViewState("login");
+        setPreAuthToken("");
+        setError("Verification session timed out. Please enter your password to continue.");
+      } else if (err.name === "NotAllowedError") {
+        setError("Biometric prompt dismissed. Tap 'Set up Passkey' to try again or use your PIN/pattern.");
       } else {
         setError(err.response?.data?.error || "Registration failed. Please try again.");
       }
@@ -119,12 +125,16 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
-      if (err.response?.data?.error === "WebAuthn credential not found for this user.") {
+      if (err.response?.status === 401 || err.response?.data?.error?.includes("expired")) {
+        setViewState("login");
+        setPreAuthToken("");
+        setError("Verification session timed out. Please enter your password to continue.");
+      } else if (err.response?.data?.error === "WebAuthn credential not found for this user.") {
         // is_registered changed mid-flow — redirect to register
         setViewState("webauthn_register");
-        setError("No device found for this account. Please register this device instead.");
+        setError("No passkey found for this account. Please set up a passkey on this device.");
       } else if (err.name === "NotAllowedError") {
-        setError("Biometric prompt dismissed. Please try again.");
+        setError("Biometric prompt dismissed. Tap 'Verify Passkey' to try again or use your PIN/pattern.");
       } else {
         setError(err.response?.data?.error || "Authentication failed. Please try again.");
       }
@@ -132,6 +142,19 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       setLoading(false);
     }
   };
+
+  // Auto-trigger the biometric ceremony upon entering WebAuthn state
+  useEffect(() => {
+    if (viewState === "webauthn_verify" && preAuthToken && !autoTriggeredRef.current) {
+      autoTriggeredRef.current = true;
+      handleWebAuthnVerify();
+    } else if (viewState === "webauthn_register" && preAuthToken && !autoTriggeredRef.current) {
+      autoTriggeredRef.current = true;
+      handleWebAuthnRegister();
+    } else if (viewState === "login") {
+      autoTriggeredRef.current = false;
+    }
+  }, [viewState, preAuthToken]);
 
 
   const handleVerificationSuccess = async () => {
@@ -204,6 +227,26 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
                 ? "This device is not registered. Please set up a Passkey (Face ID/Touch ID) to securely bind it to your account."
                 : "Please verify your Passkey (Face ID/Touch ID) to log in securely."}
             </p>
+          </div>
+
+          {/* Student Announcement Notice */}
+          <div style={{
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "rgba(168, 85, 247, 0.12)",
+            border: "1px solid rgba(168, 85, 247, 0.25)",
+            fontSize: 12,
+            color: "var(--purple)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            textAlign: "left",
+            lineHeight: 1.4,
+          }}>
+            <Sparkles size={16} style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Faster &amp; automatic:</strong> Prompt will open on your screen. Use your fingerprint, Face ID, or device PIN.
+            </span>
           </div>
 
           {error && (

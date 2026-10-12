@@ -815,3 +815,221 @@ class TestEndToEndAuthenticationRoundTrip(TestCase):
                                    HTTP_AUTHORIZATION=f"Bearer {pre_auth}")
         self.assertEqual(resp_ok.status_code, 200, "Must succeed after 2 prior failures.")
         self.assertIn("access", resp_ok.data)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 15. Bad Paths, Platform Passkeys, Admin Controls & 1-Try Verification
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestReRegistrationReplacesStalePasskeys(TestCase):
+    """
+    CRITICAL POLICY: Exactly 1 clean active device passkey per student.
+    When a student re-registers, old credentials must be automatically purged
+    so allowCredentials only queries the active device (eliminates multi-attempt lag).
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = make_user("replace_test@test.com")
+        cache.clear()
+        self.token, self.jti = make_pre_auth_token(self.user)
+
+    @patch("apps.accounts.services.webauthn_service.verify_registration_response")
+    def test_re_registration_purges_old_credentials(self, mock_verify):
+        # Create 2 stale/old credentials
+        old1 = make_cred(self.user, b"old_phone_1", sign_count=10)
+        old2 = make_cred(self.user, b"old_phone_2", sign_count=20)
+        self.assertEqual(WebAuthnCredential.objects.filter(user=self.user).count(), 2)
+
+        # Seed new registration challenge
+        cache.set(f"webauthn_register_challenge_{self.user.id}", b"new_chal", timeout=300)
+
+        # Student registers on their new phone
+        mock_verify.return_value = MagicMock(
+            spec=VerifiedRegistration,
+            credential_id=b"new_phone_active",
+            credential_public_key=b"new_pub_key",
+            sign_count=0,
+        )
+
+        resp = self.client.post(
+            "/api/auth/webauthn/register/verify/",
+            {"id": "new_phone_cred", "type": "public-key"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {self.token}",
+        )
+        self.assertEqual(resp.status_code, 200)
+
+        # Database must now contain EXACTLY 1 credential (the active one)
+        creds = WebAuthnCredential.objects.filter(user=self.user)
+        self.assertEqual(creds.count(), 1)
+        self.assertEqual(creds.first().credential_id, b"new_phone_active".hex())
+
+        # Authentication challenge must only contain the single active device descriptor
+        options = WebAuthnService.generate_authentication_challenge(self.user)
+        self.assertEqual(len(options.allow_credentials), 1)
+        self.assertEqual(options.allow_credentials[0].id, b"new_phone_active")
+
+
+class TestPlatformPasskeySignCountZeroSafe(TestCase):
+    """
+    Multi-device / synced platform passkeys (Google Password Manager, Apple Keychain)
+    standardly return sign_count = 0 per W3C WebAuthn Level 3.
+    Authentication MUST NOT raise a replay error when incoming count is 0,
+    even if the database had a stored positive count from previous registration.
+    """
+
+    def setUp(self):
+        self.user = make_user("platform_passkey@test.com")
+        self.cred_bytes = b"platform_cred_id"
+        self.cred = make_cred(self.user, self.cred_bytes, sign_count=5)
+        cache.clear()
+        cache.set(f"webauthn_auth_challenge_{self.user.id}", b"chal", timeout=300)
+
+    @patch("apps.accounts.services.webauthn_service.verify_authentication_response")
+    def test_sign_count_zero_authenticates_successfully(self, mock_verify):
+        # Platform authenticator returns sign_count = 0
+        mock_verify.return_value = MagicMock(spec=VerifiedAuthentication, new_sign_count=0)
+
+        # Must succeed without raising replay attack ValueError
+        verification = WebAuthnService.verify_authentication(
+            self.user, {"id": b64url(self.cred_bytes)}
+        )
+        self.assertEqual(verification.new_sign_count, 0)
+
+        # Database record must be preserved and last_used updated
+        self.cred.refresh_from_db()
+        self.assertIsNotNone(self.cred.last_used)
+
+    @patch("apps.accounts.services.webauthn_service.verify_authentication_response")
+    def test_hardware_token_monotonic_counter_still_enforced_when_positive(self, mock_verify):
+        # When both the stored count and incoming count are positive, replay is strictly detected
+        self.cred.sign_count = 10
+        self.cred.save()
+        mock_verify.return_value = MagicMock(spec=VerifiedAuthentication, new_sign_count=8)
+
+        with self.assertRaisesMessage(ValueError, "Potential replay attack"):
+            WebAuthnService.verify_authentication(
+                self.user, {"id": b64url(self.cred_bytes)}
+            )
+
+
+class TestAdminPasskeyReset(TestCase):
+    """
+    When a student loses or replaces their phone mid-semester, an admin can
+    click 'Reset Passkey' in the admin dashboard to free the student.
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = make_user("admin@test.com", role="admin")
+        self.student = make_user("student_lost_phone@test.com", role="student")
+        make_cred(self.student, b"lost_phone_credential")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_reset_student_passkey(self):
+        self.assertTrue(WebAuthnCredential.objects.filter(user=self.student).exists())
+
+        resp = self.client.post(f"/api/admin/users/{self.student.id}/reset-passkey/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Passkey reset successfully", resp.data.get("message", ""))
+
+        # Credential is completely removed
+        self.assertFalse(WebAuthnCredential.objects.filter(user=self.student).exists())
+
+        # Next login: is_registered is False, student is directed to set up new phone
+        login_resp = self.client.post("/api/auth/login/", {
+            "email": self.student.email, "password": "testpass123"
+        })
+        self.assertEqual(login_resp.status_code, 200)
+        self.assertTrue(login_resp.data.get("requires_webauthn"))
+        self.assertFalse(login_resp.data.get("is_registered"))
+
+    def test_admin_reset_device_also_clears_passkey(self):
+        self.assertTrue(WebAuthnCredential.objects.filter(user=self.student).exists())
+
+        resp = self.client.post(f"/api/admin/users/{self.student.id}/reset-device/")
+        self.assertEqual(resp.status_code, 200)
+
+        # Both device binding and passkey credentials are wiped
+        self.assertFalse(WebAuthnCredential.objects.filter(user=self.student).exists())
+
+    def test_admin_serializer_exposes_has_passkey_field(self):
+        from apps.accounts.serializers_admin import UserAdminSerializer
+        data = UserAdminSerializer(self.student).data
+        self.assertIn("has_passkey", data)
+        self.assertTrue(data["has_passkey"])
+
+        WebAuthnCredential.objects.filter(user=self.student).delete()
+        data2 = UserAdminSerializer(self.student).data
+        self.assertFalse(data2["has_passkey"])
+
+
+class TestBadPathsAndEdgeCases(TestCase):
+    """
+    Negative tests:
+    - Token expired after timeout
+    - Biometric dismissed (NotAllowedError) leaves pre-auth token valid
+    - In-app browser / malformed requests rejected safely
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = make_user("badpaths@test.com")
+        cache.clear()
+        self.token, self.jti = make_pre_auth_token(self.user, exp_seconds=300)
+
+    def test_expired_pre_auth_token_returns_401(self):
+        # Create an expired token (-10 seconds)
+        expired_token, _ = make_pre_auth_token(self.user, exp_seconds=-10)
+        resp = self.client.get(
+            "/api/auth/webauthn/auth/challenge/",
+            HTTP_AUTHORIZATION=f"Bearer {expired_token}"
+        )
+        self.assertEqual(resp.status_code, 401)
+        self.assertIn("expired", resp.data.get("error", "").lower())
+
+    def test_pre_auth_token_jti_cleared_returns_401(self):
+        # Invalidate JTI from cache (as if consumed or manually revoked)
+        cache.delete(f"pre_auth_jti_{self.jti}")
+        resp = self.client.get(
+            "/api/auth/webauthn/auth/challenge/",
+            HTTP_AUTHORIZATION=f"Bearer {self.token}"
+        )
+        self.assertEqual(resp.status_code, 401)
+        self.assertIn("consumed or expired", resp.data.get("error", "").lower())
+
+    @patch("apps.accounts.services.webauthn_service.verify_authentication_response")
+    def test_biometric_dismissal_preserves_pre_auth_token_for_retry(self, mock_verify):
+        cred_bytes = b"dismiss_cred"
+        make_cred(self.user, cred_bytes)
+        cache.set(f"webauthn_auth_challenge_{self.user.id}", b"chal", timeout=300)
+
+        # Student dismisses biometric (simulated by crypto failure / abort)
+        mock_verify.side_effect = Exception("NotAllowedError: The operation either timed out or was not allowed.")
+
+        resp = self.client.post(
+            "/api/auth/webauthn/auth/verify/",
+            {"id": b64url(cred_bytes)},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {self.token}"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+        # Pre-auth JTI must STILL be intact in cache
+        self.assertTrue(cache.get(f"pre_auth_jti_{self.jti}"))
+
+        # Challenge must STILL be in cache
+        self.assertIsNotNone(cache.get(f"webauthn_auth_challenge_{self.user.id}"))
+
+        # Student retries with PIN/pattern -> succeeds
+        mock_verify.side_effect = None
+        mock_verify.return_value = good_verify_auth(new_sign_count=0)
+        retry_resp = self.client.post(
+            "/api/auth/webauthn/auth/verify/",
+            {"id": b64url(cred_bytes), "type": "public-key"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {self.token}"
+        )
+        self.assertEqual(retry_resp.status_code, 200)
+        self.assertIn("access", retry_resp.data)

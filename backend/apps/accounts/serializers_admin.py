@@ -17,6 +17,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
     assigned_courses = serializers.SerializerMethodField()
     enrolled_courses_count = serializers.SerializerMethodField()
     has_bound_device = serializers.SerializerMethodField()
+    has_passkey = serializers.SerializerMethodField()
     bound_since = serializers.SerializerMethodField()
     device_last_seen = serializers.SerializerMethodField()
 
@@ -27,10 +28,10 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "department", "department_name", "semester_number",
             "section", "section_name", "is_active", "date_joined", "password",
             "registration_number", "is_email_verified",
-            "has_bound_device", "bound_since", "device_last_seen", "assigned_courses", "enrolled_courses_count",
+            "has_bound_device", "has_passkey", "bound_since", "device_last_seen", "assigned_courses", "enrolled_courses_count",
             "computed_institution", "computed_department", "computed_semester"
         )
-        read_only_fields = ("id", "date_joined", "has_bound_device", "bound_since", "device_last_seen", "assigned_courses", "enrolled_courses_count")
+        read_only_fields = ("id", "date_joined", "has_bound_device", "has_passkey", "bound_since", "device_last_seen", "assigned_courses", "enrolled_courses_count")
 
     def get_computed_institution(self, obj):
         inst = obj.get_institution
@@ -76,6 +77,9 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     def get_has_bound_device(self, obj):
         return hasattr(obj, 'device_binding')
+
+    def get_has_passkey(self, obj):
+        return obj.webauthn_credentials.exists()
 
     def get_bound_since(self, obj):
         if hasattr(obj, 'device_binding'):

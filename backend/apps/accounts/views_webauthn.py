@@ -81,12 +81,17 @@ class WebAuthnRegistrationVerifyView(APIView, PreAuthMixin):
         # Only consume the token on full success
         cache.delete(f"pre_auth_jti_{jti}")
 
-        WebAuthnCredential.objects.create(
-            user=user,
-            credential_id=verification.credential_id.hex(),
-            public_key=verification.credential_public_key.hex(),
-            sign_count=verification.sign_count,
-        )
+        from django.db import transaction
+        with transaction.atomic():
+            # Replace existing credentials so only the active device is stored
+            WebAuthnCredential.objects.filter(user=user).delete()
+
+            WebAuthnCredential.objects.create(
+                user=user,
+                credential_id=verification.credential_id.hex(),
+                public_key=verification.credential_public_key.hex(),
+                sign_count=verification.sign_count,
+            )
 
         refresh = RefreshToken.for_user(user)
         return Response({

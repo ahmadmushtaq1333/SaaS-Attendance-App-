@@ -55,9 +55,9 @@
 **What it does:** Allows teachers to take attendance instantly without calling out names. It guarantees that only students physically present in the room can mark themselves as attending.
 **How it works:** When a teacher starts a class, the system generates a live QR code on the teacher's screen. This QR code automatically refreshes every **10 seconds**. Because the code changes so quickly, a student cannot simply take a photo of it and send it to a friend at home—by the time the friend tries to scan it, the code has already expired.
 
-### 2. Device Binding & Fraud Prevention
-**What it does:** Ensures that one student equals one phone. 
-**How it works:** The first time a student logs in and scans an attendance code, the system permanently "binds" their account to that specific physical smartphone. If they try to log into a friend's phone to scan a code, the system will block them. If a student legitimately loses or changes their phone, they must go through a secure "Device Rebind" process using an email verification code.
+### 2. Biometric Passkeys (WebAuthn / FIDO2) & Device Binding
+**What it does:** Ensures that one student equals one authenticated device using hardware-backed biometrics (Touch ID, Face ID, Android fingerprint, or Windows Hello).
+**How it works:** When a student logs in, the platform automatically triggers an instant 1-tap biometric scan via the WebAuthn standard. The cryptographic assertion is validated server-side with single-use challenges and origin verification. Each student is bound to exactly 1 active device passkey. If a student loses or replaces their phone, administrators have a one-click "Reset Passkey" button in the admin dashboard to free the account.
 
 ### 3. Smart Attendance Alerts & Bulk Emails
 **What it does:** Automatically identifies students who are missing too many classes and allows the teacher to warn them with a single click, saving hours of manual email drafting.
@@ -112,7 +112,7 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 | 📚 **Course Management** | Assign courses to sections and instructors; enroll students |
 | 📅 **Session Monitoring** | View all active and past attendance sessions across the platform |
 | 🔑 **Email Verification Control** | Manually trigger or bypass verification for bulk-created accounts |
-| 🔓 **Device Management** | Clear Daily Locks and reset Device Bindings for student accounts |
+| 🔓 **Device & Passkey Management** | Clear Daily Locks, reset Device Bindings, and reset student Biometric Passkeys |
 
 ### 📈 Reports & Analytics
 | Feature | Description |
@@ -125,6 +125,7 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 ### 🔐 Authentication & Security
 | Feature | Description |
 |---------|-------------|
+| 🔑 **Passkey (WebAuthn / FIDO2)** | Passwordless biometric sign-in via Touch ID, Face ID, or Windows Hello with instant 1-tap verification and admin recovery |
 | 🍪 **HTTPOnly Cookie Auth** | JWT tokens stored in `HttpOnly` cookies — immune to XSS attacks |
 | 🔁 **Silent Token Refresh** | Access token refreshes silently in the background; users never get logged out mid-session |
 | 📧 **Email Verification (OTP)** | 6-digit OTP sent via email on signup; must be verified before first login |

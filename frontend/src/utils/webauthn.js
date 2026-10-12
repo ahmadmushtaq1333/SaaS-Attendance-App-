@@ -1,5 +1,6 @@
 // Convert base64url string to ArrayBuffer
 function base64urlToBuffer(base64url) {
+  if (!base64url) return new ArrayBuffer(0);
   const padding = "=".repeat((4 - (base64url.length % 4)) % 4);
   const base64 = (base64url + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
@@ -12,6 +13,7 @@ function base64urlToBuffer(base64url) {
 
 // Convert ArrayBuffer to base64url string
 function bufferToBase64url(buffer) {
+  if (!buffer || buffer.byteLength === 0) return "";
   const bytes = new Uint8Array(buffer);
   let str = "";
   for (let i = 0; i < bytes.byteLength; i++) {
@@ -83,7 +85,9 @@ export const WebAuthnClient = {
         authenticatorData: bufferToBase64url(credential.response.authenticatorData),
         clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
         signature: bufferToBase64url(credential.response.signature),
-        userHandle: credential.response.userHandle ? bufferToBase64url(credential.response.userHandle) : null,
+        userHandle: (credential.response.userHandle && credential.response.userHandle.byteLength > 0)
+          ? bufferToBase64url(credential.response.userHandle)
+          : null,
       },
     };
   },

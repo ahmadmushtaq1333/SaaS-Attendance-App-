@@ -82,8 +82,20 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     def reset_device(self, request, pk=None):
         user = self.get_object()
         from .models import DeviceBinding
+        from .models.webauthn import WebAuthnCredential
         DeviceBinding.objects.filter(user=user).delete()
-        return Response({"message": f"Device binding reset successfully for {user.email}."})
+        WebAuthnCredential.objects.filter(user=user).delete()
+        return Response({"message": f"Device binding and passkey reset successfully for {user.email}."})
+
+    @action(detail=True, methods=["post"], url_path="reset-passkey")
+    def reset_passkey(self, request, pk=None):
+        user = self.get_object()
+        from .models.webauthn import WebAuthnCredential
+        deleted_count, _ = WebAuthnCredential.objects.filter(user=user).delete()
+        return Response({
+            "message": f"Passkey reset successfully for {user.email}. The student can register their new device on their next sign-in.",
+            "deleted_count": deleted_count
+        })
 
     @action(detail=True, methods=["post"], url_path="reset-daily-lock")
     def reset_daily_lock(self, request, pk=None):
