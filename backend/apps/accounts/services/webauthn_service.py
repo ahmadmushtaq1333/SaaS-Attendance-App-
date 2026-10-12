@@ -38,8 +38,6 @@ class WebAuthnService:
             user_id=str(user.id).encode("utf-8"),
             user_name=user.email,
             authenticator_selection=AuthenticatorSelectionCriteria(
-                authenticator_attachment=AuthenticatorAttachment.PLATFORM,
-                resident_key=ResidentKeyRequirement.PREFERRED,
                 user_verification=UserVerificationRequirement.PREFERRED,
             ),
             timeout=120000,

@@ -90,14 +90,17 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
+      console.error("WebAuthn registration error:", err);
       if (err.response?.status === 401 || err.response?.data?.error?.includes("expired")) {
         setViewState("login");
         setPreAuthToken("");
         setError("Verification session timed out. Please enter your password to continue.");
       } else if (err.name === "NotAllowedError") {
-        setError("Biometric prompt dismissed. Tap 'Set up Passkey' to try again or use your PIN/pattern.");
+        setError("Biometric prompt dismissed or timed out. Tap 'Set up Passkey' to try again using Fingerprint, PIN, or Pattern.");
+      } else if (err.name === "InvalidStateError") {
+        setError("A passkey for this device is already saved in your Google Password Manager. If re-registering, please remove the old Quorum entry in phone Settings > Passwords/Google, or tap 'Set up Passkey' to retry.");
       } else {
-        setError(err.response?.data?.error || "Registration failed. Please try again.");
+        setError(err.response?.data?.error || err.message || "Registration failed. Tap 'Set up Passkey' to try again.");
       }
     } finally {
       setLoading(false);
@@ -125,6 +128,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
       const userRes = await API.get("/auth/me/");
       onLoginSuccess(userRes.data);
     } catch (err) {
+      console.error("WebAuthn verification error:", err);
       if (err.response?.status === 401 || err.response?.data?.error?.includes("expired")) {
         setViewState("login");
         setPreAuthToken("");
@@ -134,26 +138,36 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
         setViewState("webauthn_register");
         setError("No passkey found for this account. Please set up a passkey on this device.");
       } else if (err.name === "NotAllowedError") {
-        setError("Biometric prompt dismissed. Tap 'Verify Passkey' to try again or use your PIN/pattern.");
+        setError("Biometric prompt dismissed. Tap 'Verify Passkey' to try again using Fingerprint, PIN, or Pattern.");
       } else {
-        setError(err.response?.data?.error || "Authentication failed. Please try again.");
+        setError(err.response?.data?.error || err.message || "Authentication failed. Tap 'Verify Passkey' to try again.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-trigger the biometric ceremony upon entering WebAuthn state
+  // Auto-trigger the biometric ceremony upon entering WebAuthn state with a delay (~750ms)
+  // so Android has time to wake up the screen, stabilize focus, and initialize the FIDO service.
   useEffect(() => {
+    let timer = null;
     if (viewState === "webauthn_verify" && preAuthToken && !autoTriggeredRef.current) {
       autoTriggeredRef.current = true;
-      handleWebAuthnVerify();
+      timer = setTimeout(() => {
+        handleWebAuthnVerify();
+      }, 750);
     } else if (viewState === "webauthn_register" && preAuthToken && !autoTriggeredRef.current) {
       autoTriggeredRef.current = true;
-      handleWebAuthnRegister();
+      timer = setTimeout(() => {
+        handleWebAuthnRegister();
+      }, 750);
     } else if (viewState === "login") {
       autoTriggeredRef.current = false;
     }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [viewState, preAuthToken]);
 
 
@@ -224,8 +238,8 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
             </h2>
             <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.5 }}>
               {viewState === "webauthn_register" 
-                ? "This device is not registered. Please set up a Passkey (Face ID/Touch ID) to securely bind it to your account."
-                : "Please verify your Passkey (Face ID/Touch ID) to log in securely."}
+                ? "This device is not registered. Please set up a Passkey (Fingerprint, PIN, Pattern, or Face Unlock) to securely bind it to your account."
+                : "Please verify your Passkey using your device's Fingerprint, PIN, Pattern, or Face Unlock."}
             </p>
           </div>
 
@@ -245,7 +259,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
           }}>
             <Sparkles size={16} style={{ flexShrink: 0 }} />
             <span>
-              <strong>Faster &amp; automatic:</strong> Prompt will open on your screen. Use your fingerprint, Face ID, or device PIN.
+              <strong>Faster &amp; automatic:</strong> Prompt will open on your screen. You can use your Fingerprint, PIN, Pattern, or Face Unlock.
             </span>
           </div>
 
