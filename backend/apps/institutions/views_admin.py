@@ -25,7 +25,7 @@ class AdminInstitutionViewSet(viewsets.ModelViewSet):
         qs = Institution.objects.all().annotate(
             user_count=Count("users", distinct=True),
             course_count=Count("courses", distinct=True)
-        )
+        ).order_by("name")
         # Institution-specific admins are scoped to their assigned institution
         if not self.request.user.is_superuser and self.request.user.institution:
             qs = qs.filter(id=self.request.user.institution.id)

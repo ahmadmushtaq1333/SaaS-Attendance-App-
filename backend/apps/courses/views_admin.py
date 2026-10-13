@@ -27,7 +27,7 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Course.objects.all().annotate(
             enrollment_count=Count("enrollments", distinct=True)
-        )
+        ).order_by("name")
         queryset = scope_for_admin(self.request.user, queryset)
         return queryset
 

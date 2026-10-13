@@ -90,15 +90,19 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status;
+    const isRefreshEndpoint = originalRequest.url?.includes("/auth/refresh/");
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      // Refresh itself failed → force logout
-      if (originalRequest.url?.includes("/auth/refresh/")) {
-        clearAuthTokens();
-        window.dispatchEvent(new Event(AUTH_EVENTS.LOGOUT));
-        return Promise.reject(error);
-      }
+    // If the refresh endpoint itself failed (400 = bad/expired token, 401 = blacklisted) → force logout
+    if (isRefreshEndpoint && (status === 400 || status === 401 || status === 403)) {
+      isRefreshing = false;
+      clearAuthTokens();
+      processQueue(error, null);
+      window.dispatchEvent(new Event(AUTH_EVENTS.LOGOUT));
+      return Promise.reject(error);
+    }
 
+    if (status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         // Queue this request until the in-flight refresh completes
         return new Promise((resolve, reject) => {

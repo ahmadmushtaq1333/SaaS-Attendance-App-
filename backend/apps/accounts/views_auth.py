@@ -67,9 +67,17 @@ class CookieTokenRefreshView(TokenRefreshView):
     @simple_ratelimit(rate='10/m')
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get('refresh_token')
-        if refresh_token:
-            request.data['refresh'] = refresh_token
-        
+        if refresh_token and not request.data.get('refresh'):
+            # request.data may be an immutable QueryDict (form POST).
+            # Make it mutable before injecting the cookie value.
+            try:
+                request.data['refresh'] = refresh_token
+            except AttributeError:
+                # Fallback: copy and reassign for immutable QueryDict
+                data = request.data.copy()
+                data['refresh'] = refresh_token
+                request._full_data = data
+
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
             access_token = response.data.get('access')

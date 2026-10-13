@@ -6,6 +6,9 @@ class Institution(models.Model):
     domain = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ["name"]
+
     def __str__(self):
         return self.name
 
@@ -16,6 +19,7 @@ class Department(models.Model):
 
     class Meta:
         unique_together = ("name", "institution")
+        ordering = ["name"]
 
     def __str__(self):
         return f"{self.name} ({self.institution.name})"
@@ -27,6 +31,7 @@ class Semester(models.Model):
 
     class Meta:
         unique_together = ("number", "department")
+        ordering = ["number"]
 
     def __str__(self):
         return f"{self.number} - {self.department.name}"
@@ -38,6 +43,7 @@ class Section(models.Model):
 
     class Meta:
         unique_together = ("name", "semester")
+        ordering = ["name"]
 
     def __str__(self):
         return f"{self.name} ({self.semester.number})"

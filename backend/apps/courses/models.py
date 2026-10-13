@@ -18,6 +18,7 @@ class Course(models.Model):
 
     class Meta:
         unique_together = ("name", "department", "section")
+        ordering = ["name"]
 
     def __str__(self):
         return f"{self.name} - {self.institution.name}"
@@ -83,6 +84,7 @@ class CourseLink(models.Model):
 
     class Meta:
         unique_together = ("source_course", "target_course")
+        ordering = ["created_at"]
         verbose_name = "Course Link"
         verbose_name_plural = "Course Links"
 
