@@ -62,7 +62,7 @@ class WebAuthnRegistrationChallengeView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         from .services.webauthn_service import RP_ID, ORIGIN
-        logger.error("[WebAuthn] Register challenge issued: user=%s rp_id=%s origin=%s", user.email, RP_ID, ORIGIN)
+        logger.info("[WebAuthn] Register challenge issued: user=%s rp_id=%s origin=%s", user.email, RP_ID, ORIGIN)
         options = WebAuthnService.generate_registration_challenge(user)
         return Response(json.loads(options_to_json(options)))
 
@@ -117,7 +117,7 @@ class WebAuthnAuthenticationChallengeView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         from .services.webauthn_service import RP_ID, ORIGIN
-        logger.error("[WebAuthn] Auth challenge issued: user=%s rp_id=%s origin=%s", user.email, RP_ID, ORIGIN)
+        logger.info("[WebAuthn] Auth challenge issued: user=%s rp_id=%s origin=%s", user.email, RP_ID, ORIGIN)
         options = WebAuthnService.generate_authentication_challenge(user)
         return Response(json.loads(options_to_json(options)))
 

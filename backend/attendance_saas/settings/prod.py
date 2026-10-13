@@ -47,15 +47,15 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        # Surface every WebAuthn rejection in Railway logs so we can diagnose 400s
+        # Surface WebAuthn events in Railway logs (INFO=challenge issued, ERROR=failure)
         "apps.accounts.views_webauthn": {
             "handlers": ["console"],
-            "level": "ERROR",
+            "level": "INFO",
             "propagate": False,
         },
         "apps.accounts.services.webauthn_service": {
             "handlers": ["console"],
-            "level": "ERROR",
+            "level": "INFO",
             "propagate": False,
         },
     },
