@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 from django.core.cache import cache
 import jwt
+import logging
 from django.conf import settings
 from .models import CustomUser
 from .models.webauthn import WebAuthnCredential
@@ -11,6 +12,8 @@ from .services.webauthn_service import WebAuthnService
 from rest_framework_simplejwt.tokens import RefreshToken
 import json
 from webauthn import options_to_json
+
+logger = logging.getLogger(__name__)
 
 
 class PreAuthMixin:
@@ -58,6 +61,8 @@ class WebAuthnRegistrationChallengeView(APIView, PreAuthMixin):
         if error:
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
+        from .services.webauthn_service import RP_ID, ORIGIN
+        logger.error("[WebAuthn] Register challenge issued: user=%s rp_id=%s origin=%s", user.email, RP_ID, ORIGIN)
         options = WebAuthnService.generate_registration_challenge(user)
         return Response(json.loads(options_to_json(options)))
 
@@ -75,7 +80,9 @@ class WebAuthnRegistrationVerifyView(APIView, PreAuthMixin):
         try:
             verification = WebAuthnService.verify_registration(user, response_data)
         except Exception as e:
-            # Token NOT consumed — student can retry the Face ID prompt
+            # Log exact py_webauthn rejection so it appears in Railway / Sentry
+            logger.error("[WebAuthn] Registration FAILED for user=%s : %s", user.email, str(e), exc_info=True)
+            # Token NOT consumed — student can retry
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Only consume the token on full success
@@ -109,6 +116,8 @@ class WebAuthnAuthenticationChallengeView(APIView, PreAuthMixin):
         if error:
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
+        from .services.webauthn_service import RP_ID, ORIGIN
+        logger.error("[WebAuthn] Auth challenge issued: user=%s rp_id=%s origin=%s", user.email, RP_ID, ORIGIN)
         options = WebAuthnService.generate_authentication_challenge(user)
         return Response(json.loads(options_to_json(options)))
 
@@ -126,7 +135,9 @@ class WebAuthnAuthenticationVerifyView(APIView, PreAuthMixin):
         try:
             verification = WebAuthnService.verify_authentication(user, response_data)
         except Exception as e:
-            # Token NOT consumed — student can retry the Face ID prompt
+            # Log exact py_webauthn rejection so it appears in Railway / Sentry
+            logger.error("[WebAuthn] Authentication FAILED for user=%s : %s", user.email, str(e), exc_info=True)
+            # Token NOT consumed — student can retry
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         # Only consume the token on full success

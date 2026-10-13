@@ -47,7 +47,32 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        # Surface every WebAuthn rejection in Railway logs so we can diagnose 400s
+        "apps.accounts.views_webauthn": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "apps.accounts.services.webauthn_service": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
     },
+}
+
+# ── Shared Cache (database-backed, cross-worker safe) ─────────────────────────
+# LocMemCache (the Django default) is per-process. With Gunicorn's 2 workers,
+# worker A writes the WebAuthn challenge but worker B can't see it, causing
+# every challenge lookup to fail with "challenge expired" → HTTP 400.
+# DatabaseCache stores entries in MySQL (already provisioned) so all workers
+# share the same state without needing a separate Redis service.
+# Run once on first deploy: python manage.py createcachetable
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+    }
 }
 
 # Railway provides the app's public URL automatically
