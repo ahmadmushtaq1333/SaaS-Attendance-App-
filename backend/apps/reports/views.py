@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.courses.models import Course, Enrollment
 from apps.attendance.models import AttendanceSession, AttendanceRecord
 from .email_templates import get_tier_for_percentage, TIER_CONFIG
-from shared.attendance_utils import calculate_attendance_percentage
+from shared.attendance_utils import calculate_attendance_percentage, calculate_attendance_safety
 
 
 class CourseReportView(APIView):
@@ -265,7 +265,7 @@ class StudentAttendanceReportView(APIView):
                 enrollment=enrollment
             ).count()
 
-            attendance_percentage = calculate_attendance_percentage(attended_count, total_sessions)
+            safety = calculate_attendance_safety(attended_count, total_sessions)
 
             summary.append({
                 "course_id": course.id,
@@ -273,8 +273,12 @@ class StudentAttendanceReportView(APIView):
                 "institution_name": course.institution.name if course.institution else None,
                 "total_sessions": total_sessions,
                 "attended_count": attended_count,
-                "attendance_percentage": attendance_percentage,
-                "is_at_risk": attendance_percentage < 75.0 and total_sessions > 0,
+                "attendance_percentage": safety["attendance_percentage"],
+                "is_at_risk": safety["attendance_percentage"] < 75.0 and total_sessions > 0,
+                "safe_to_miss": safety["safe_to_miss"],
+                "needed_to_recover": safety["needed_to_recover"],
+                "safety_status": safety["status"],
+                "safety_message": safety["message"],
             })
 
         return Response({"courses": summary})
@@ -325,7 +329,7 @@ class StudentCourseDetailView(APIView):
 
         total_sessions = sessions.count()
         attended_count = len(attended_session_ids)
-        attendance_percentage = calculate_attendance_percentage(attended_count, total_sessions)
+        safety = calculate_attendance_safety(attended_count, total_sessions)
 
         return Response({
             "course_id": course.id,
@@ -333,7 +337,11 @@ class StudentCourseDetailView(APIView):
             "institution_name": course.institution.name if course.institution else None,
             "total_sessions": total_sessions,
             "attended_count": attended_count,
-            "attendance_percentage": attendance_percentage,
-            "is_at_risk": attendance_percentage < 75.0 and total_sessions > 0,
+            "attendance_percentage": safety["attendance_percentage"],
+            "is_at_risk": safety["attendance_percentage"] < 75.0 and total_sessions > 0,
+            "safe_to_miss": safety["safe_to_miss"],
+            "needed_to_recover": safety["needed_to_recover"],
+            "safety_status": safety["status"],
+            "safety_message": safety["message"],
             "session_log": session_log,
         })

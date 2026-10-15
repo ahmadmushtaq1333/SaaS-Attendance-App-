@@ -33,7 +33,7 @@ export default function MultiStudentAssignmentForm({
     return students.filter((s) => {
       const emailMatch = s.email?.toLowerCase().includes(q);
       const regMatch = s.registration_number?.toLowerCase().includes(q);
-      const nameMatch = `${s.first_name || ""} ${s.last_name || ""}`.toLowerCase().includes(q);
+      const nameMatch = (s.full_name || "").toLowerCase().includes(q);
       return emailMatch || regMatch || nameMatch;
     });
   }, [students, searchQuery]);
@@ -195,7 +195,7 @@ export default function MultiStudentAssignmentForm({
             className="form-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by student email or ID…"
+            placeholder="Search by student name, email, or ID…"
             style={{ paddingLeft: 34, fontSize: 13 }}
             disabled={loading}
           />

@@ -64,6 +64,7 @@ export default function UsersPanel({ user }) {
   const [allDepartments, setAllDepartments] = useState([]);
 
   // Creation form
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -198,12 +199,13 @@ export default function UsersPanel({ user }) {
     try {
       await API.post("/admin/users/", {
         email, password, role,
+        full_name: fullName.trim() || null,
         registration_number: registrationNumber.trim() || null,
         institution: selectedInst ? parseInt(selectedInst) : null,
         department: (role === "student" || role === "teacher") && selectedDept ? parseInt(selectedDept) : null,
         section: role === "student" && selectedSec ? parseInt(selectedSec) : null
       });
-      setEmail(""); setPassword(""); setRegistrationNumber("");
+      setFullName(""); setEmail(""); setPassword(""); setRegistrationNumber("");
       fetchUsers();
     } catch (err) { setError(err.response?.data?.email?.[0] || err.response?.data?.error || "Registration error occurred"); }
     finally { setLoading(false); }
@@ -304,8 +306,11 @@ export default function UsersPanel({ user }) {
             </div>
             
             <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="form-grid-3">
+              <div className="form-grid-2">
+                <div><label>Full Name</label><input type="text" className="form-input" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. Alice Smith" /></div>
                 <div><label>Email</label><input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@mit.edu" required /></div>
+              </div>
+              <div className="form-grid-2">
                 <div><label>Registration Number</label><input type="text" className="form-input" value={registrationNumber} onChange={e => setRegistrationNumber(e.target.value)} placeholder="e.g. CS-2026-105" /></div>
                 <div><label>Password</label><input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} placeholder="password123" required /></div>
               </div>

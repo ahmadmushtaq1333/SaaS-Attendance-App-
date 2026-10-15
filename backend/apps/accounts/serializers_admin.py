@@ -24,7 +24,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            "id", "email", "role", "institution", "institution_name",
+            "id", "email", "full_name", "role", "institution", "institution_name",
             "department", "department_name", "semester_number",
             "section", "section_name", "is_active", "date_joined", "password",
             "registration_number", "is_email_verified",

@@ -11,6 +11,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
   // Mappings
   const [emailMap, setEmailMap] = useState("");
   const [regMap, setRegMap] = useState("");
+  const [nameMap, setNameMap] = useState("");
 
   // Global Assignments
   const [globalRole, setGlobalRole] = useState("student");
@@ -94,6 +95,9 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
       const regIdx = lowerHeaders.findIndex(h => h.includes("reg") || h.includes("roll") || h.includes("id") || h.includes("number"));
       if (regIdx !== -1) setRegMap(res.data.headers[regIdx]);
 
+      const nameIdx = lowerHeaders.findIndex(h => h.includes("name"));
+      if (nameIdx !== -1) setNameMap(res.data.headers[nameIdx]);
+
     } catch (err) {
       setError(err.response?.data?.error || "Failed to parse spreadsheet headers.");
       setFile(null);
@@ -115,6 +119,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
 
     const mapping = {
       email: emailMap,
+      full_name: nameMap || undefined,
       registration_number: regMap || undefined
     };
 
@@ -154,7 +159,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = "Registration Number,Email Address\nCS-001,std01@mit.edu\nCS-002,std02@mit.edu\nT-01,prof.john@mit.edu";
+    const csvContent = "Full Name,Registration Number,Email Address\nAlice Smith,CS-001,std01@mit.edu\nBob Jones,CS-002,std02@mit.edu\nProf. John Doe,T-01,prof.john@mit.edu";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -250,7 +255,14 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
           {/* Visual Mapper & Global Config */}
           <div>
             <h4 style={{ margin: "0 0 10px 0", fontSize: 13, color: "var(--text-secondary)" }}>1. Map Spreadsheet Columns</h4>
-            <div className="form-grid-2" style={{ gap: 10, marginBottom: 20 }}>
+            <div className="form-grid-3" style={{ gap: 10, marginBottom: 20 }}>
+              <div>
+                <label style={{ fontSize: 11 }}>Full Name / Student Name Column</label>
+                <select className="form-input" value={nameMap} onChange={(e) => setNameMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
+                  <option value="">-- Select Column (Optional) --</option>
+                  {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
+                </select>
+              </div>
               <div>
                 <label style={{ fontSize: 11 }}>Email Address Column (Required)</label>
                 <select className="form-input" value={emailMap} onChange={(e) => setEmailMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>

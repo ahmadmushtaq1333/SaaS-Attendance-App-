@@ -362,11 +362,22 @@ export default function Dashboard({ user, onViewReports }) {
                     <h4 style={{ margin: 0, fontSize: 14 }}>Quick Attendance Override (Live Roster)</h4>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 200, overflowY: "auto" }}>
-                    {sessionReport.students.map(s => {
+                    {[...sessionReport.students].sort((a, b) => {
+                      const regA = a.registration_number ? String(a.registration_number) : (a.email ? a.email.split("@")[0] : "");
+                      const regB = b.registration_number ? String(b.registration_number) : (b.email ? b.email.split("@")[0] : "");
+                      return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: "base" });
+                    }).map(s => {
                       const isPresent = s.sessions && s.sessions[activeSession.id] === true;
                       return (
                         <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)", flexWrap: "wrap", gap: 8 }}>
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>{s.email}</span>
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>{s.email}</span>
+                            {s.full_name && (
+                              <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
+                                <sub>{s.full_name}</sub>
+                              </span>
+                            )}
+                          </div>
                           <button onClick={() => toggleStudentAttendance(s.id, isPresent)} className={isPresent ? "btn-secondary" : "btn-primary"} style={{ padding: "4px 10px", fontSize: 12 }}>
                             {isPresent ? "Mark Absent" : "Mark Present"}
                           </button>

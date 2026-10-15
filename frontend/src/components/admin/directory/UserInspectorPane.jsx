@@ -16,6 +16,7 @@ export default function UserInspectorPane({
 }) {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [editFullName, setEditFullName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState("student");
   const [editInst, setEditInst] = useState("");
@@ -61,6 +62,7 @@ export default function UserInspectorPane({
   };
 
   const startEditing = () => {
+    setEditFullName(user.full_name || "");
     setEditEmail(user.email || "");
     setEditRole(user.role || "student");
     setEditInst(user.computed_institution ? String(user.computed_institution) : (user.institution ? String(user.institution) : ""));
@@ -79,6 +81,7 @@ export default function UserInspectorPane({
     try {
       const payload = {
         email: editEmail.trim(),
+        full_name: editFullName.trim() || null,
         role: editRole,
         registration_number: editRegNum.trim() || null,
         institution: editInst ? parseInt(editInst) : null,
@@ -218,9 +221,14 @@ export default function UserInspectorPane({
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all" }}>
-                  {user.full_name ? `${user.full_name} (${user.email})` : user.email}
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--text-primary)", wordBreak: "break-all" }}>
+                  {user.full_name || user.email}
                 </h3>
+                {user.full_name && (
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    ({user.email})
+                  </span>
+                )}
                 <button
                   onClick={copyEmail}
                   title="Copy email"
@@ -303,6 +311,17 @@ export default function UserInspectorPane({
             marginTop: 8, paddingTop: 16, borderTop: "1px solid var(--glass-border)",
             display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12
           }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Full Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editFullName}
+                onChange={e => setEditFullName(e.target.value)}
+                placeholder="e.g. Alice Smith"
+                style={{ width: "100%", padding: "7px 10px", fontSize: 13 }}
+              />
+            </div>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Email Address</label>
               <input
@@ -585,6 +604,13 @@ export default function UserInspectorPane({
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+          <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.04)" }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Full Name</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginTop: 3 }}>
+              {user.full_name || <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>Not set</span>}
+            </div>
+          </div>
+
           <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.04)" }}>
             <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Institution</div>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginTop: 3 }}>

@@ -179,7 +179,11 @@ export default function SessionOverridePanel({
             </tr>
           </thead>
           <tbody>
-            {sessionAttendance.map(student => (
+            {[...sessionAttendance].sort((a, b) => {
+              const regA = a.registration_number ? String(a.registration_number) : (a.email ? a.email.split("@")[0] : "");
+              const regB = b.registration_number ? String(b.registration_number) : (b.email ? b.email.split("@")[0] : "");
+              return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: "base" });
+            }).map(student => (
               <tr key={student.id} style={{ background: selectedStudentIds.has(student.id) ? 'var(--glass-a)' : 'transparent' }}>
                 <td style={{ textAlign: 'center' }}>
                   <button 

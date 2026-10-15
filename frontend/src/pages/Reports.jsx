@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import API from "../services/api";
-import { ArrowLeft, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, AlertTriangle, FileSpreadsheet, Sliders, Users } from "lucide-react";
 import { exportAttendanceExcel } from "../utils/exportExcel";
 import SessionOverridePanel from "../components/SessionOverridePanel";
+import DashboardActionCard from "../components/DashboardActionCard";
 
 export default function Reports({ courseId: initialCourseId, onBack }) {
   const [courses, setCourses] = useState([]);
@@ -13,6 +14,7 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
   const [sessionAttendance, setSessionAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeReportView, setActiveReportView] = useState("grid");
 
   useEffect(() => {
     fetchTeacherCourses();
@@ -141,6 +143,20 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
     return { label: "At Risk", cls: "badge-defaulter", barCls: "danger" };
   };
 
+  const getRegNo = (student) => {
+    if (student.registration_number) return String(student.registration_number);
+    if (!student.email) return "";
+    return student.email.split("@")[0];
+  };
+
+  const sortedStudents = report?.students ? [...report.students].sort((a, b) => {
+    const regA = getRegNo(a);
+    const regB = getRegNo(b);
+    return regA.localeCompare(regB, undefined, { numeric: true, sensitivity: "base" });
+  }) : [];
+
+  const selectedSession = sessions.find(s => s.id === selectedSessionId || s.id === Number(selectedSessionId));
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
@@ -224,72 +240,166 @@ export default function Reports({ courseId: initialCourseId, onBack }) {
             </div>
           )}
 
-          {/* Session Override Panel */}
-          <SessionOverridePanel 
-            sessions={sessions}
-            selectedSessionId={selectedSessionId}
-            onSessionChange={setSelectedSessionId}
-            onDeleteSession={deleteSession}
-            sessionAttendance={sessionAttendance}
-            onToggle={toggleAttendance}
-            onBulkOverride={handleBulkOverride}
-            bulkLoading={bulkLoading}
-            bulkError={bulkError}
-            courses={courses}
-            activeCourseId={activeCourseId}
-          />
-
-          {/* Student Summary Table */}
-          {report?.students && report.students.length > 0 && (
-            <div className="glass-b" style={{ padding: 24 }}>
-              <h3 style={{ margin: "0 0 18px 0" }}>Student Attendance Summary</h3>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Sessions Attended</th>
-                      <th>Attendance %</th>
-                      <th>Risk Level</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...report.students].sort((a, b) => {
-                      const nameA = a.full_name || a.email.split("@")[0];
-                      const nameB = b.full_name || b.email.split("@")[0];
-                      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: "base" });
-                    }).map(student => {
-                      const risk = getRiskConfig(student.attendance_percentage);
-                      return (
-                        <tr key={student.id}>
-                          <td style={{ fontWeight: 500 }}>
-                            <div style={{ fontSize: 14 }}>{student.full_name || student.email.split('@')[0]}</div>
-                            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{student.email}</div>
-                          </td>
-                          <td style={{ color: "var(--text-secondary)" }}>{student.attended_count} / {report.total_sessions}</td>
-                          <td>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 100 }}>
-                              <span style={{ fontWeight: 700, fontSize: 14, color: student.attendance_percentage < 75 ? "var(--danger)" : "var(--emerald)" }}>
-                                {student.attendance_percentage.toFixed(1)}%
-                              </span>
-                              <div className="progress-bar">
-                                <div
-                                  className={`progress-fill ${risk.barCls}`}
-                                  style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`badge ${risk.cls}`}>{risk.label}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+          {/* Navigation back button when inside a specific panel */}
+          {activeReportView !== "grid" && (
+            <div>
+              <button
+                onClick={() => setActiveReportView("grid")}
+                className="btn-secondary"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: 13, borderRadius: 8 }}
+              >
+                <ArrowLeft size={14} /> Back to Reports Overview
+              </button>
             </div>
+          )}
+
+          {/* ── Action Grid (Two Cards) ── */}
+          {activeReportView === "grid" && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+              <DashboardActionCard
+                icon={Sliders}
+                color="var(--purple)"
+                title="Session Override Panel"
+                description="Review attendance for specific sessions, delete sessions, or modify student presence statuses."
+                badge={selectedSession && (
+                  <span className="badge badge-good" style={{ fontSize: 10, padding: "2px 7px" }}>
+                    Session {selectedSession.session_number ?? selectedSession.id}
+                  </span>
+                )}
+                stats={[
+                  { label: "Sessions", value: sessions.length, color: "var(--purple)" },
+                  { label: "Selected", value: selectedSession ? (selectedSession.present_count !== undefined ? `${selectedSession.present_count} present` : "Ready") : (sessions.length > 0 ? "Ready" : "None") }
+                ]}
+                buttonText="Open Override Panel"
+                onClick={() => setActiveReportView("override")}
+              />
+
+              <DashboardActionCard
+                icon={Users}
+                color="var(--emerald)"
+                title="Students Attendance Summary"
+                description="Inspect the full class roster, individual attendance rates, progress bars, and risk indicators."
+                badge={(report?.defaulters_list?.length || 0) > 0 && (
+                  <span className="badge badge-defaulter" style={{ fontSize: 10, padding: "2px 7px" }}>
+                    {report.defaulters_list.length} At Risk
+                  </span>
+                )}
+                stats={[
+                  { label: "Enrolled", value: sortedStudents.length, color: "var(--emerald)" },
+                  { label: "At Risk", value: report?.defaulters_list?.length || 0, color: (report?.defaulters_list?.length || 0) > 0 ? "var(--danger)" : "var(--text-muted)" }
+                ]}
+                buttonText="View Attendance Summary"
+                onClick={() => setActiveReportView("summary")}
+              />
+            </div>
+          )}
+
+          {/* ── Session Override View ── */}
+          {activeReportView === "override" && (
+            sessions.length > 0 ? (
+              <SessionOverridePanel 
+                sessions={sessions}
+                selectedSessionId={selectedSessionId}
+                onSessionChange={setSelectedSessionId}
+                onDeleteSession={deleteSession}
+                sessionAttendance={sessionAttendance}
+                onToggle={toggleAttendance}
+                onBulkOverride={handleBulkOverride}
+                bulkLoading={bulkLoading}
+                bulkError={bulkError}
+                courses={courses}
+                activeCourseId={activeCourseId}
+              />
+            ) : (
+              <div className="panel-pad glass-b" style={{ textAlign: "center", padding: "40px 24px", borderRadius: 16 }}>
+                <div style={{ width: 56, height: 56, margin: "0 auto 16px", background: "rgba(167,139,250,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Sliders size={26} color="var(--purple)" strokeWidth={1.5} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>No Sessions Recorded</h3>
+                <p className="text-meta" style={{ marginTop: 6 }}>
+                  No attendance sessions have been held for this course yet. Start a session from the Overview page to record attendance.
+                </p>
+              </div>
+            )
+          )}
+
+          {/* ── Student Summary Table View ── */}
+          {activeReportView === "summary" && (
+            sortedStudents.length > 0 ? (
+              <div className="glass-b" style={{ padding: 24, borderRadius: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, flexWrap: "wrap", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Users size={20} color="var(--emerald)" />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Students Attendance Summary</h3>
+                      <p className="text-meta" style={{ margin: 0, fontSize: 12 }}>
+                        {sortedStudents.length} enrolled students · Sorted by Registration Number
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Registration No.</th>
+                        <th>Student Name & Email</th>
+                        <th>Sessions Attended</th>
+                        <th>Attendance %</th>
+                        <th>Risk Level</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedStudents.map(student => {
+                        const risk = getRiskConfig(student.attendance_percentage);
+                        const regNo = getRegNo(student);
+                        return (
+                          <tr key={student.id}>
+                            <td style={{ fontWeight: 600, color: "var(--cyan)", fontFamily: "monospace", fontSize: 13 }}>
+                              {regNo}
+                            </td>
+                            <td style={{ fontWeight: 500 }}>
+                              <div style={{ fontSize: 14 }}>{student.full_name || regNo}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{student.email}</div>
+                            </td>
+                            <td style={{ color: "var(--text-secondary)" }}>{student.attended_count} / {report.total_sessions}</td>
+                            <td>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 100 }}>
+                                <span style={{ fontWeight: 700, fontSize: 14, color: student.attendance_percentage < 75 ? "var(--danger)" : "var(--emerald)" }}>
+                                  {student.attendance_percentage.toFixed(1)}%
+                                </span>
+                                <div className="progress-bar">
+                                  <div
+                                    className={`progress-fill ${risk.barCls}`}
+                                    style={{ width: `${Math.min(student.attendance_percentage, 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={`badge ${risk.cls}`}>{risk.label}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="panel-pad glass-b" style={{ textAlign: "center", padding: "40px 24px", borderRadius: 16 }}>
+                <div style={{ width: 56, height: 56, margin: "0 auto 16px", background: "rgba(79,142,247,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Users size={26} color="var(--emerald)" strokeWidth={1.5} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>No Students Enrolled</h3>
+                <p className="text-meta" style={{ marginTop: 6 }}>
+                  No students are enrolled in this course yet.
+                </p>
+              </div>
+            )
           )}
         </>
       )}

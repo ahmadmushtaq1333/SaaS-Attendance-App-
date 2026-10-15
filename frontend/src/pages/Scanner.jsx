@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 
 import ProgressRing from "../components/ProgressRing";
-
 import DashboardActionCard from "../components/DashboardActionCard";
+import SafetyBadge from "../components/student/SafetyBadge";
+import AttendanceSafetyCalculator from "../components/student/AttendanceSafetyCalculator";
 
 export default function StudentDashboard({ user, initialView = "grid" }) {
   const videoRef = useRef(null);
@@ -275,6 +276,12 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
             buttonText="View Details"
             onClick={() => { setAttendanceFilter("all"); setActiveView("attendance"); }}
           />
+          <DashboardActionCard
+            icon={Shield} color="var(--cyan)" title="Attendance Safety"
+            description="See how many classes you can safely miss or need to attend."
+            buttonText="Check Safety"
+            onClick={() => setActiveView("calculator")}
+          />
         </div>
       )}
 
@@ -404,8 +411,11 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
                     <div style={{ flex: "1 1 180px", minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 15 }}>{course.course_name}</div>
                       <div className="text-meta">{course.institution_name || "—"}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                        {course.attended_count} / {course.total_sessions} sessions attended
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                          {course.attended_count} / {course.total_sessions} sessions
+                        </span>
+                        <SafetyBadge attended={course.attended_count} total={course.total_sessions} />
                       </div>
                     </div>
                     <div style={{ textAlign: "right", marginLeft: "auto" }}>
@@ -452,6 +462,11 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
             </div>
           )}
 
+          {/* Clean Safety Status Callout */}
+          <div style={{ marginTop: 14 }}>
+            <SafetyBadge attended={selectedCourse.attended_count} total={selectedCourse.total_sessions} />
+          </div>
+
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "20px 0 12px", color: "var(--text-secondary)" }}>Session History</h3>
 
           {detailLoading ? (
@@ -488,6 +503,29 @@ export default function StudentDashboard({ user, initialView = "grid" }) {
             className="btn-secondary" style={{ marginTop: 20, display: "inline-flex", alignItems: "center", gap: 6 }}>
             <ArrowLeft size={14} /> Back to Courses
           </button>
+        </div>
+      )}
+
+      {/* ── Standalone Safety Calculator View ── */}
+      {activeView === "calculator" && (
+        <div className="panel-pad" style={{ background: "var(--glass-b)", border: "1px solid var(--glass-border)", borderRadius: 16, backdropFilter: "blur(12px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(79,142,247,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Shield size={22} color="var(--cyan)" />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Attendance Safety</h2>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>See how many classes you can safely miss or need to attend</p>
+            </div>
+          </div>
+
+          {courses.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>
+              {coursesLoading ? "Loading your courses…" : "No enrolled courses found."}
+            </div>
+          ) : (
+            <AttendanceSafetyCalculator courses={courses} />
+          )}
         </div>
       )}
     </div>

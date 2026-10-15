@@ -50,13 +50,14 @@ export default function UserDirectory({
         if (String(deptId) !== String(departmentFilter)) return false;
       }
 
-      // Search query (email, registration number, name)
+      // Search query (name, email, registration number, department)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
+        const nameMatch = (u.full_name || "").toLowerCase().includes(q);
         const emailMatch = (u.email || "").toLowerCase().includes(q);
         const regMatch = (u.registration_number || "").toLowerCase().includes(q);
         const deptMatch = (u.department_name || "").toLowerCase().includes(q);
-        if (!emailMatch && !regMatch && !deptMatch) return false;
+        if (!nameMatch && !emailMatch && !regMatch && !deptMatch) return false;
       }
 
       return true;
@@ -78,6 +79,8 @@ export default function UserDirectory({
         const dateB = b.date_joined ? new Date(b.date_joined).getTime() : b.id || 0;
         return dateA - dateB;
       });
+    } else if (sortOption === "name_asc") {
+      list.sort((a, b) => (a.full_name || a.email || "").localeCompare(b.full_name || b.email || ""));
     } else if (sortOption === "email_asc") {
       list.sort((a, b) => (a.email || "").localeCompare(b.email || ""));
     } else if (sortOption === "email_desc") {

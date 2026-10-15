@@ -127,7 +127,7 @@ export default function UserListPane({
             className="form-input"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={`Search ${roleTab === "teacher" ? "faculty" : roleTab === "student" ? "students" : "users"} by email / reg no…`}
+            placeholder={`Search ${roleTab === "teacher" ? "faculty" : roleTab === "student" ? "students" : "users"} by name, email, or reg no…`}
             style={{ width: "100%", padding: "8px 28px 8px 30px", fontSize: 13 }}
           />
           {searchQuery && (
@@ -167,6 +167,7 @@ export default function UserListPane({
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
+              <option value="name_asc">Name (A → Z)</option>
               <option value="email_asc">Email (A → Z)</option>
               <option value="email_desc">Email (Z → A)</option>
               <option value="dept">Department</option>
@@ -220,7 +221,7 @@ export default function UserListPane({
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: 13, fontWeight: 700, flexShrink: 0
                     }}>
-                      {u.email ? u.email.charAt(0).toUpperCase() : "U"}
+                      {(u.full_name || u.email || "U").charAt(0).toUpperCase()}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{
@@ -228,13 +229,13 @@ export default function UserListPane({
                         color: "var(--text-primary)", whiteSpace: "nowrap",
                         overflow: "hidden", textOverflow: "ellipsis"
                       }}>
-                        {u.full_name ? `${u.full_name} (${u.email})` : u.email}
+                        {u.full_name || u.email}
                       </div>
-                      {u.registration_number && (
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>
-                          {u.registration_number}
-                        </div>
-                      )}
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1, display: "flex", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {u.full_name && <span>{u.email}</span>}
+                        {u.full_name && u.registration_number && <span>•</span>}
+                        {u.registration_number && <span>{u.registration_number}</span>}
+                      </div>
                     </div>
                   </div>
 

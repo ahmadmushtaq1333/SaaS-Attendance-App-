@@ -60,7 +60,8 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(
                 Q(email__icontains=search) |
-                Q(registration_number__icontains=search)
+                Q(registration_number__icontains=search) |
+                Q(full_name__icontains=search)
             )
 
         is_email_verified = self.request.query_params.get("is_email_verified")
@@ -249,6 +250,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
         idx_email = headers.index(column_mapping.get("email")) if column_mapping.get("email") in headers else -1
         idx_reg = headers.index(column_mapping.get("registration_number")) if column_mapping.get("registration_number") in headers else -1
+        idx_name = headers.index(column_mapping.get("full_name")) if column_mapping.get("full_name") in headers else -1
 
         if idx_email == -1:
             return Response({"error": "Email column mapping is required and must match a header in the file."}, status=status.HTTP_400_BAD_REQUEST)
@@ -302,6 +304,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
                     email_val = row[idx_email].strip()
                     reg_val = row[idx_reg].strip() if idx_reg != -1 and len(row) > idx_reg else ""
+                    name_val = row[idx_name].strip() if idx_name != -1 and len(row) > idx_name else ""
                     role_val = global_role
 
                     if not role_val or role_val not in ["student", "teacher", "admin"]:
@@ -383,6 +386,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         user = User.objects.create_user(
                             email=email_val.lower(),
                             password=password,
+                            full_name=name_val or None,
                             role=role_val,
                             institution=row_inst if role_val != "student" else None,
                             department=row_dept if role_val == "teacher" else None,
@@ -399,6 +403,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     # Flaw #5 fix: never include plaintext passwords in API response
                     success_list.append({
                         "email": email_val,
+                        "full_name": name_val,
                         "role": role_val,
                         "registration_number": reg_val,
                         "institution": row_inst.name,
