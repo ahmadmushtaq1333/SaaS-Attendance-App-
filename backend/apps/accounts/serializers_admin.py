@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .registration_number import derive_registration_number
 
 User = get_user_model()
 
@@ -131,12 +132,39 @@ class UserAdminSerializer(serializers.ModelSerializer):
                     "email": f"Personal emails are not permitted. Students must use their institutional email address ending with '@{domain_suffix}'."
                 })
 
+        # Validate registration number for students (auto-deriving if not explicitly provided)
+        if role == "student":
+            effective_reg = attrs.get("registration_number")
+            if not effective_reg and not self.instance:
+                email = attrs.get("email")
+                if email:
+                    effective_reg = derive_registration_number(email)
+                    if effective_reg:
+                        attrs["registration_number"] = effective_reg
+
+            if effective_reg:
+                conflict_qs = User.objects.filter(registration_number__iexact=effective_reg)
+                if self.instance:
+                    conflict_qs = conflict_qs.exclude(pk=self.instance.pk)
+                if conflict_qs.exists():
+                    raise serializers.ValidationError({
+                        "registration_number": f"Registration number '{effective_reg}' is already in use by another student."
+                    })
+
         return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
         if "is_email_verified" not in validated_data:
             validated_data["is_email_verified"] = True
+
+        # Auto-derive registration_number from email for students if not provided
+        role = validated_data.get("role", "student")
+        if role == "student" and not validated_data.get("registration_number"):
+            validated_data["registration_number"] = derive_registration_number(
+                validated_data.get("email", "")
+            )
+
         user = User.objects.create(**validated_data)
         if password:
             user.set_password(password)
@@ -147,6 +175,21 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         password = validated_data.pop("password", None)
+
+        # Re-derive registration_number when email changes, IF:
+        #   - This is a student account
+        #   - No explicit registration_number was provided in the request
+        #   - The current reg number still matches the old auto-derived value
+        #     (i.e. the admin never manually overrode it)
+        new_email = validated_data.get("email")
+        if (
+            new_email
+            and instance.role == "student"
+            and "registration_number" not in validated_data
+            and instance.registration_number == derive_registration_number(instance.email)
+        ):
+            validated_data["registration_number"] = derive_registration_number(new_email)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if password:

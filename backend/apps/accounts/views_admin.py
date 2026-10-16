@@ -13,6 +13,7 @@ from apps.institutions.models import Institution, Department, Semester, Section
 from apps.courses.services import enroll_student_in_course
 from apps.courses.models import Course
 from .serializers_admin import UserAdminSerializer
+from .registration_number import derive_registration_number
 
 User = get_user_model()
 
@@ -164,7 +165,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         password_chars = string.ascii_letters + string.digits
                         password = "".join(random.choice(password_chars) for _ in range(8))
                     
-                    reg_no = email.split('@')[0]
+                    reg_no = derive_registration_number(email)
                     user = User.objects.create_user(
                         email=email,
                         password=password,
@@ -389,6 +390,12 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         password_chars = string.ascii_letters + string.digits
                         password = "".join(random.choice(password_chars) for _ in range(8))
 
+                    # Determine the registration number that will be saved
+                    # (auto-derive from email when no column is mapped/empty)
+                    effective_reg = reg_val or (
+                        derive_registration_number(email_val) if role_val == "student" else None
+                    )
+
                     if not dry_run:
                         user = User.objects.create_user(
                             email=email_val.lower(),
@@ -398,7 +405,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                             institution=row_inst if role_val != "student" else None,
                             department=row_dept if role_val == "teacher" else None,
                             section=row_sec if role_val == "student" else None,
-                            registration_number=reg_val or None,
+                            registration_number=effective_reg or None,
                             is_email_verified=False
                         )
 
@@ -407,12 +414,13 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
                         generate_and_send_otp(user, purpose="verify")
 
+
                     # Flaw #5 fix: never include plaintext passwords in API response
                     success_list.append({
                         "email": email_val,
                         "full_name": name_val,
                         "role": role_val,
-                        "registration_number": reg_val,
+                        "registration_number": effective_reg,
                         "institution": row_inst.name,
                         "department": row_dept.name if row_dept else "",
                         "section": row_sec.name if row_sec else "",

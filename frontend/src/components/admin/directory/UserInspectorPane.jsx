@@ -265,6 +265,14 @@ export default function UserInspectorPane({
                 }}>
                   {user.is_email_verified ? "Verified ✓" : "Pending OTP"}
                 </span>
+                {user.role === "student" && user.registration_number && (
+                  <span style={{
+                    background: "rgba(16,185,129,0.15)", color: "#34d399", border: "1px solid rgba(16,185,129,0.3)",
+                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6
+                  }}>
+                    Reg: {user.registration_number}
+                  </span>
+                )}
               </div>
             </div>
           </div>

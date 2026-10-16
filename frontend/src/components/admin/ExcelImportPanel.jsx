@@ -273,7 +273,7 @@ export default function ExcelImportPanel({ user: _user, onImportComplete }) {
               <div>
                 <label style={{ fontSize: 11 }}>Registration Number / Username Column</label>
                 <select className="form-input" value={regMap} onChange={(e) => setRegMap(e.target.value)} style={{ padding: "6px 10px", fontSize: 12 }}>
-                  <option value="">-- Select Column (Optional) --</option>
+                  <option value="">-- Optional (Auto-calculated from email) --</option>
                   {headers.map((h, i) => <option key={i} value={h}>{h}</option>)}
                 </select>
               </div>

@@ -232,20 +232,31 @@ export default function UserListPane({
                         {u.full_name || u.email}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1, display: "flex", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {u.full_name && <span>{u.email}</span>}
-                        {u.full_name && u.registration_number && <span>•</span>}
-                        {u.registration_number && <span>{u.registration_number}</span>}
+                        {u.full_name ? <span>{u.email}</span> : (u.registration_number ? <span>Reg: {u.registration_number}</span> : null)}
                       </div>
                     </div>
                   </div>
 
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                    padding: "2px 6px", borderRadius: 4, flexShrink: 0,
-                    background: rStyle.bg, color: rStyle.text
-                  }}>
-                    {u.role === "teacher" ? "Faculty" : u.role}
-                  </span>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                      padding: "2px 6px", borderRadius: 4,
+                      background: rStyle.bg, color: rStyle.text
+                    }}>
+                      {u.role === "teacher" ? "Faculty" : u.role}
+                    </span>
+                    {u.role === "student" && u.registration_number && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 600,
+                        padding: "1px 5px", borderRadius: 4,
+                        background: "rgba(16,185,129,0.12)", color: "#34d399",
+                        border: "1px solid rgba(16,185,129,0.25)",
+                        letterSpacing: "0.3px"
+                      }}>
+                        {u.registration_number}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 11 }}>

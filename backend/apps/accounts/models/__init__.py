@@ -83,8 +83,17 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
+    def save(self, *args, **kwargs):
+        if self.role == "student" and not self.registration_number and self.email:
+            from apps.accounts.registration_number import derive_registration_number
+            derived = derive_registration_number(self.email)
+            if derived:
+                self.registration_number = derived
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.email} ({self.role})"
+
 
 
 class EmailVerificationCode(models.Model):

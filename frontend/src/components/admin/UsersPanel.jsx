@@ -311,7 +311,28 @@ export default function UsersPanel({ user }) {
                 <div><label>Email</label><input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@mit.edu" required /></div>
               </div>
               <div className="form-grid-2">
-                <div><label>Registration Number</label><input type="text" className="form-input" value={registrationNumber} onChange={e => setRegistrationNumber(e.target.value)} placeholder="e.g. CS-2026-105" /></div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <label>Registration Number</label>
+                    {role === "student" && email && email.includes("@") && !registrationNumber && (
+                      <span style={{ fontSize: 11, color: "var(--emerald)", fontWeight: 600 }}>
+                        Auto-assigned: {email.split("@")[0].trim().toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={registrationNumber}
+                    onChange={e => setRegistrationNumber(e.target.value)}
+                    placeholder={role === "student" && email.includes("@") ? `Leave blank for ${email.split("@")[0].trim().toUpperCase()}` : "Auto-calculated from email"}
+                  />
+                  {role === "student" && (
+                    <span style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3, display: "block" }}>
+                      Leave blank to automatically compute from email
+                    </span>
+                  )}
+                </div>
                 <div><label>Password</label><input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} placeholder="password123" required /></div>
               </div>
               <div className="form-grid-2">
