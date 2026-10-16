@@ -25,7 +25,7 @@ class MarkAttendanceView(APIView):
             return Response({"error": "token_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            token = QRToken.objects.select_related("session").get(token_uuid=token_uuid)
+            token = QRToken.objects.select_related("session__course").get(token_uuid=token_uuid)
         except (QRToken.DoesNotExist, ValueError, ValidationError):
             return Response({"error": "Invalid QR code token"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -92,7 +92,7 @@ class SyncAttendanceView(APIView):
                 continue
             
             try:
-                token = QRToken.objects.get(token_uuid=token_uuid)
+                token = QRToken.objects.select_related("session__course").get(token_uuid=token_uuid)
             except (QRToken.DoesNotExist, ValueError, ValidationError):
                 errors.append({"index": index, "token_uuid": token_uuid, "error": "Invalid QR code token"})
                 continue

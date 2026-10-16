@@ -25,6 +25,8 @@ class UserCoursesView(APIView):
         else:
             courses = Course.objects.none()
 
+        courses = courses.select_related("institution", "department")
+
         # Build a set of all linked course IDs for a fast lookup
         all_links = CourseLink.objects.filter(
             Q(source_course__in=courses) | Q(target_course__in=courses)

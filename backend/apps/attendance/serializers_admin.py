@@ -12,6 +12,6 @@ class SessionAdminSerializer(serializers.ModelSerializer):
 
     def get_session_number(self, obj):
         return AttendanceSession.objects.filter(
-            course=obj.course,
+            course_id=obj.course_id,
             start_time__lte=obj.start_time
         ).count()

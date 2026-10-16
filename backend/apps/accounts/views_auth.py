@@ -97,6 +97,20 @@ class CookieTokenRefreshView(TokenRefreshView):
                     httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
                 )
                 response.data['refresh'] = new_refresh_token
+        elif response.status_code in [400, 401]:
+            # Clear dead/blacklisted cookies so browser doesn't keep sending them
+            is_secure, samesite_policy = get_cookie_policy(request)
+            for cookie_name in ['access_token', 'refresh_token']:
+                response.set_cookie(
+                    cookie_name,
+                    '',
+                    max_age=0,
+                    expires='Thu, 01 Jan 1970 00:00:00 GMT',
+                    path='/',
+                    httponly=True,
+                    samesite=samesite_policy,
+                    secure=is_secure
+                )
         return response
 
 

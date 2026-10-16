@@ -5,8 +5,8 @@ from apps.courses.models import Course
 
 class AttendanceSession(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="sessions")
-    start_time = models.DateTimeField(auto_now_add=True)
-    expiry_time = models.DateTimeField()
+    start_time = models.DateTimeField(auto_now_add=True, db_index=True)
+    expiry_time = models.DateTimeField(db_index=True)
     # Replication audit fields
     is_replicated = models.BooleanField(default=False)
     replicated_from = models.ForeignKey(
@@ -20,7 +20,7 @@ class AttendanceSession(models.Model):
 class QRToken(models.Model):
     session = models.ForeignKey(AttendanceSession, on_delete=models.CASCADE, related_name="qr_tokens")
     token_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    expiry_time = models.DateTimeField()
+    expiry_time = models.DateTimeField(db_index=True)
 
     def __str__(self):
         return f"Token {self.token_uuid} for Session {self.session.id}"

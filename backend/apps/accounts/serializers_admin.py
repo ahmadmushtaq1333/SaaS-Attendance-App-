@@ -72,24 +72,33 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     def get_enrolled_courses_count(self, obj):
         if obj.role == "student":
+            if hasattr(obj, '_prefetched_objects_cache') and 'enrollments' in obj._prefetched_objects_cache:
+                return len(obj.enrollments.all())
             return obj.enrollments.count()
         return 0
 
     def get_has_bound_device(self, obj):
-        return hasattr(obj, 'device_binding')
+        try:
+            return obj.device_binding is not None
+        except Exception:
+            return False
 
     def get_has_passkey(self, obj):
+        if hasattr(obj, '_prefetched_objects_cache') and 'webauthn_credentials' in obj._prefetched_objects_cache:
+            return len(obj.webauthn_credentials.all()) > 0
         return obj.webauthn_credentials.exists()
 
     def get_bound_since(self, obj):
-        if hasattr(obj, 'device_binding'):
+        try:
             return obj.device_binding.created_at
-        return None
+        except Exception:
+            return None
 
     def get_device_last_seen(self, obj):
-        if hasattr(obj, 'device_binding'):
+        try:
             return obj.device_binding.last_seen
-        return None
+        except Exception:
+            return None
 
     def validate(self, attrs):
         role = attrs.get("role", getattr(self.instance, 'role', 'student'))
@@ -126,6 +135,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
+        if "is_email_verified" not in validated_data:
+            validated_data["is_email_verified"] = True
         user = User.objects.create(**validated_data)
         if password:
             user.set_password(password)

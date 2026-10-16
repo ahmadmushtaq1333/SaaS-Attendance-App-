@@ -36,7 +36,7 @@ class AdminDepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentAdminSerializer
     
     def get_queryset(self):
-        queryset = Department.objects.all()
+        queryset = Department.objects.select_related("institution").all()
         queryset = scope_for_admin(self.request.user, queryset)
         
         inst_id = self.request.query_params.get("institution")
@@ -49,7 +49,7 @@ class AdminSemesterViewSet(viewsets.ModelViewSet):
     serializer_class = SemesterAdminSerializer
     
     def get_queryset(self):
-        queryset = Semester.objects.all()
+        queryset = Semester.objects.select_related("department").all()
         queryset = scope_for_admin(
             self.request.user, 
             queryset,
@@ -67,7 +67,7 @@ class AdminSectionViewSet(viewsets.ModelViewSet):
     serializer_class = SectionAdminSerializer
     
     def get_queryset(self):
-        queryset = Section.objects.all()
+        queryset = Section.objects.select_related("semester__department").all()
         queryset = scope_for_admin(
             self.request.user, 
             queryset,

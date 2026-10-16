@@ -61,19 +61,19 @@ class CourseReportView(APIView):
             )
 
         # Sessions for this course
-        sessions = AttendanceSession.objects.filter(
+        sessions = list(AttendanceSession.objects.filter(
             course=course
-        ).order_by("start_time")
-        total_sessions = sessions.count()
+        ).order_by("start_time").only("id", "start_time", "course_id"))
+        total_sessions = len(sessions)
         session_list = [
             {"id": s.id, "session_number": i + 1, "start_time": s.start_time}
             for i, s in enumerate(sessions)
         ]
 
         # All enrollments for this course, sorted by student email (reg number order)
-        enrollments = Enrollment.objects.filter(
+        enrollments = list(Enrollment.objects.filter(
             course=course
-        ).select_related("student").order_by("student__email")
+        ).select_related("student").order_by("student__email"))
 
         # Fetch all attendance records at once for O(n) performance
         records = AttendanceRecord.objects.filter(

@@ -40,7 +40,7 @@ class AdminSessionViewSet(viewsets.ModelViewSet):
     filterset_fields = ["course"]
 
     def get_queryset(self):
-        queryset = AttendanceSession.objects.all().order_by("-start_time")
+        queryset = AttendanceSession.objects.select_related("course").all().order_by("-start_time")
         queryset = scope_for_admin(
             self.request.user, 
             queryset,

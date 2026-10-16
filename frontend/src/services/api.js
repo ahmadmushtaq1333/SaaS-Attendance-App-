@@ -90,8 +90,19 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    if (!originalRequest) return Promise.reject(error);
+
     const status = error.response?.status;
-    const isRefreshEndpoint = originalRequest.url?.includes("/auth/refresh/");
+    const url = originalRequest.url || "";
+    const isRefreshEndpoint = url.includes("/auth/refresh/");
+    const isAuthEndpoint =
+      url.includes("/auth/login/") ||
+      url.includes("/auth/refresh/") ||
+      url.includes("/auth/logout/") ||
+      url.includes("/auth/verify-email/") ||
+      url.includes("/auth/send-otp/") ||
+      url.includes("/auth/reset-password/") ||
+      url.includes("/auth/webauthn/");
 
     // If the refresh endpoint itself failed (400 = bad/expired token, 401 = blacklisted) → force logout
     if (isRefreshEndpoint && (status === 400 || status === 401 || status === 403)) {
@@ -99,6 +110,11 @@ API.interceptors.response.use(
       clearAuthTokens();
       processQueue(error, null);
       window.dispatchEvent(new Event(AUTH_EVENTS.LOGOUT));
+      return Promise.reject(error);
+    }
+
+    // Do NOT intercept auth endpoints (login, OTP, webauthn, etc.) for auto-refresh
+    if (isAuthEndpoint) {
       return Promise.reject(error);
     }
 

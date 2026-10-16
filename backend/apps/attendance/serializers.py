@@ -27,15 +27,23 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         )
 
     def get_session_number(self, obj):
+        if hasattr(obj, "session_number"):
+            return obj.session_number
         return AttendanceSession.objects.filter(
-            course=obj.course,
+            course_id=obj.course_id,
             start_time__lte=obj.start_time
         ).count()
 
     def get_present_count(self, obj):
+        if hasattr(obj, "present_count"):
+            return obj.present_count
         return obj.records.count()
 
     def get_qr_code(self, obj):
+        from django.utils import timezone
+        # Do not generate heavy QR images or new DB tokens for expired sessions
+        if obj.expiry_time and obj.expiry_time <= timezone.now():
+            return None
         from .qr_service import get_session_qr_code
         return get_session_qr_code(obj)
 

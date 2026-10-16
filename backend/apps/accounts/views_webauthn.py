@@ -12,6 +12,7 @@ from .services.webauthn_service import WebAuthnService
 from rest_framework_simplejwt.tokens import RefreshToken
 import json
 from webauthn import options_to_json
+from shared.cookie_utils import get_cookie_policy
 
 logger = logging.getLogger(__name__)
 
@@ -101,10 +102,22 @@ class WebAuthnRegistrationVerifyView(APIView, PreAuthMixin):
             )
 
         refresh = RefreshToken.for_user(user)
-        return Response({
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        response = Response({
+            "access": access_token,
+            "refresh": refresh_token,
         })
+        is_secure, samesite_policy = get_cookie_policy(request)
+        response.set_cookie(
+            'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+            httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+        )
+        response.set_cookie(
+            'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+            httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+        )
+        return response
 
 
 class WebAuthnAuthenticationChallengeView(APIView, PreAuthMixin):
@@ -144,10 +157,22 @@ class WebAuthnAuthenticationVerifyView(APIView, PreAuthMixin):
         cache.delete(f"pre_auth_jti_{jti}")
 
         refresh = RefreshToken.for_user(user)
-        return Response({
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        response = Response({
+            "access": access_token,
+            "refresh": refresh_token,
         })
+        is_secure, samesite_policy = get_cookie_policy(request)
+        response.set_cookie(
+            'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+            httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+        )
+        response.set_cookie(
+            'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+            httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+        )
+        return response
 
 
 class WebAuthnCredentialDeleteView(APIView):

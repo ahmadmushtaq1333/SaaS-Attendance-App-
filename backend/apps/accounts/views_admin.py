@@ -27,11 +27,14 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             "section",
             "section__semester",
             "section__semester__department",
-            "section__semester__department__institution"
+            "section__semester__department__institution",
+            "device_binding",
         ).prefetch_related(
             "courses_taught",
             "courses_taught__department",
-            "courses_taught__section"
+            "courses_taught__section",
+            "webauthn_credentials",
+            "enrollments",
         ).all()
         if not self.request.user.is_superuser:
             if self.request.user.institution:
@@ -161,11 +164,14 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                         password_chars = string.ascii_letters + string.digits
                         password = "".join(random.choice(password_chars) for _ in range(8))
                     
+                    reg_no = email.split('@')[0]
                     user = User.objects.create_user(
                         email=email,
                         password=password,
                         role="student",
-                        section=section
+                        section=section,
+                        registration_number=reg_no,
+                        is_email_verified=True
                     )
                     
                     if course:
@@ -174,6 +180,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     created_users.append({
                         "email": email,
                         "password": password,
+                        "registration_number": reg_no,
                         "role": "student",
                         "section_name": section.name,
                         "semester_number": section.semester.number,

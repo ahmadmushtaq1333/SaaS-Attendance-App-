@@ -3,10 +3,19 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from apps.institutions.models import Institution, Department, Semester, Section
 
 class CustomUserManager(BaseUserManager):
+    def get_by_natural_key(self, username):
+        if not username:
+            raise self.model.DoesNotExist
+        clean_user = str(username).strip()
+        if "@" in clean_user:
+            return self.get(email__iexact=clean_user)
+        # Allow students to sign in using their registration number or email
+        return self.get(models.Q(email__iexact=clean_user) | models.Q(registration_number__iexact=clean_user))
+
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("The Email field must be set")
-        email = self.normalize_email(email)
+        email = email.strip().lower()
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)

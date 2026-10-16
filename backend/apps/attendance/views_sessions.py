@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.accounts.permissions import IsTeacher
+from django.db.models import Count
 from apps.courses.models import Course
 from .models import AttendanceSession, QRToken
 from .serializers import AttendanceSessionSerializer
@@ -26,8 +27,12 @@ class AttendanceSessionCreateView(APIView):
     permission_classes = [IsAuthenticated, IsTeacher]
 
     def get(self, request):
-        # Allow teachers to retrieve all sessions they created
-        sessions = AttendanceSession.objects.filter(course__course_instructors__instructor=request.user).order_by("-start_time")
+        # Allow teachers to retrieve all sessions they created with single query
+        sessions = AttendanceSession.objects.filter(
+            course__course_instructors__instructor=request.user
+        ).select_related("course").annotate(
+            present_count=Count("records", distinct=True)
+        ).order_by("-start_time")
         serializer = AttendanceSessionSerializer(sessions, many=True)
         return Response(serializer.data)
 
@@ -67,7 +72,9 @@ class AttendanceSessionQRView(APIView):
 
     def get(self, request, pk):
         try:
-            session = AttendanceSession.objects.get(id=pk, course__course_instructors__instructor=request.user)
+            session = AttendanceSession.objects.select_related("course").get(
+                id=pk, course__course_instructors__instructor=request.user
+            )
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
         

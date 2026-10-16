@@ -1,7 +1,8 @@
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIClient
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from apps.institutions.models import Institution
+import uuid
 
 User = get_user_model()
 
@@ -12,7 +13,8 @@ class AccountsTestCase(APITestCase):
             email="teacher@mit.edu",
             password="password123",
             role="teacher",
-            institution=self.institution
+            institution=self.institution,
+            is_email_verified=True
         )
         self.student = User.objects.create_user(
             email="student@mit.edu",
@@ -27,17 +29,41 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(self.student.role, "student")
         self.assertEqual(self.teacher.institution, self.institution)
         self.assertEqual(self.student.institution, self.institution)
-        
+
     def test_login_jwt(self):
-        # Obtain JWT (cookie handled automatically)
-        response = self.client.post("/api/auth/login/", {
+        """
+        Teachers get access/refresh JWT directly on login.
+        Students go through the WebAuthn gate: initial login returns
+        pre_auth_token + requires_webauthn=True instead of raw tokens.
+        """
+        # --- Teacher: gets tokens directly (no WebAuthn gate) ---
+        teacher_res = self.client.post("/api/auth/login/", {
+            "email": "teacher@mit.edu",
+            "password": "password123"
+        })
+        self.assertEqual(teacher_res.status_code, 200)
+        self.assertIn("access", teacher_res.data)
+        self.assertIn("refresh", teacher_res.data)
+        self.assertNotIn("requires_webauthn", teacher_res.data)
+
+        # --- Student: hits WebAuthn gate, gets pre_auth_token ---
+        student_res = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
             "password": "password123"
         })
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("access", response.data)
-        self.assertIn("refresh", response.data)
-        self.assertIn("device_token", response.cookies)
+        self.assertEqual(student_res.status_code, 200)
+        self.assertTrue(student_res.data.get("requires_webauthn"))
+        self.assertIn("pre_auth_token", student_res.data)
+        self.assertNotIn("access", student_res.data)
+        self.assertNotIn("refresh", student_res.data)
+
+        # --- Case-insensitive email ---
+        upper_res = self.client.post("/api/auth/login/", {
+            "email": "TEACHER@MIT.EDU",
+            "password": "password123"
+        })
+        self.assertEqual(upper_res.status_code, 200)
+        self.assertIn("access", upper_res.data)
 
     def test_bulk_student_assignment(self):
         from apps.courses.models import Course, Enrollment
@@ -83,6 +109,13 @@ class AccountsTestCase(APITestCase):
         self.assertEqual(Enrollment.objects.filter(course=course).count(), 2)
 
     def test_device_binding_flow(self):
+        """
+        Device binding is now created after successful WebAuthn verification,
+        not on initial login. This test verifies:
+          1. Admin can reset a student's device binding.
+          2. Teacher cannot reset a device binding (403).
+          3. After reset, no binding record exists.
+        """
         from .models import DeviceBinding
         admin = User.objects.create_superuser(
             email="superadmin@mit.edu",
@@ -91,79 +124,81 @@ class AccountsTestCase(APITestCase):
             institution=self.institution
         )
 
-        # 1. Initial login sets cookie
-        res1 = self.client.post("/api/auth/login/", {
-            "email": "student@mit.edu",
-            "password": "password123"
-        })
-        self.assertEqual(res1.status_code, 200)
+        # Simulate a DeviceBinding already existing (as if the student completed WebAuthn)
+        DeviceBinding.objects.create(user=self.student)
         self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
-        device_token = res1.cookies.get("device_token").value
 
-        # 2. Login with different (or missing) cookie fails with device_mismatch
-        self.client.cookies.clear()
-        res2 = self.client.post("/api/auth/login/", {
-            "email": "student@mit.edu",
-            "password": "password123"
-        })
-        self.assertEqual(res2.status_code, 400)
-        self.assertTrue(res2.data.get("device_mismatch"))
-
-        # 3. Non-admin (teacher) cannot unbind device
+        # 1. Non-admin (teacher) cannot reset device binding → 403
         self.client.force_authenticate(user=self.teacher)
-        res3 = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
-        self.assertEqual(res3.status_code, 403)
+        res_teacher = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
+        self.assertEqual(res_teacher.status_code, 403)
 
-        # 4. Admin successfully unbinds device
+        # Binding still exists after failed teacher attempt
+        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
+
+        # 2. Admin successfully resets device binding → 200
         self.client.force_authenticate(user=admin)
-        res4 = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
-        self.assertEqual(res4.status_code, 200)
+        res_admin = self.client.post(f"/api/auth/{self.student.id}/reset-device/")
+        self.assertEqual(res_admin.status_code, 200)
         self.assertFalse(DeviceBinding.objects.filter(user=self.student).exists())
 
-        # 5. Now student can bind again on next login
+        # 3. After reset, student's login returns WebAuthn pre_auth_token (no mismatch)
         self.client.force_authenticate(user=None)
-        res5 = self.client.post("/api/auth/login/", {
+        login_res = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
             "password": "password123"
         })
-        self.assertEqual(res5.status_code, 200)
-        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
+        self.assertEqual(login_res.status_code, 200)
+        self.assertTrue(login_res.data.get("requires_webauthn"))
 
     @override_settings(RATELIMIT_ENABLE=False)
     def test_self_service_rebind_flow(self):
+        """
+        Student self-service device rebind:
+          1. A DeviceBinding exists (simulated post-WebAuthn).
+          2. Student requests a rebind OTP.
+          3. Student confirms with the OTP → binding is deleted.
+        """
         from .models import DeviceBinding, EmailVerificationCode
-        
-        # 1. Login to bind device
-        self.client.post("/api/auth/login/", {
-            "email": "student@mit.edu",
-            "password": "password123"
-        })
+
+        # Simulate an existing device binding (as if student completed WebAuthn once)
+        DeviceBinding.objects.create(user=self.student)
         self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
-        
-        # 2. Request Rebind (sends OTP)
+
+        # 1. Request rebind OTP
         res1 = self.client.post("/api/auth/rebind/request/", {
             "email": "student@mit.edu"
         })
         self.assertEqual(res1.status_code, 200)
         otp_record = EmailVerificationCode.objects.get(user=self.student, purpose="rebind")
-        
-        # 3. Confirm Rebind
+
+        # 2. Confirm rebind with correct OTP → binding deleted
         res2 = self.client.post("/api/auth/rebind/confirm/", {
             "email": "student@mit.edu",
             "code": otp_record.code
         })
         self.assertEqual(res2.status_code, 200)
         self.assertFalse(DeviceBinding.objects.filter(user=self.student).exists())
-        
-        # 4. Next login is successful and binds again
-        res3 = self.client.post("/api/auth/login/", {
+
+        # 3. Student can now log in (no binding → WebAuthn flow, no mismatch)
+        login_res = self.client.post("/api/auth/login/", {
             "email": "student@mit.edu",
             "password": "password123"
         })
-        self.assertEqual(res3.status_code, 200)
-        self.assertTrue(DeviceBinding.objects.filter(user=self.student).exists())
+        self.assertEqual(login_res.status_code, 200)
+        self.assertTrue(login_res.data.get("requires_webauthn"))
 
     def test_daily_device_lock_flow(self):
+        """
+        DailyDeviceLock enforces one account per device per calendar day.
+        This test exercises DailyDeviceLockService directly (the service is
+        called by the WebAuthn verify step, not the initial login endpoint).
+        """
+        from .models import DailyDeviceLock
+        from .daily_device_lock import DailyDeviceLockService
+        from rest_framework import serializers as drf_serializers
+        from django.utils import timezone
+
         student2 = User.objects.create_user(
             email="student2@mit.edu",
             password="password123",
@@ -171,68 +206,39 @@ class AccountsTestCase(APITestCase):
             institution=self.institution,
             is_email_verified=True
         )
-        from rest_framework.test import APIClient
 
         fp_device1 = "fingerprint-device-1"
         fp_device2 = "fingerprint-device-2"
+        today = timezone.now().date()
 
-        # Separate clients simulating separate physical browsers/devices
-        client_device1 = APIClient()
-        client_device2 = APIClient()
+        # --- Direction 1: Same fingerprint, different account ---
 
-        # === Direction 1: Same device (client_device1), different accounts ===
+        # Student 1 registers device 1 for today
+        DailyDeviceLockService.verify(self.student, fp_device1)
+        self.assertTrue(DailyDeviceLock.objects.filter(
+            device_fingerprint=fp_device1, date=today).exists())
 
-        # Student 1 logs in from device 1
-        res1 = client_device1.post("/api/auth/login/", {
-            "email": "student@mit.edu",
-            "password": "password123",
-            "device_fingerprint": fp_device1
-        })
-        self.assertEqual(res1.status_code, 200)
-        # Persist device_token as a cookie on client_device1 (as the real browser would)
-        if res1.cookies.get("device_token"):
-            client_device1.cookies["device_token"] = res1.cookies["device_token"].value
+        # Student 2 tries same device today → ValidationError(device_locked)
+        with self.assertRaises(drf_serializers.ValidationError) as ctx:
+            DailyDeviceLockService.verify(student2, fp_device1)
+        self.assertTrue(ctx.exception.detail.get("device_locked"))
 
-        # Student 2 tries same device 1 → BLOCKED (Direction 1)
-        res2 = client_device1.post("/api/auth/login/", {
-            "email": "student2@mit.edu",
-            "password": "password123",
-            "device_fingerprint": fp_device1
-        })
-        self.assertEqual(res2.status_code, 400)
-        is_locked = res2.data.get("device_locked")
-        if isinstance(is_locked, list): is_locked = is_locked[0]
-        self.assertTrue(is_locked)
+        # Student 1 on same device again → OK (no error)
+        DailyDeviceLockService.verify(self.student, fp_device1)
 
-        # === Direction 2: Same account (student2), different devices ===
+        # --- Direction 2: Same account, different device ---
 
-        # Student 2 logs in from their own device 2
-        res3 = client_device2.post("/api/auth/login/", {
-            "email": "student2@mit.edu",
-            "password": "password123",
-            "device_fingerprint": fp_device2
-        })
-        self.assertEqual(res3.status_code, 200)
-        if res3.cookies.get("device_token"):
-            client_device2.cookies["device_token"] = res3.cookies["device_token"].value
+        # Student 2 logs in from device 2 (first time today)
+        DailyDeviceLockService.verify(student2, fp_device2)
 
-        # Student 2 tries to log in from device 1 (proxy) → BLOCKED (Direction 2)
-        res4 = client_device1.post("/api/auth/login/", {
-            "email": "student2@mit.edu",
-            "password": "password123",
-            "device_fingerprint": fp_device1
-        })
-        self.assertEqual(res4.status_code, 400)
-        is_locked2 = res4.data.get("device_locked")
-        if isinstance(is_locked2, list): is_locked2 = is_locked2[0]
-        self.assertTrue(is_locked2)
+        # Student 2 then tries from device 1 → ValidationError(device_locked)
+        with self.assertRaises(drf_serializers.ValidationError) as ctx2:
+            DailyDeviceLockService.verify(student2, fp_device1)
+        self.assertTrue(ctx2.exception.detail.get("device_locked"))
 
-        # Student 1 logs in again on their own device (client_device1 still has their cookie) → PASSES
-        res5 = client_device1.post("/api/auth/login/", {
-            "email": "student@mit.edu",
-            "password": "password123",
-            "device_fingerprint": fp_device1
-        })
-        self.assertEqual(res5.status_code, 200)
-
-
+        # Admin reset of daily lock for student2 → DailyDeviceLock deleted for today
+        self.client.force_authenticate(user=User.objects.create_superuser(
+            email="admin2@mit.edu", password="adminpw", institution=self.institution))
+        res = self.client.post(f"/api/auth/{student2.id}/reset-daily-lock/")
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(DailyDeviceLock.objects.filter(user=student2, date=today).exists())

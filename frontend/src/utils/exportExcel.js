@@ -5,8 +5,6 @@
  * Styled with official UET Peshawar brand colors (Deep Blue & Orange).
  */
 
-import { Workbook } from "exceljs";
-
 /* ─── Palette (UET Peshawar Brand Colors) ──────────────────── */
 const NAVY   = "23376D";    // UET Primary Deep Blue
 const ORANGE = "FD7A00";    // UET Secondary Orange
@@ -80,6 +78,7 @@ function style(cell, { f, fnt, aln, brdr } = {}) {
    PUBLIC ENTRY POINT
 ══════════════════════════════════════════════════════════ */
 export async function exportAttendanceExcel(report, courses, activeCourseId) {
+  const { Workbook } = await import("exceljs");
   const courseObj = courses.find((c) => String(c.id) === String(activeCourseId)) || {};
   const meta = {
     institution: courseObj.institution || "",

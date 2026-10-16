@@ -98,6 +98,7 @@ DATABASES = {
         "PASSWORD": config("MYSQLPASSWORD", default=config("DB_PASSWORD", default="rootpassword")),
         "HOST": config("MYSQLHOST", default=config("DB_HOST", default="db")),
         "PORT": config("MYSQLPORT", default=config("DB_PORT", default="3306")),
+        "CONN_MAX_AGE": config("CONN_MAX_AGE", default=60, cast=int),
         "OPTIONS": {
             "charset": "utf8mb4",
             "connect_timeout": 10,
@@ -111,6 +112,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",   # <── serves /static/ files
+    "django.middleware.gzip.GZipMiddleware",         # <── compresses API responses
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import API, { setAuthTokens } from "../services/api";
+import API, { setAuthTokens, clearAuthTokens } from "../services/api";
 import { Lock, Mail, Eye, EyeOff, Activity, Shield, ArrowRight, Sun, Moon, Fingerprint, Sparkles } from "lucide-react";
 import EmailVerification from "./EmailVerification";
 import ForgotPassword from "./ForgotPassword";
@@ -18,6 +18,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearAuthTokens();
     setError("");
     setLoading(true);
 
@@ -332,14 +333,15 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <div>
               <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Mail size={13} color="var(--emerald)" /> Email Address
+                <Mail size={13} color="var(--emerald)" /> Email or Registration No.
               </label>
               <input
-                type="email"
+                type="text"
+                inputMode="email"
                 className="form-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="Email or Registration No. (e.g. 24pwswe0018)"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck="false"

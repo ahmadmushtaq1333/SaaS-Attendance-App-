@@ -25,7 +25,12 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         return CourseAdminReadSerializer
 
     def get_queryset(self):
-        queryset = Course.objects.all().annotate(
+        queryset = Course.objects.select_related(
+            "institution", "department", "section"
+        ).prefetch_related(
+            "course_instructors__instructor",
+            "enrollments__student"
+        ).annotate(
             enrollment_count=Count("enrollments", distinct=True)
         ).order_by("name")
         queryset = scope_for_admin(self.request.user, queryset)
@@ -36,7 +41,7 @@ class AdminEnrollmentViewSet(viewsets.ModelViewSet):
     serializer_class = EnrollmentAdminSerializer
     
     def get_queryset(self):
-        queryset = Enrollment.objects.all()
+        queryset = Enrollment.objects.select_related("student", "course").all()
         queryset = scope_for_admin(
             self.request.user, 
             queryset,

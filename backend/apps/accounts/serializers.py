@@ -25,6 +25,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        # Normalize email/username before authentication
+        username_field = self.username_field
+        if username_field in attrs and isinstance(attrs[username_field], str):
+            attrs[username_field] = attrs[username_field].strip()
+
         # Check authentication first
         data = super().validate(attrs)
         

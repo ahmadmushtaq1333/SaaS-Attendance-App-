@@ -31,8 +31,7 @@ export default function Dashboard({ user, onViewReports }) {
 
   useEffect(() => {
     fetchCourses();
-    fetchActiveSession();
-    fetchRecentSessions();
+    fetchActiveAndRecentSessions();
   }, []);
 
   useEffect(() => {
@@ -43,22 +42,26 @@ export default function Dashboard({ user, onViewReports }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession]);
 
-  const fetchActiveSession = async () => {
+  const fetchActiveAndRecentSessions = async () => {
     try {
       const res = await API.get("/sessions/");
-      if (res.data && res.data.length > 0) {
-        const latest = res.data[0];
-        const expiryDate = parseUTCDate(latest.expiry_time);
-        const sessionDiff = Math.floor((expiryDate - new Date()) / 1000);
-        if (sessionDiff > 0) {
-          setActiveSession(latest);
-          setQrCode(latest.qr_code);
-          setTimeLeft(10);
-          setSessionTimeLeft(sessionDiff);
+      if (res.data) {
+        setRecentSessions(res.data.slice(0, 5));
+        if (res.data.length > 0) {
+          const latest = res.data[0];
+          const expiryDate = parseUTCDate(latest.expiry_time);
+          const sessionDiff = Math.floor((expiryDate - new Date()) / 1000);
+          if (sessionDiff > 0) {
+            setActiveSession(latest);
+            setQrCode(latest.qr_code);
+            setTimeLeft(10);
+            setSessionTimeLeft(sessionDiff);
+          }
         }
       }
-    } catch { console.error("Failed to restore active session"); }
+    } catch { console.error("Failed to load sessions"); }
   };
+  const fetchRecentSessions = fetchActiveAndRecentSessions;
 
   const fetchCourses = async () => {
     try {
@@ -68,13 +71,6 @@ export default function Dashboard({ user, onViewReports }) {
         setSelectedAlertCourseId(res.data[0].id.toString());
       }
     } catch { setError("Failed to fetch assigned courses."); }
-  };
-
-  const fetchRecentSessions = async () => {
-    try {
-      const res = await API.get("/sessions/");
-      if (res.data) setRecentSessions(res.data.slice(0, 5));
-    } catch { console.error("Failed to fetch session history"); }
   };
 
   const fetchLiveReport = async () => {
