@@ -21,7 +21,7 @@ export default function AttendanceSafetyCalculator({ courses = [] }) {
   }, [courses]);
 
   const atRiskCount = courseList.filter(
-    c => c.metrics.status === "warning" || c.metrics.status === "critical"
+    c => c.metrics.status === "warning" || c.metrics.status === "critical" || c.metrics.status === "edge"
   ).length;
 
   if (courses.length === 0) {
