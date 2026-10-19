@@ -1,23 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import API from "../services/api";
 import {
   RefreshCw, Eye, ShieldCheck, Clock, Zap, BookOpen,
-  Maximize2, X, Users, AlertTriangle, Play,
+  Maximize2, Users, AlertTriangle, Play,
   ArrowLeft, History
 } from "lucide-react";
 import { formatLocalDate, parseUTCDate } from "../utils/date";
 import AttendanceAlertsPanel from "../components/AttendanceAlertsPanel";
-
 import Sparkline from "../components/Sparkline";
-
 import DashboardActionCard from "../components/DashboardActionCard";
 import ReplicateAttendanceButton from "../components/ReplicateAttendanceButton";
+import { useQrRotation } from "../hooks/useQrRotation";
+import QrZoomModal from "../components/QrZoomModal";
 
 export default function Dashboard({ user, onViewReports }) {
   const [courses, setCourses] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
-  const [qrCode, setQrCode] = useState("");
-  const [timeLeft, setTimeLeft] = useState(0);
   const [sessionTimeLeft, setSessionTimeLeft] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -28,6 +26,38 @@ export default function Dashboard({ user, onViewReports }) {
   const [selectedAlertCourseId, setSelectedAlertCourseId] = useState("");
   const [recentSessions, setRecentSessions] = useState([]);
   const [activeView, setActiveView] = useState("grid");
+
+  const fetchActiveAndRecentSessions = async () => {
+    try {
+      const res = await API.get("/sessions/");
+      if (res.data) {
+        setRecentSessions(res.data.slice(0, 5));
+        if (res.data.length > 0) {
+          const latest = res.data[0];
+          const expiryDate = parseUTCDate(latest.expiry_time);
+          const sessionDiff = Math.floor((expiryDate - new Date()) / 1000);
+          if (sessionDiff > 0) {
+            setActiveSession(latest);
+            setSessionTimeLeft(sessionDiff);
+          }
+        }
+      }
+    } catch { console.error("Failed to load sessions"); }
+  };
+  const fetchRecentSessions = fetchActiveAndRecentSessions;
+
+  const handleSessionExpired = useCallback(() => {
+    setActiveSession(null);
+    setSessionTimeLeft(0);
+    fetchActiveAndRecentSessions();
+  }, []);
+
+  const { qrCode, timeLeft, loading: qrLoading, forceRotate } = useQrRotation({
+    sessionId: activeSession?.id ?? null,
+    initialQrCode: activeSession?.qr_code || null,
+    onSessionExpired: handleSessionExpired,
+    onError: setError,
+  });
 
   useEffect(() => {
     fetchCourses();
@@ -41,27 +71,6 @@ export default function Dashboard({ user, onViewReports }) {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession]);
-
-  const fetchActiveAndRecentSessions = async () => {
-    try {
-      const res = await API.get("/sessions/");
-      if (res.data) {
-        setRecentSessions(res.data.slice(0, 5));
-        if (res.data.length > 0) {
-          const latest = res.data[0];
-          const expiryDate = parseUTCDate(latest.expiry_time);
-          const sessionDiff = Math.floor((expiryDate - new Date()) / 1000);
-          if (sessionDiff > 0) {
-            setActiveSession(latest);
-            setQrCode(latest.qr_code);
-            setTimeLeft(10);
-            setSessionTimeLeft(sessionDiff);
-          }
-        }
-      }
-    } catch { console.error("Failed to load sessions"); }
-  };
-  const fetchRecentSessions = fetchActiveAndRecentSessions;
 
   const fetchCourses = async () => {
     try {
@@ -105,8 +114,6 @@ export default function Dashboard({ user, onViewReports }) {
     try {
       const res = await API.post("/sessions/", { course_id: courseId, duration_minutes: parseInt(durationMinutes) });
       setActiveSession(res.data);
-      setQrCode(res.data.qr_code);
-      setTimeLeft(10);
       setSessionTimeLeft(parseInt(durationMinutes) * 60);
       fetchRecentSessions();
       setActiveView("live");
@@ -114,31 +121,14 @@ export default function Dashboard({ user, onViewReports }) {
     finally { setLoading(false); }
   };
 
-  const refreshQR = async () => {
-    if (!activeSession) return;
-    try {
-      const res = await API.get(`/sessions/${activeSession.id}/qr/`);
-      setQrCode(res.data.qr_code);
-      setTimeLeft(10);
-    } catch { setError("Failed to rotate QR code"); }
-  };
-
   const stopSession = async () => {
     if (!activeSession) return;
     try {
       await API.post(`/sessions/${activeSession.id}/stop/`);
-      setActiveSession(null); setQrCode(""); setTimeLeft(0); setSessionTimeLeft(0);
+      setActiveSession(null); setSessionTimeLeft(0);
       fetchRecentSessions();
     } catch { setError("Failed to end session"); }
   };
-
-  useEffect(() => {
-    if (!activeSession) return;
-    if (timeLeft <= 0) { refreshQR(); return; }
-    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeLeft, activeSession]);
 
   useEffect(() => {
     if (!activeSession || sessionTimeLeft <= 0) return;
@@ -316,7 +306,13 @@ export default function Dashboard({ user, onViewReports }) {
 
               <div style={{ position: "relative", cursor: "pointer" }} onClick={() => setIsZoomed(true)} title="Click to zoom QR code">
                 <div className="qr-ring" style={{ position: "relative" }}>
-                  <img src={qrCode} alt="Attendance QR Code" style={{ width: "min(210px, 70vw)", height: "auto", display: "block" }} />
+                  {qrCode ? (
+                    <img src={qrCode} alt="Attendance QR Code" style={{ width: "min(210px, 70vw)", height: "auto", display: "block" }} />
+                  ) : (
+                    <div style={{ width: "min(210px, 70vw)", height: "min(210px, 70vw)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
+                      Loading QR Code…
+                    </div>
+                  )}
                   <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(0,0,0,0.75)", color: "white", padding: 6, borderRadius: 8, display: "flex", alignItems: "center" }}>
                     <Maximize2 size={14} />
                   </div>
@@ -328,7 +324,7 @@ export default function Dashboard({ user, onViewReports }) {
 
               <div style={{ textAlign: "center" }}>
                 <div className={`countdown-badge ${timeLeft <= 3 ? "urgent" : ""}`}>
-                  <RefreshCw size={13} className={timeLeft <= 3 ? "animate-spin" : ""} />
+                  <RefreshCw size={13} className={timeLeft <= 3 || qrLoading ? "animate-spin" : ""} />
                   Anti-Cheat Rotation in {timeLeft}s
                 </div>
                 <div className="progress-bar" style={{ marginTop: 8, width: "min(220px, 70vw)" }}>
@@ -337,7 +333,9 @@ export default function Dashboard({ user, onViewReports }) {
               </div>
 
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-                <button onClick={refreshQR} className="btn-secondary" style={{ gap: 6 }}><RefreshCw size={14} /> Force Rotate</button>
+                <button onClick={forceRotate} className="btn-secondary" style={{ gap: 6 }} disabled={qrLoading}>
+                  <RefreshCw size={14} className={qrLoading ? "animate-spin" : ""} /> Force Rotate
+                </button>
                 <button onClick={stopSession} className="btn-danger" style={{ gap: 6 }}>End Session</button>
                 
                 {/* Replicate Attendance Button (only renders if linked courses exist) */}
@@ -521,18 +519,12 @@ export default function Dashboard({ user, onViewReports }) {
 
       {/* Fullscreen QR Modal */}
       {isZoomed && activeSession && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <button onClick={() => setIsZoomed(false)} className="btn-secondary" style={{ position: "absolute", top: 16, right: 16, padding: "8px 12px", gap: 6 }}>
-            <X size={18} /> Close
-          </button>
-          <div style={{ background: "white", padding: 16, borderRadius: 20, boxShadow: "0 0 50px rgba(79,142,247,0.4)", maxWidth: "90vw" }}>
-            <img src={qrCode} alt="Zoomed QR Code" style={{ width: "min(340px, 75vw)", height: "auto", display: "block" }} />
-          </div>
-          <div style={{ marginTop: 16, color: "white", textAlign: "center", padding: "0 10px" }}>
-            <h3 style={{ margin: "0 0 4px 0", fontSize: 18 }}>Scan Attendance Code</h3>
-            <p style={{ margin: 0, opacity: 0.75, fontSize: 13 }}>Code auto-rotates every 10 seconds to eliminate proxy attendance.</p>
-          </div>
-        </div>
+        <QrZoomModal
+          qrCode={qrCode}
+          timeLeft={timeLeft}
+          loading={qrLoading}
+          onClose={() => setIsZoomed(false)}
+        />
       )}
     </div>
   );

@@ -3,13 +3,20 @@ import { NavigationContainer } from '@react-navigation/native';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuthStore, userApi } from '@/entities/user';
 import { secureStorage, TOKEN_KEYS } from '@/shared/lib/storage';
+import { setOnAuthFailure } from '@/shared/api';
 
 import { AuthStack } from './AuthStack';
 import { MainStack } from './MainStack';
 
 export const RootNavigator = () => {
-  const { isAuthenticated, setUser, isLoading, setLoading } = useAuthStore();
+  const { isAuthenticated, setUser, logout, isLoading, setLoading } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    setOnAuthFailure(() => {
+      logout();
+    });
+  }, [logout]);
 
   useEffect(() => {
     const bootstrapAsync = async () => {

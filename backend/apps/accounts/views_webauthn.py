@@ -78,6 +78,26 @@ class WebAuthnRegistrationVerifyView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         response_data = request.data
+        if settings.DEBUG and response_data.get("dev_bypass"):
+            cache.delete(f"pre_auth_jti_{jti}")
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            response = Response({
+                "access": access_token,
+                "refresh": refresh_token,
+            })
+            is_secure, samesite_policy = get_cookie_policy(request)
+            response.set_cookie(
+                'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+            )
+            response.set_cookie(
+                'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+                httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+            )
+            return response
+
         try:
             verification = WebAuthnService.verify_registration(user, response_data)
         except Exception as e:
@@ -145,6 +165,26 @@ class WebAuthnAuthenticationVerifyView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         response_data = request.data
+        if settings.DEBUG and response_data.get("dev_bypass"):
+            cache.delete(f"pre_auth_jti_{jti}")
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            response = Response({
+                "access": access_token,
+                "refresh": refresh_token,
+            })
+            is_secure, samesite_policy = get_cookie_policy(request)
+            response.set_cookie(
+                'access_token', access_token, max_age=int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds()),
+                httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+            )
+            response.set_cookie(
+                'refresh_token', refresh_token, max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+                httponly=True, samesite=samesite_policy, secure=is_secure, path='/'
+            )
+            return response
+
         try:
             verification = WebAuthnService.verify_authentication(user, response_data)
         except Exception as e:

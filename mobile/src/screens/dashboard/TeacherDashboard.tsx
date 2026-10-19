@@ -1,11 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, BackHandler,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Zap,
+  BookOpen,
+  AlertTriangle,
+  Clock,
+  Home,
+  BarChart2,
+  ChevronRight,
+  ArrowRight,
+} from 'lucide-react-native';
 import { useAuthStore } from '@/entities/user';
 import { teacherApi, Course, Session } from '@/entities/session/api/teacher-api';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
+import { AppBackground, GlassNavBar } from '@/shared/ui';
 import { LiveSessionPanel } from './LiveSessionPanel';
 import { CoursesPanel } from './CoursesPanel';
 import { ReportsPanel } from './ReportsPanel';
@@ -14,9 +31,10 @@ import { AlertsPanel } from './AlertsPanel';
 
 type ViewMode = 'grid' | 'live' | 'courses' | 'alerts' | 'history' | 'reports';
 
-export const TeacherDashboard = () => {
+export const TeacherDashboard: React.FC = () => {
   const { user, logout } = useAuthStore();
-  
+  const colors = useAppColors();
+
   const [activeView, setActiveView] = useState<ViewMode>('grid');
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
@@ -49,7 +67,7 @@ export const TeacherDashboard = () => {
       ]);
       setCourses(coursesData);
       setRecentSessions(sessionsData);
-      
+
       if (sessionsData.length > 0) {
         const latest = sessionsData[0];
         const expiry = new Date(latest.expiry_time).getTime();
@@ -68,7 +86,7 @@ export const TeacherDashboard = () => {
     try {
       const session = await teacherApi.startSession(courseId, durationMins);
       setActiveSession(session);
-      setActiveView('live'); 
+      setActiveView('live');
     } catch (err) {
       alert('Failed to start session');
     }
@@ -80,202 +98,396 @@ export const TeacherDashboard = () => {
       await teacherApi.stopSession(activeSession.id);
       setActiveSession(null);
       setActiveView('grid');
-      fetchInitialData(); // Refresh history
+      fetchInitialData();
     } catch (err) {
       alert('Failed to stop session');
     }
   };
 
+  const displayName = user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Teacher';
+
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={Colors.emerald} />
-      </View>
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <GlassNavBar />
+          <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator size="large" color={colors.emerald} />
+          </View>
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
   // --- SUB-PANEL RENDERING ---
-  
   if (activeView === 'live') {
-    const activeCourseMeta = courses.find(c => c.id === activeSession?.course);
+    const activeCourseMeta = courses.find((c) => c.id === activeSession?.course);
     return (
-      <LiveSessionPanel
-        session={activeSession!}
-        linkedCourses={activeCourseMeta?.linked_courses ?? []}
-        onBack={() => setActiveView('grid')}
-        onStopSession={handleStopSession}
-      />
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <GlassNavBar />
+          <LiveSessionPanel
+            session={activeSession!}
+            linkedCourses={activeCourseMeta?.linked_courses ?? []}
+            onBack={() => setActiveView('grid')}
+            onStopSession={handleStopSession}
+          />
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
   if (activeView === 'courses') {
     return (
-      <CoursesPanel
-        courses={courses}
-        onBack={() => setActiveView('grid')}
-        onStartSession={handleStartSession}
-        onViewReports={(courseId) => {
-          setSelectedCourseId(courseId);
-          setSelectedSessionId(null);
-          setActiveView('reports');
-        }}
-      />
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <GlassNavBar />
+          <CoursesPanel
+            courses={courses}
+            onBack={() => setActiveView('grid')}
+            onStartSession={handleStartSession}
+            onViewReports={(courseId) => {
+              setSelectedCourseId(courseId);
+              setSelectedSessionId(null);
+              setActiveView('reports');
+            }}
+          />
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
   if (activeView === 'reports' && selectedCourseId) {
     return (
-      <ReportsPanel
-        courseId={selectedCourseId}
-        initialSessionId={selectedSessionId || undefined}
-        onBack={() => {
-          setSelectedSessionId(null);
-          setActiveView('grid'); // Default back to grid, since it can come from courses OR history
-        }}
-      />
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <GlassNavBar />
+          <ReportsPanel
+            courseId={selectedCourseId}
+            courseName={courses.find((c) => c.id === selectedCourseId)?.name}
+            initialSessionId={selectedSessionId || undefined}
+            onBack={() => {
+              setSelectedSessionId(null);
+              setActiveView('grid');
+            }}
+          />
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
   if (activeView === 'alerts') {
     return (
-      <AlertsPanel
-        courses={courses}
-        onBack={() => setActiveView('grid')}
-      />
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <GlassNavBar />
+          <AlertsPanel
+            courses={courses}
+            onBack={() => setActiveView('grid')}
+          />
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
   if (activeView === 'history') {
     return (
-      <HistoryPanel
-        sessions={recentSessions}
-        onBack={() => setActiveView('grid')}
-        onEditSession={(courseId, sessionId) => {
-          setSelectedCourseId(courseId);
-          setSelectedSessionId(sessionId);
-          setActiveView('reports');
-        }}
-      />
+      <AppBackground>
+        <SafeAreaView style={styles.safeArea}>
+          <GlassNavBar />
+          <HistoryPanel
+            sessions={recentSessions}
+            onBack={() => setActiveView('grid')}
+            onEditSession={(courseId, sessionId) => {
+              setSelectedCourseId(courseId);
+              setSelectedSessionId(sessionId);
+              setActiveView('reports');
+            }}
+          />
+        </SafeAreaView>
+      </AppBackground>
     );
   }
 
-  // --- MAIN GRID VIEW ---
+  // --- MAIN GRID OVERVIEW ---
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
-      {/* Hero Header */}
-      <View style={styles.hero}>
-        <View style={styles.heroHeaderRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.heroTitle}>Hello, {user?.first_name || 'Teacher'} 👋</Text>
-            <Text style={styles.heroSub}>
-              {activeSession
-                ? 'A live attendance session is currently running.'
-                : 'No active session — pick a course and start one.'}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Log Out</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <AppBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <GlassNavBar
+          tabs={[
+            { id: 'grid', label: 'Overview', icon: Home },
+            { id: 'reports', label: 'Reports', icon: BarChart2 },
+          ]}
+          activeTab={activeView === 'reports' ? 'reports' : 'grid'}
+          onSelectTab={(tabId) => {
+            if (tabId === 'reports') {
+              if (courses.length > 0) {
+                setSelectedCourseId(courses[0].id);
+                setActiveView('reports');
+              } else {
+                alert('No assigned courses found.');
+              }
+            } else {
+              setActiveView('grid');
+            }
+          }}
+        />
 
-      {/* Grid Menu */}
-      <View style={styles.grid}>
-        
-        {/* Live Session Card */}
-        <TouchableOpacity style={styles.card} onPress={() => {
-          if (activeSession) setActiveView('live');
-          else alert('No active session. Please start one from My Courses.');
-        }}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(79,142,247,0.15)' }]}>
-            <Text style={{ fontSize: 24 }}>⚡</Text>
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Live Session</Text>
-            <Text style={styles.cardDesc}>Present QR code and monitor attendance</Text>
-          </View>
-          {activeSession && (
-            <View style={styles.badge}>
-              <View style={styles.dot} />
-              <Text style={styles.badgeText}>Live</Text>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero Header Card */}
+          <View
+            style={[
+              styles.heroCard,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.glassBorder,
+              },
+            ]}
+          >
+            <View style={styles.heroTop}>
+              <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
+                Hello, {displayName} 👋
+              </Text>
+              <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
+                {activeSession
+                  ? '⚡ A live attendance session is currently running.'
+                  : 'No active session — pick a course and start one.'}
+              </Text>
             </View>
-          )}
-        </TouchableOpacity>
+          </View>
 
-        {/* My Courses Card */}
-        <TouchableOpacity style={styles.card} onPress={() => setActiveView('courses')}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(167,139,250,0.15)' }]}>
-            <Text style={{ fontSize: 24 }}>📚</Text>
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>My Courses</Text>
-            <Text style={styles.cardDesc}>View your courses and reports</Text>
-          </View>
-          <Text style={styles.statsText}>{courses.length} Courses</Text>
-        </TouchableOpacity>
+          {/* Action Cards Grid */}
+          <View style={styles.cardsGrid}>
+            {/* Live Session Card */}
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: activeSession ? colors.emerald : colors.glassBorder,
+                },
+              ]}
+              onPress={() => {
+                if (activeSession) setActiveView('live');
+                else alert('No active session. Please start one from My Courses.');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconBox, { backgroundColor: `${colors.emerald}20` }]}>
+                <Zap size={22} color={colors.emerald} />
+              </View>
+              <View style={styles.cardContent}>
+                <View style={styles.cardTitleRow}>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                    Live Session
+                  </Text>
+                  {activeSession && (
+                    <View style={[styles.liveBadge, { backgroundColor: `${colors.emerald}25` }]}>
+                      <View style={[styles.liveDot, { backgroundColor: colors.emerald }]} />
+                      <Text style={[styles.liveText, { color: colors.emerald }]}>LIVE</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+                  Present QR code and monitor attendance
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.textMuted} />
+            </TouchableOpacity>
 
-        {/* Alerts Card */}
-        <TouchableOpacity style={styles.card} onPress={() => setActiveView('alerts')}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(248,113,113,0.15)' }]}>
-            <Text style={{ fontSize: 24 }}>⚠️</Text>
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Attendance Alerts</Text>
-            <Text style={styles.cardDesc}>Students below 75% threshold</Text>
-          </View>
-        </TouchableOpacity>
+            {/* My Courses Card */}
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.glassBorder,
+                },
+              ]}
+              onPress={() => setActiveView('courses')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconBox, { backgroundColor: `${colors.purple}20` }]}>
+                <BookOpen size={22} color={colors.purple} />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                  My Courses
+                </Text>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+                  View assigned courses, start sessions &amp; reports
+                </Text>
+              </View>
+              <View style={[styles.countBadge, { backgroundColor: `${colors.purple}20` }]}>
+                <Text style={[styles.countText, { color: colors.purple }]}>
+                  {courses.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-        {/* History Card */}
-        <TouchableOpacity style={styles.card} onPress={() => setActiveView('history')}>
-          <View style={[styles.iconBox, { backgroundColor: 'rgba(34,211,238,0.15)' }]}>
-            <Text style={{ fontSize: 24 }}>🕒</Text>
-          </View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Session History</Text>
-            <Text style={styles.cardDesc}>Review recent sessions</Text>
-          </View>
-          <Text style={[styles.statsText, { color: Colors.cyan }]}>{recentSessions.length}</Text>
-        </TouchableOpacity>
+            {/* Attendance Alerts Card */}
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.glassBorder,
+                },
+              ]}
+              onPress={() => setActiveView('alerts')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconBox, { backgroundColor: `${colors.danger}20` }]}>
+                <AlertTriangle size={22} color={colors.danger} />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                  Attendance Alerts
+                </Text>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+                  Students below the 75% requirement threshold
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.textMuted} />
+            </TouchableOpacity>
 
-      </View>
-    </ScrollView>
+            {/* Session History Card */}
+            <TouchableOpacity
+              style={[
+                styles.actionCard,
+                {
+                  backgroundColor: colors.cardBg,
+                  borderColor: colors.glassBorder,
+                },
+              ]}
+              onPress={() => setActiveView('history')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconBox, { backgroundColor: `${colors.cyan}20` }]}>
+                <Clock size={22} color={colors.cyan} />
+              </View>
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                  Session History
+                </Text>
+                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
+                  Review recent attendance records
+                </Text>
+              </View>
+              <View style={[styles.countBadge, { backgroundColor: `${colors.cyan}20` }]}>
+                <Text style={[styles.countText, { color: colors.cyan }]}>
+                  {recentSessions.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </AppBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
-  hero: {
-    backgroundColor: Colors.glassA, padding: 24, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.glassBorder, marginBottom: 24,
-    marginTop: 40,
+  safeArea: {
+    flex: 1,
   },
-  heroHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  heroTitle: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
-  heroSub: { fontSize: FontSize.sm, color: Colors.textSecondary },
-  
-  logoutBtn: { backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.md, marginLeft: 12 },
-  logoutText: { color: Colors.danger, fontWeight: '600', fontSize: FontSize.xs },
-  
-  grid: { gap: 16 },
-  card: {
-    backgroundColor: Colors.glassA, padding: 20, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.glassBorder,
-    flexDirection: 'row', alignItems: 'center', gap: 16,
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    gap: 16,
+    paddingBottom: 40,
+  },
+  heroCard: {
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  heroTop: {
+    gap: 4,
+  },
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  heroSub: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  cardsGrid: {
+    gap: 12,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   iconBox: {
-    width: 52, height: 52, borderRadius: Radius.md,
-    alignItems: 'center', justifyContent: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardContent: { flex: 1 },
-  cardTitle: { fontSize: FontSize.md, fontWeight: '600', color: Colors.textPrimary, marginBottom: 4 },
-  cardDesc: { fontSize: FontSize.xs, color: Colors.textMuted },
-  statsText: { fontSize: FontSize.sm, fontWeight: '700', color: Colors.purple },
-  
-  badge: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(79,142,247,0.15)', paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: Radius.full,
+  cardContent: {
+    flex: 1,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.emerald },
-  badgeText: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.emerald },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cardDesc: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.sm,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

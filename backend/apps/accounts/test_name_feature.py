@@ -61,9 +61,7 @@ class NameFeatureTest(APITestCase):
         
         # Fetch the report as a teacher
         self.client.force_authenticate(user=self.user)
-        res = self.client.get(f"/api/reports/courses/{course.id}/")
-        print("Course ID:", course.id)
-        print(res.data)
+        res = self.client.get(f"/api/reports/course/{course.id}/")
         self.assertEqual(res.status_code, 200)
         
         # Assert full_name is present in the students report

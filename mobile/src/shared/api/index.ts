@@ -10,6 +10,8 @@ export const apiClient = axios.create({
   // We do NOT use withCredentials: true on mobile because we are manually handling JWTs in SecureStore
 });
 
+export const api = apiClient;
+
 // Request Interceptor: Attach the access token to every request
 apiClient.interceptors.request.use(
   async (config) => {
@@ -40,13 +42,22 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+type AuthFailureCallback = () => void;
+let onAuthFailureHandler: AuthFailureCallback | null = null;
+
+export const setOnAuthFailure = (handler: AuthFailureCallback) => {
+  onAuthFailureHandler = handler;
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const url = originalRequest?.url || '';
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/webauthn');
 
-    // If it's a 401 and we haven't already tried to retry it
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If it's a 401 on an authenticated API request and we haven't already tried to retry it
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         // If a refresh is already happening, queue this request
         return new Promise((resolve, reject) => {
@@ -95,11 +106,12 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // If refresh fails, we must clear tokens (effectively logging the user out)
+        // If refresh fails, clear tokens and notify app state to reset
         await secureStorage.removeItem(TOKEN_KEYS.ACCESS);
         await secureStorage.removeItem(TOKEN_KEYS.REFRESH);
-        // Note: Global state (Zustand) logout action should ideally be triggered here,
-        // but to maintain layer purity, we'll emit an event or handle it in the store.
+        if (onAuthFailureHandler) {
+          onAuthFailureHandler();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

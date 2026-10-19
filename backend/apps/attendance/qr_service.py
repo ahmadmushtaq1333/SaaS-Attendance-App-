@@ -31,3 +31,9 @@ def get_session_qr_code(session) -> str:
     """Public API: returns a fresh QR data URI for a session."""
     token = get_or_create_active_token(session)
     return generate_qr_data_uri(token.token_uuid)
+
+def get_session_qr_code_with_ttl(session):
+    """Public API: returns (qr_data_uri, token_expiry_datetime)."""
+    token = get_or_create_active_token(session)
+    return generate_qr_data_uri(token.token_uuid), token.expiry_time
+

@@ -3,7 +3,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // 1. Auth Stack Types
 export type AuthStackParamList = {
   Login: undefined;
-  // ForgotPassword: { email?: string }; // Future expansion
+  ForgotPassword: { email?: string } | undefined;
+  EmailVerification: { email: string };
+  DeviceRebind: { email: string };
 };
 
 export type AuthNavigationProp = NativeStackNavigationProp<AuthStackParamList>;

@@ -73,11 +73,25 @@ export const teacherApi = {
     return res.data; // contains defaulters_list with tier and attendance_percentage
   },
 
+  // Delete an attendance session
+  deleteSession: async (sessionId: number): Promise<void> => {
+    await apiClient.delete(`/sessions/${sessionId}/`);
+  },
+
   // Send bulk notice email to a risk tier for a course
   sendBulkNotice: async (courseId: number, tier: string) => {
     const res = await apiClient.post('/reports/notify-tier/', {
       course_id: courseId,
       tier,
+    });
+    return res.data;
+  },
+
+  // Send individual warning notice to a specific student
+  notifyStudent: async (courseId: number, studentId: number) => {
+    const res = await apiClient.post('/reports/notify-student/', {
+      course_id: courseId,
+      student_id: studentId,
     });
     return res.data;
   },

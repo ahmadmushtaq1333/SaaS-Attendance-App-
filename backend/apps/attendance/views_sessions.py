@@ -78,8 +78,25 @@ class AttendanceSessionQRView(APIView):
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        serializer = AttendanceSessionSerializer(session)
-        return Response(serializer.data)
+        now = timezone.now()
+        if session.expiry_time and session.expiry_time <= now:
+            return Response({
+                "id": session.id,
+                "qr_code": None,
+                "token_expires_at": None,
+                "session_expired": True,
+                "expiry_time": session.expiry_time.isoformat(),
+            })
+
+        from .qr_service import get_session_qr_code_with_ttl
+        qr_code, token_expires_at = get_session_qr_code_with_ttl(session)
+        return Response({
+            "id": session.id,
+            "qr_code": qr_code,
+            "token_expires_at": token_expires_at.isoformat(),
+            "session_expired": False,
+            "expiry_time": session.expiry_time.isoformat() if session.expiry_time else None,
+        })
 
 class AttendanceSessionStopView(APIView):
     permission_classes = [IsAuthenticated, IsTeacher]

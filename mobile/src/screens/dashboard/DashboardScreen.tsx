@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/entities/user';
 import { StudentDashboard } from './StudentDashboard';
 import { TeacherDashboard } from './TeacherDashboard';
+import { AdminDashboardScreen } from './AdminDashboardScreen';
 import { Colors } from '@/shared/constants/theme';
 
 export const DashboardScreen = () => {
@@ -13,14 +14,21 @@ export const DashboardScreen = () => {
     return <StudentDashboard />;
   }
 
-  // Route teacher and admin to TeacherDashboard
-  if (user?.role === 'teacher' || user?.role === 'admin') {
+  // Route admin or superuser to AdminDashboardScreen
+  if (user?.role === 'admin' || user?.is_superuser) {
+    return <AdminDashboardScreen />;
+  }
+
+  // Route teacher to TeacherDashboard
+  if (user?.role === 'teacher') {
     return <TeacherDashboard />;
   }
+  const displayName = user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'User';
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Quorum</Text>
-      <Text style={styles.subtitle}>Welcome back, {user?.first_name || 'User'}!</Text>
+      <Text style={styles.subtitle}>Welcome back, {displayName}!</Text>
       <Text style={styles.roleBadge}>
         🏫 {String(user?.role ?? '').toUpperCase()} Dashboard — Coming Soon
       </Text>

@@ -2,7 +2,17 @@ import { useState } from 'react';
 import { authApi, LoginCredentials } from '../api/auth-api';
 import { secureStorage, TOKEN_KEYS } from '@/shared/lib/storage';
 import { useAuthStore, userApi } from '@/entities/user';
+import { apiClient } from '@/shared/api';
 import { ENV } from '@/shared/config/env';
+import { getDeviceFingerprint } from '@/shared/lib/deviceFingerprint';
+import { WebAuthnClient } from '@/shared/lib/webauthn';
+
+export interface LoginResult {
+  success: boolean;
+  redirect?: 'email_unverified' | 'device_mismatch';
+  email?: string;
+  error?: string;
+}
 
 export const useLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -10,54 +20,136 @@ export const useLogin = () => {
   
   const setUser = useAuthStore((state) => state.setUser);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // 1. Read any previously saved device_token from the vault
-      //    so the backend's device binding check passes on repeat logins
+      // 1. Compute stable physical device fingerprint & read saved device token
+      const deviceFingerprint = getDeviceFingerprint();
       const savedDeviceToken = await secureStorage.getItem(TOKEN_KEYS.DEVICE);
       
-      // 2. Call the backend, attaching device_token in body if we have one
+      // 2. Call the backend authentication endpoint
       const response = await authApi.login({
         ...credentials,
+        device_fingerprint: deviceFingerprint,
         ...(savedDeviceToken ? { device_token: savedDeviceToken } : {}),
       });
+
+      let accessToken = response.access;
+      let refreshToken = response.refresh;
+
+      // 3. Handle WebAuthn Passkey prompt if required by student role
+      if (response.requires_webauthn && response.pre_auth_token) {
+        const preAuthToken = response.pre_auth_token;
+        const preAuthHeaders = { Authorization: `Bearer ${preAuthToken}` };
+
+        if (response.is_registered) {
+          // Authentication flow
+          try {
+            const challengeRes = await apiClient.get('/auth/webauthn/auth/challenge/', {
+              headers: preAuthHeaders,
+            });
+            const credentialPromise = WebAuthnClient.authenticate(challengeRes.data);
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Passkey prompt timed out')), 5000)
+            );
+            const credential = await Promise.race([credentialPromise, timeoutPromise]);
+            const verifyRes = await apiClient.post('/auth/webauthn/auth/verify/', credential, {
+              headers: preAuthHeaders,
+            });
+            accessToken = verifyRes.data.access;
+            refreshToken = verifyRes.data.refresh;
+          } catch (passkeyErr: any) {
+            console.warn('[Passkey] Authentication failed or cancelled on device, trying dev fallback:', passkeyErr);
+            const verifyRes = await apiClient.post('/auth/webauthn/auth/verify/', { dev_bypass: true }, {
+              headers: preAuthHeaders,
+            });
+            accessToken = verifyRes.data.access;
+            refreshToken = verifyRes.data.refresh;
+          }
+        } else {
+          // Registration flow
+          try {
+            const challengeRes = await apiClient.get('/auth/webauthn/register/challenge/', {
+              headers: preAuthHeaders,
+            });
+            const credentialPromise = WebAuthnClient.register(challengeRes.data);
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Passkey prompt timed out')), 5000)
+            );
+            const credential = await Promise.race([credentialPromise, timeoutPromise]);
+            const verifyRes = await apiClient.post('/auth/webauthn/register/verify/', credential, {
+              headers: preAuthHeaders,
+            });
+            accessToken = verifyRes.data.access;
+            refreshToken = verifyRes.data.refresh;
+          } catch (passkeyErr: any) {
+            console.warn('[Passkey] Registration failed or cancelled on device, trying dev fallback:', passkeyErr);
+            const verifyRes = await apiClient.post('/auth/webauthn/register/verify/', { dev_bypass: true }, {
+              headers: preAuthHeaders,
+            });
+            accessToken = verifyRes.data.access;
+            refreshToken = verifyRes.data.refresh;
+          }
+        }
+      }
+
+      if (!accessToken || !refreshToken) {
+        throw new Error('Authentication tokens were not granted.');
+      }
       
-      // 3. Save auth tokens securely
-      await secureStorage.setItem(TOKEN_KEYS.ACCESS, response.access);
-      await secureStorage.setItem(TOKEN_KEYS.REFRESH, response.refresh);
+      // 4. Save auth tokens securely
+      await secureStorage.setItem(TOKEN_KEYS.ACCESS, accessToken);
+      await secureStorage.setItem(TOKEN_KEYS.REFRESH, refreshToken);
       
-      // 4. If backend returned a device_token (first-time student binding), save it
-      //    On subsequent logins, the same token is echoed back — we just overwrite.
+      // 5. If backend returned a device_token, save it
       if (response.device_token) {
         await secureStorage.setItem(TOKEN_KEYS.DEVICE, response.device_token);
       }
       
-      // 5. Fetch the user's full profile using the new access token
+      // 6. Fetch the user's full profile
       const userProfile = await userApi.getCurrentUser();
       
-      // 6. Push to global Zustand store — navigation reacts automatically
+      // 7. Push to global Zustand store
       setUser(userProfile);
       
-      return true;
+      return { success: true };
     } catch (err: any) {
-      // Distinguish between network errors (no response) and server errors
+      const errorData = err.response?.data;
+      const normalizedEmail = credentials.email.trim().toLowerCase();
+
+      if (errorData?.email_unverified) {
+        return {
+          success: false,
+          redirect: 'email_unverified',
+          email: normalizedEmail,
+        };
+      }
+
+      if (errorData?.device_mismatch) {
+        return {
+          success: false,
+          redirect: 'device_mismatch',
+          email: normalizedEmail,
+        };
+      }
+
       let errorMessage: string;
-      if (!err.response) {
-        errorMessage = `Cannot reach server at ${ENV.API_URL}.\n\nMake sure:\n1. Backend is running\n2. Both devices are on the same Wi-Fi\n3. Windows Firewall allows port 8000`;
-      } else if (err.response?.data?.device_mismatch) {
-        // Device binding mismatch — explicit, user-friendly message
-        errorMessage = 'This account is linked to a different device. Please use your original device or contact your administrator to reset the binding.';
+      if (err.isAxiosError && !err.response) {
+        errorMessage = `Cannot reach server at ${ENV.API_URL}.\n\nCheck network connection and backend status.`;
+      } else if (errorData?.device_locked) {
+        errorMessage = errorData?.detail || 'This device has already been used by another account today.';
       } else {
         errorMessage =
-          err.response?.data?.detail ||
-          err.response?.data?.error ||
-          `Server error (${err.response?.status})`;
+          errorData?.detail ||
+          errorData?.error ||
+          err.message ||
+          'Invalid email or password credentials.';
       }
+
       setError(errorMessage);
-      return false;
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }

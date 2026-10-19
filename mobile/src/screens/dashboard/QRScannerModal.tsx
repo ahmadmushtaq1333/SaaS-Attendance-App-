@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Modal, View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Animated, Dimensions,
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { ScanLine, X, Camera, CameraOff } from 'lucide-react-native';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 
 interface QRScannerModalProps {
   visible: boolean;
@@ -12,10 +19,10 @@ interface QRScannerModalProps {
   onScanned: (data: string) => void;
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const FRAME_SIZE = 220;
 
 export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose, onScanned }) => {
+  const colors = useAppColors();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const scanlineAnim = useRef(new Animated.Value(0)).current;
@@ -24,7 +31,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
   useEffect(() => {
     if (visible) {
       setScanned(false);
-      // Start scan line animation
       animRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(scanlineAnim, {
@@ -37,7 +43,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
             duration: 2000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
       animRef.current.start();
     } else {
@@ -56,7 +62,6 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
     onScanned(data);
   };
 
-  // Request permission as soon as modal opens
   useEffect(() => {
     if (visible && permission && !permission.granted && permission.canAskAgain) {
       requestPermission();
@@ -68,45 +73,57 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
       visible={visible}
       animationType="slide"
       onRequestClose={onClose}
-      // Do NOT use pageSheet — it clips the camera on some Android versions
       presentationStyle="fullScreen"
     >
-      <View style={styles.root}>
-
-        {/* Header */}
-        <View style={styles.header}>
+      <View style={[styles.root, { backgroundColor: colors.bgDeep }]}>
+        {/* Header (matches web QR Attendance Scanner header) */}
+        <View style={[styles.header, { backgroundColor: colors.bgMid, borderBottomColor: colors.glassBorder }]}>
           <View style={styles.headerLeft}>
-            <View style={styles.headerIcon}>
-              <Text style={{ fontSize: 20 }}>📷</Text>
+            <View style={[styles.headerIcon, { backgroundColor: `${colors.emerald}20` }]}>
+              <ScanLine size={20} color={colors.emerald} />
             </View>
             <View>
-              <Text style={styles.headerTitle}>QR Attendance Scanner</Text>
-              <Text style={styles.headerSub}>Point camera at instructor's QR code</Text>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                QR Attendance Scanner
+              </Text>
+              <Text style={[styles.headerSub, { color: colors.textMuted }]}>
+                Point camera at instructor's QR code
+              </Text>
             </View>
           </View>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.closeBtnText}>✕</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.closeBtn, { backgroundColor: colors.glassC, borderColor: colors.glassBorder }]}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <X size={18} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
         {/* Camera Area */}
         <View style={styles.cameraArea}>
           {!permission ? (
-            <ActivityIndicator color={Colors.emerald} size="large" />
+            <ActivityIndicator color={colors.emerald} size="large" />
           ) : !permission.granted ? (
-            /* Permission Denied State */
-            <View style={styles.permissionBox}>
-              <Text style={{ fontSize: 48, textAlign: 'center' }}>📵</Text>
-              <Text style={styles.permissionTitle}>Camera Permission Required</Text>
-              <Text style={styles.permissionDesc}>
+            <View style={[styles.permissionBox, { backgroundColor: colors.cardBg, borderColor: colors.glassBorder }]}>
+              <CameraOff size={44} color={colors.danger} style={{ alignSelf: 'center', marginBottom: 8 }} />
+              <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>
+                Camera Permission Required
+              </Text>
+              <Text style={[styles.permissionDesc, { color: colors.textMuted }]}>
                 We need access to your camera to scan the QR code shown by your instructor.
               </Text>
-              <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+              <TouchableOpacity
+                style={[styles.permissionBtn, { backgroundColor: colors.emerald }]}
+                onPress={requestPermission}
+                activeOpacity={0.85}
+              >
+                <Camera size={16} color="#FFFFFF" />
                 <Text style={styles.permissionBtnText}>Grant Camera Access</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            /* CameraView has NO children — overlay is an absolute sibling */
             <View style={styles.cameraWrapper}>
               <CameraView
                 style={StyleSheet.absoluteFill}
@@ -115,18 +132,25 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
                 barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
               />
 
-              {/* Overlay sits on top of camera feed as an absolute sibling */}
+              {/* Viewfinder Overlay with Animated Glowing Scanline */}
               <View style={[StyleSheet.absoluteFill, styles.overlay]}>
                 <View style={styles.overlayBand} />
                 <View style={styles.overlayMiddle}>
                   <View style={styles.overlaySide} />
-                  <View style={styles.frame}>
-                    <View style={[styles.corner, styles.cornerTL]} />
-                    <View style={[styles.corner, styles.cornerTR]} />
-                    <View style={[styles.corner, styles.cornerBL]} />
-                    <View style={[styles.corner, styles.cornerBR]} />
+                  <View style={[styles.frame, { borderColor: colors.emerald }]}>
+                    <View style={[styles.corner, styles.cornerTL, { borderColor: colors.emerald }]} />
+                    <View style={[styles.corner, styles.cornerTR, { borderColor: colors.emerald }]} />
+                    <View style={[styles.corner, styles.cornerBL, { borderColor: colors.emerald }]} />
+                    <View style={[styles.corner, styles.cornerBR, { borderColor: colors.emerald }]} />
                     <Animated.View
-                      style={[styles.scanLine, { transform: [{ translateY: scanlineAnim }] }]}
+                      style={[
+                        styles.scanLine,
+                        {
+                          backgroundColor: colors.emerald,
+                          shadowColor: colors.emerald,
+                          transform: [{ translateY: scanlineAnim }],
+                        },
+                      ]}
                     />
                   </View>
                   <View style={styles.overlaySide} />
@@ -139,11 +163,18 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
           )}
         </View>
 
-        {/* Cancel Button */}
-        <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-          <Text style={styles.cancelBtnText}>Cancel</Text>
-        </TouchableOpacity>
-
+        {/* Footer */}
+        <View style={[styles.footer, { backgroundColor: colors.bgMid, borderTopColor: colors.glassBorder }]}>
+          <TouchableOpacity
+            style={[styles.cancelBtn, { borderColor: colors.glassBorder, backgroundColor: colors.glassC }]}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.cancelBtnText, { color: colors.textSecondary }]}>
+              Cancel Scan
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
@@ -152,203 +183,151 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.bgDeep,
   },
-
-  // Header
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60, // safe area
+    alignItems: 'center',
+    paddingTop: 54,
     paddingBottom: 16,
-    backgroundColor: Colors.bgDeep,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    flex: 1,
   },
   headerIcon: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: Colors.emeraldDim,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: FontSize.md,
     fontWeight: '700',
-    color: Colors.textPrimary,
   },
   headerSub: {
     fontSize: FontSize.xs,
-    color: Colors.textMuted,
-    marginTop: 1,
+    marginTop: 2,
   },
   closeBtn: {
     width: 34,
     height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeBtnText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  // Camera
   cameraArea: {
     flex: 1,
-    backgroundColor: '#000',
-  },
-  // Wrapper holds CameraView + overlay as siblings (CameraView must have no children)
-  cameraWrapper: {
-    flex: 1,
-  },
-
-  // Overlay sits on top of live camera feed
-  overlay: {
-    flex: 1,
-    flexDirection: 'column',
-  },
-  overlayBand: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.60)',
-  },
-  overlayBottom: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 20,
-  },
-  overlayMiddle: {
-    flexDirection: 'row',
-    height: FRAME_SIZE,
-  },
-  overlaySide: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.60)',
-  },
-
-  // The transparent QR target box
-  frame: {
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-
-  // Corner brackets
-  corner: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderColor: Colors.emerald,
-    borderWidth: 3,
-  },
-  cornerTL: {
-    top: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    borderTopLeftRadius: 6,
-  },
-  cornerTR: {
-    top: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    borderTopRightRadius: 6,
-  },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 6,
-  },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderBottomRightRadius: 6,
-  },
-
-  // Animated scan line
-  scanLine: {
-    position: 'absolute',
-    left: 4,
-    right: 4,
-    height: 2,
-    backgroundColor: Colors.emerald,
-    shadowColor: Colors.emerald,
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-
-  scanLabel: {
-    color: 'rgba(255,255,255,0.80)',
-    fontSize: FontSize.sm,
-    fontWeight: '500',
-  },
-
-  // Permission screen
-  permissionBox: {
-    flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
-    gap: 16,
+    alignItems: 'center',
+  },
+  cameraWrapper: {
+    ...StyleSheet.absoluteFill,
+  },
+  permissionBox: {
+    padding: 32,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    marginHorizontal: 32,
+    alignItems: 'center',
+    gap: 12,
   },
   permissionTitle: {
-    fontSize: FontSize.lg,
+    fontSize: FontSize.md,
     fontWeight: '700',
-    color: Colors.textPrimary,
     textAlign: 'center',
   },
   permissionDesc: {
     fontSize: FontSize.sm,
-    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   permissionBtn: {
-    backgroundColor: Colors.emerald,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: Radius.md,
     marginTop: 8,
   },
   permissionBtnText: {
-    color: Colors.white,
+    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: FontSize.sm,
   },
-
-  // Cancel
-  cancelBtn: {
-    margin: 20,
-    backgroundColor: Colors.glassA,
+  overlay: {
+    flexDirection: 'column',
+  },
+  overlayBand: {
+    flex: 1,
+    backgroundColor: 'rgba(6, 11, 24, 0.70)',
+  },
+  overlayMiddle: {
+    height: FRAME_SIZE,
+    flexDirection: 'row',
+  },
+  overlaySide: {
+    flex: 1,
+    backgroundColor: 'rgba(6, 11, 24, 0.70)',
+  },
+  frame: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+    position: 'relative',
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    padding: 16,
-    borderRadius: Radius.md,
+    borderRadius: 16,
+  },
+  corner: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderWidth: 3,
+  },
+  cornerTL: { top: -2, left: -2, borderRightWidth: 0, borderBottomWidth: 0, borderTopLeftRadius: 10 },
+  cornerTR: { top: -2, right: -2, borderLeftWidth: 0, borderBottomWidth: 0, borderTopRightRadius: 10 },
+  cornerBL: { bottom: -2, left: -2, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 10 },
+  cornerBR: { bottom: -2, right: -2, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 10 },
+  scanLine: {
+    position: 'absolute',
+    left: 4,
+    right: 4,
+    height: 3,
+    borderRadius: 2,
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  overlayBottom: {
     alignItems: 'center',
-    marginBottom: 40,
+    justifyContent: 'center',
+    paddingBottom: 20,
+  },
+  scanLabel: {
+    color: 'rgba(255, 255, 255, 0.75)',
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 36,
+    borderTopWidth: 1,
+  },
+  cancelBtn: {
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelBtnText: {
-    color: Colors.textSecondary,
-    fontWeight: '600',
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 });

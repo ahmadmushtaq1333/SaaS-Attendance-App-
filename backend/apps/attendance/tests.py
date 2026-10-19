@@ -63,3 +63,24 @@ class AttendanceTestCase(APITestCase):
         response = self.client.post("/api/attendance/mark/", {"token_uuid": str(expired_token.token_uuid)})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["error"], "QR code expired \u2014 please scan the latest code.")
+
+    def test_session_qr_rotation_endpoint(self):
+        self.client.force_authenticate(user=self.teacher)
+        now = timezone.now()
+        session = AttendanceSession.objects.create(course=self.course, expiry_time=now + timedelta(minutes=30))
+        
+        # Test active session QR endpoint
+        res = self.client.get(f"/api/sessions/{session.id}/qr/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("qr_code", res.data)
+        self.assertTrue(res.data["qr_code"].startswith("data:image/png;base64,"))
+        self.assertIn("token_expires_at", res.data)
+        self.assertFalse(res.data["session_expired"])
+
+        # Test expired session QR endpoint
+        expired_session = AttendanceSession.objects.create(course=self.course, expiry_time=now - timedelta(seconds=10))
+        res_expired = self.client.get(f"/api/sessions/{expired_session.id}/qr/")
+        self.assertEqual(res_expired.status_code, 200)
+        self.assertIsNone(res_expired.data["qr_code"])
+        self.assertTrue(res_expired.data["session_expired"])
+
