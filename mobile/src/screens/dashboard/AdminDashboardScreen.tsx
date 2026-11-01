@@ -113,7 +113,7 @@ export const AdminDashboardScreen: React.FC = () => {
                 },
               ]}
             >
-              <View style={[styles.avatar, { borderColor: `${colors.purple}60` }]}>
+              <View style={[styles.avatar, { backgroundColor: `${colors.purple}20`, borderColor: `${colors.purple}60` }]}>
                 <Text style={[styles.avatarText, { color: colors.textPrimary }]}>{initials}</Text>
               </View>
               <View style={styles.adminMeta}>
@@ -280,7 +280,7 @@ export const AdminDashboardScreen: React.FC = () => {
                         style={[
                           styles.tabCountBadge,
                           {
-                            backgroundColor: isActive ? `${tab.color}30` : 'rgba(255,255,255,0.06)',
+                            backgroundColor: isActive ? `${tab.color}30` : `${colors.textMuted}20`,
                           },
                         ]}
                       >
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 16,
-    paddingBottom: 50,
+    paddingBottom: 90,
   },
   headerSection: {
     flexDirection: 'row',
@@ -415,10 +415,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 14,
     gap: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: '#07111F',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 1,
   },
   kpiTop: {
     flexDirection: 'row',

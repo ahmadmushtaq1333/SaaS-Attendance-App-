@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { X, RefreshCw } from "lucide-react";
+import QRCodeDisplay from "./QRCodeDisplay";
 
 /**
  * QrZoomModal
@@ -7,10 +8,10 @@ import { X, RefreshCw } from "lucide-react";
  * Fullscreen projection modal for QR attendance codes with:
  * - Real-time rotation countdown indicator
  * - Keyboard (ESC) & backdrop click-to-close listeners
+ * - High-performance client-side QR rendering
  * - Responsive sizing and high-contrast projection frame
- * - Graceful loading placeholder if QR code is initializing
  */
-export default function QrZoomModal({ qrCode, timeLeft, loading, onClose }) {
+export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onClose }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
@@ -94,34 +95,16 @@ export default function QrZoomModal({ qrCode, timeLeft, loading, onClose }) {
             minHeight: 240,
           }}
         >
-          {qrCode ? (
-            <img
-              src={qrCode}
-              alt="Live Attendance QR Code"
-              style={{
-                width: "min(400px, 72vw, 65vh)",
-                height: "min(400px, 72vw, 65vh)",
-                objectFit: "contain",
-                display: "block",
-                imageRendering: "pixelated",
-              }}
-            />
-          ) : (
-            <div
-              className="skeleton"
-              style={{
-                width: "min(400px, 72vw, 65vh)",
-                height: "min(400px, 72vw, 65vh)",
-                borderRadius: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-muted)",
-              }}
-            >
-              Loading QR Code…
-            </div>
-          )}
+          <QRCodeDisplay
+            value={tokenUuid}
+            fallbackSrc={qrCode}
+            size={Math.min(400, Math.floor(window.innerWidth * 0.72))}
+            style={{
+              maxWidth: "min(400px, 72vw, 65vh)",
+              maxHeight: "min(400px, 72vw, 65vh)",
+            }}
+            alt="Fullscreen Live Attendance QR Code"
+          />
         </div>
 
         {/* Rotation Countdown & Status */}

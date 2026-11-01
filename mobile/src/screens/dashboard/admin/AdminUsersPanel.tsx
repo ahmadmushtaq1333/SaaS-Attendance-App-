@@ -18,9 +18,11 @@ import {
   Semester,
   Section,
 } from '@/entities/admin';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 
 export const AdminUsersPanel: React.FC = () => {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -354,7 +356,7 @@ export const AdminUsersPanel: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.emerald} />
+        <ActivityIndicator size="large" color={colors.emerald} />
       </View>
     );
   }
@@ -366,7 +368,7 @@ export const AdminUsersPanel: React.FC = () => {
         <TextInput
           style={styles.searchInput}
           placeholder="🔍 Search by name, email, reg no..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
         />
@@ -509,7 +511,7 @@ export const AdminUsersPanel: React.FC = () => {
       <ScrollView contentContainerStyle={styles.list}>
         {filteredUsers.map((u) => {
           const roleColor =
-            u.role === 'admin' ? Colors.purple : u.role === 'teacher' ? Colors.cyan : Colors.emerald;
+            u.role === 'admin' ? colors.purple : u.role === 'teacher' ? colors.cyan : colors.emerald;
 
           return (
             <TouchableOpacity
@@ -610,7 +612,7 @@ export const AdminUsersPanel: React.FC = () => {
                       onChangeText={setEditPassword}
                       secureTextEntry
                       placeholder="Optional"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={colors.textMuted}
                     />
 
                     <View style={styles.editBtnRow}>
@@ -645,7 +647,7 @@ export const AdminUsersPanel: React.FC = () => {
 
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Role:</Text>
-                      <Text style={[styles.detailValue, { fontWeight: '700', color: Colors.emerald }]}>
+                      <Text style={[styles.detailValue, { fontWeight: '700', color: colors.emerald }]}>
                         {selectedUser.role.toUpperCase()}
                       </Text>
                     </View>
@@ -692,11 +694,11 @@ export const AdminUsersPanel: React.FC = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={[styles.overrideBtn, { borderColor: Colors.danger, backgroundColor: 'rgba(248,113,113,0.1)' }]}
+                      style={[styles.overrideBtn, { borderColor: colors.danger, backgroundColor: 'rgba(248,113,113,0.1)' }]}
                       onPress={handleDeleteUser}
                       disabled={actionLoading}
                     >
-                      <Text style={[styles.overrideBtnText, { color: Colors.danger }]}>
+                      <Text style={[styles.overrideBtnText, { color: colors.danger }]}>
                         🗑️ Permanently Delete Account
                       </Text>
                     </TouchableOpacity>
@@ -741,7 +743,7 @@ export const AdminUsersPanel: React.FC = () => {
                 value={createEmail}
                 onChangeText={setCreateEmail}
                 placeholder="user@university.edu"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
@@ -752,7 +754,7 @@ export const AdminUsersPanel: React.FC = () => {
                 value={createFullName}
                 onChangeText={setCreateFullName}
                 placeholder="Jane Doe"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
               />
 
               <Text style={styles.label}>Password (optional - auto if blank)</Text>
@@ -761,7 +763,7 @@ export const AdminUsersPanel: React.FC = () => {
                 value={createPassword}
                 onChangeText={setCreatePassword}
                 placeholder="••••••••"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 secureTextEntry
               />
 
@@ -773,7 +775,7 @@ export const AdminUsersPanel: React.FC = () => {
                     value={createRegNum}
                     onChangeText={setCreateRegNum}
                     placeholder="e.g. 2024-CS-101"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={colors.textMuted}
                     autoCapitalize="characters"
                   />
                 </>
@@ -785,7 +787,7 @@ export const AdminUsersPanel: React.FC = () => {
                 disabled={creating}
               >
                 {creating ? (
-                  <ActivityIndicator color={Colors.bgDeep} size="small" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.createSubmitText}>Create Account</Text>
                 )}
@@ -821,7 +823,7 @@ export const AdminUsersPanel: React.FC = () => {
                 onChangeText={setBulkCount}
                 keyboardType="number-pad"
                 placeholder="e.g. 10"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
               />
 
               <Text style={styles.label}>Email Prefix</Text>
@@ -830,7 +832,7 @@ export const AdminUsersPanel: React.FC = () => {
                 value={bulkPrefix}
                 onChangeText={setBulkPrefix}
                 placeholder="std_"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
               />
 
@@ -840,7 +842,7 @@ export const AdminUsersPanel: React.FC = () => {
                 value={bulkPassword}
                 onChangeText={setBulkPassword}
                 placeholder="Auto-generated if empty"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
               />
 
               <TouchableOpacity
@@ -849,7 +851,7 @@ export const AdminUsersPanel: React.FC = () => {
                 disabled={generating || !selectedSec}
               >
                 {generating ? (
-                  <ActivityIndicator color={Colors.bgDeep} size="small" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.createSubmitText}>Generate Accounts</Text>
                 )}
@@ -862,214 +864,215 @@ export const AdminUsersPanel: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  topBar: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-    gap: 10,
-  },
-  searchInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  actionRow: { flexDirection: 'row', gap: 10 },
-  addUserBtn: {
-    flex: 1,
-    backgroundColor: Colors.emerald,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  addUserBtnText: { color: Colors.bgDeep, fontWeight: '700', fontSize: FontSize.xs },
-  bulkBtn: {
-    flex: 1,
-    backgroundColor: Colors.purple,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  bulkBtnText: { color: Colors.white, fontWeight: '700', fontSize: FontSize.xs },
+const createStyles = (colors: ReturnType<typeof useAppColors>) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'transparent' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    topBar: {
+      padding: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+      gap: 10,
+    },
+    searchInput: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    actionRow: { flexDirection: 'row', gap: 10 },
+    addUserBtn: {
+      flex: 1,
+      backgroundColor: colors.emerald,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    addUserBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.xs },
+    bulkBtn: {
+      flex: 1,
+      backgroundColor: colors.purple,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    bulkBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.xs },
 
-  roleTabsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-  },
-  roleTab: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: Radius.sm,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    alignItems: 'center',
-  },
-  roleTabActive: { backgroundColor: Colors.emerald },
-  roleTabText: { color: Colors.textMuted, fontSize: 10, fontWeight: '700' },
-  roleTabTextActive: { color: Colors.bgDeep },
+    roleTabsRow: {
+      flexDirection: 'row',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      gap: 8,
+      backgroundColor: colors.glassB,
+    },
+    roleTab: {
+      flex: 1,
+      paddingVertical: 6,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.glassA,
+      alignItems: 'center',
+    },
+    roleTabActive: { backgroundColor: colors.emerald },
+    roleTabText: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
+    roleTabTextActive: { color: '#FFFFFF' },
 
-  filterBar: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    maxHeight: 46,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-  },
-  filterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.glassA,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    marginRight: 8,
-  },
-  filterChipActive: { borderColor: Colors.emerald, backgroundColor: 'rgba(79,142,247,0.1)' },
-  filterChipText: { color: Colors.textSecondary, fontSize: 11, fontWeight: '600' },
+    filterBar: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      maxHeight: 46,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+    },
+    filterChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: Radius.full,
+      backgroundColor: colors.glassA,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      marginRight: 8,
+    },
+    filterChipActive: { borderColor: colors.emerald, backgroundColor: `${colors.emerald}15` },
+    filterChipText: { color: colors.textSecondary, fontSize: 11, fontWeight: '600' },
 
-  countSummary: { paddingHorizontal: 16, paddingVertical: 8 },
-  countText: { color: Colors.textMuted, fontSize: FontSize.xs },
+    countSummary: { paddingHorizontal: 16, paddingVertical: 8 },
+    countText: { color: colors.textMuted, fontSize: FontSize.xs },
 
-  list: { padding: 14, gap: 10, paddingBottom: 60 },
-  userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.glassA,
-    padding: 12,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    gap: 12,
-  },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { fontSize: 16, fontWeight: '700' },
-  userInfo: { flex: 1 },
-  userNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  userName: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  roleBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.sm },
-  roleBadgeText: { fontSize: 9, fontWeight: '700' },
-  userEmail: { color: Colors.textSecondary, fontSize: FontSize.xs, marginTop: 2 },
-  userReg: { color: Colors.textMuted, fontSize: 10, marginTop: 2 },
-  statusRow: { flexDirection: 'row', gap: 6, marginTop: 6 },
-  passkeyBadge: { color: Colors.purple, fontSize: 9, fontWeight: '700' },
-  deviceBadge: { color: Colors.cyan, fontSize: 9, fontWeight: '700' },
-  verifiedBadge: { color: Colors.emerald, fontSize: 9, fontWeight: '700' },
-  chevron: { color: Colors.textMuted, fontSize: 20 },
-  emptyText: { color: Colors.textMuted, textAlign: 'center', marginTop: 40 },
+    list: { padding: 14, gap: 10, paddingBottom: 60 },
+    userCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.cardBg,
+      padding: 12,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      gap: 12,
+    },
+    avatar: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: { fontSize: 16, fontWeight: '700' },
+    userInfo: { flex: 1 },
+    userNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    userName: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    roleBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.sm },
+    roleBadgeText: { fontSize: 9, fontWeight: '700' },
+    userEmail: { color: colors.textSecondary, fontSize: FontSize.xs, marginTop: 2 },
+    userReg: { color: colors.textMuted, fontSize: 10, marginTop: 2 },
+    statusRow: { flexDirection: 'row', gap: 6, marginTop: 6 },
+    passkeyBadge: { color: colors.purple, fontSize: 9, fontWeight: '700' },
+    deviceBadge: { color: colors.cyan, fontSize: 9, fontWeight: '700' },
+    verifiedBadge: { color: colors.emerald, fontSize: 9, fontWeight: '700' },
+    chevron: { color: colors.textMuted, fontSize: 20 },
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  inspectorModal: {
-    backgroundColor: Colors.cardBg,
-    borderTopLeftRadius: Radius.xl,
-    borderTopRightRadius: Radius.xl,
-    maxHeight: '85%',
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-  },
-  modalTitle: { color: Colors.textPrimary, fontSize: FontSize.md, fontWeight: '700' },
-  closeBtnText: { color: Colors.textMuted, fontSize: 18, padding: 4 },
-  inspectorBody: { paddingBottom: 40 },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      justifyContent: 'flex-end',
+    },
+    inspectorModal: {
+      backgroundColor: colors.cardBgSolid,
+      borderTopLeftRadius: Radius.xl,
+      borderTopRightRadius: Radius.xl,
+      maxHeight: '85%',
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+    },
+    modalTitle: { color: colors.textPrimary, fontSize: FontSize.md, fontWeight: '700' },
+    closeBtnText: { color: colors.textMuted, fontSize: 18, padding: 4 },
+    inspectorBody: { paddingBottom: 40 },
 
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
-  },
-  detailLabel: { color: Colors.textSecondary, fontSize: FontSize.xs },
-  detailValue: { color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
+    detailRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+    },
+    detailLabel: { color: colors.textSecondary, fontSize: FontSize.xs },
+    detailValue: { color: colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
 
-  editProfileBtn: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  editProfileBtnText: { color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
+    editProfileBtn: {
+      backgroundColor: colors.glassA,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      marginTop: 14,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    editProfileBtnText: { color: colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
 
-  sectionHeading: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    marginTop: 20,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
-  overrideBtn: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  overrideBtnText: { color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
+    sectionHeading: {
+      color: colors.textSecondary,
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      marginTop: 20,
+      marginBottom: 10,
+      textTransform: 'uppercase',
+    },
+    overrideBtn: {
+      backgroundColor: colors.glassA,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    overrideBtnText: { color: colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
 
-  editSection: { gap: 10 },
-  label: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600', marginTop: 6 },
-  modalInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  editBtnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  cancelBtn: { flex: 1, paddingVertical: 10, alignItems: 'center' },
-  cancelBtnText: { color: Colors.textSecondary, fontSize: FontSize.sm },
-  saveEditBtn: {
-    flex: 1.5,
-    backgroundColor: Colors.emerald,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-  },
-  saveEditBtnText: { color: Colors.bgDeep, fontWeight: '700', fontSize: FontSize.sm },
+    editSection: { gap: 10 },
+    label: { color: colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600', marginTop: 6 },
+    modalInput: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      color: colors.textPrimary,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    editBtnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+    cancelBtn: { flex: 1, paddingVertical: 10, alignItems: 'center' },
+    cancelBtnText: { color: colors.textSecondary, fontSize: FontSize.sm },
+    saveEditBtn: {
+      flex: 1.5,
+      backgroundColor: colors.emerald,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+    },
+    saveEditBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.sm },
 
-  createSubmitBtn: {
-    backgroundColor: Colors.emerald,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  createSubmitText: { color: Colors.bgDeep, fontWeight: '700', fontSize: FontSize.sm },
-  bulkNotice: { color: Colors.cyan, fontSize: FontSize.xs, marginBottom: 12, fontStyle: 'italic' },
-});
+    createSubmitBtn: {
+      backgroundColor: colors.emerald,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    createSubmitText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.sm },
+    bulkNotice: { color: colors.cyan, fontSize: FontSize.xs, marginBottom: 12, fontStyle: 'italic' },
+  });

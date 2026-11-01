@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,11 @@ import {
   RefreshControl,
 } from 'react-native';
 import { adminApi, AdminSession } from '@/entities/admin';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 
 export const AdminSessionsPanel: React.FC = () => {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [sessions, setSessions] = useState<AdminSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,7 +70,7 @@ export const AdminSessionsPanel: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.warning} />
+        <ActivityIndicator size="large" color={colors.warning} />
       </View>
     );
   }
@@ -95,7 +97,7 @@ export const AdminSessionsPanel: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={Colors.warning}
+            tintColor={colors.warning}
           />
         }
       >
@@ -118,13 +120,13 @@ export const AdminSessionsPanel: React.FC = () => {
                     <View
                       style={[
                         styles.dot,
-                        { backgroundColor: s.is_active ? Colors.emerald : Colors.textMuted },
+                        { backgroundColor: s.is_active ? colors.emerald : colors.textMuted },
                       ]}
                     />
                     <Text
                       style={[
                         styles.statusText,
-                        { color: s.is_active ? Colors.emerald : Colors.textMuted },
+                        { color: s.is_active ? colors.emerald : colors.textMuted },
                       ]}
                     >
                       {s.is_active ? 'LIVE' : 'EXPIRED'}
@@ -146,7 +148,7 @@ export const AdminSessionsPanel: React.FC = () => {
                 </View>
 
                 <View style={styles.metricItem}>
-                  <Text style={[styles.metricVal, { color: Colors.cyan }]}>
+                  <Text style={[styles.metricVal, { color: colors.cyan }]}>
                     {s.records_count ?? 0}
                   </Text>
                   <Text style={styles.metricLabel}>Attended</Text>
@@ -159,7 +161,7 @@ export const AdminSessionsPanel: React.FC = () => {
                     disabled={isResetting}
                   >
                     {isResetting ? (
-                      <ActivityIndicator size="small" color={Colors.danger} />
+                      <ActivityIndicator size="small" color={colors.danger} />
                     ) : (
                       <Text style={styles.resetBtnText}>⚠️ Emergency Reset</Text>
                     )}
@@ -178,77 +180,78 @@ export const AdminSessionsPanel: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-  },
-  headerTitle: { color: Colors.textPrimary, fontSize: FontSize.md, fontWeight: '700' },
-  headerSub: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
-  refreshBtn: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  refreshBtnText: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600' },
+const createStyles = (colors: ReturnType<typeof useAppColors>) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'transparent' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    headerBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+    },
+    headerTitle: { color: colors.textPrimary, fontSize: FontSize.md, fontWeight: '700' },
+    headerSub: { color: colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
+    refreshBtn: {
+      backgroundColor: colors.glassA,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    refreshBtnText: { color: colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600' },
 
-  list: { padding: 14, gap: 12, paddingBottom: 60 },
-  sessionCard: {
-    backgroundColor: Colors.glassA,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    padding: 16,
-    gap: 12,
-  },
-  cardTop: { gap: 4 },
-  badgeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: Radius.full,
-  },
-  statusActive: { backgroundColor: 'rgba(79,142,247,0.15)' },
-  statusExpired: { backgroundColor: 'rgba(255,255,255,0.05)' },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { fontSize: 10, fontWeight: '800' },
-  sessionId: { color: Colors.textMuted, fontSize: 11 },
+    list: { padding: 14, gap: 12, paddingBottom: 60 },
+    sessionCard: {
+      backgroundColor: colors.cardBg,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      padding: 16,
+      gap: 12,
+    },
+    cardTop: { gap: 4 },
+    badgeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    statusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: Radius.full,
+    },
+    statusActive: { backgroundColor: `${colors.emerald}15` },
+    statusExpired: { backgroundColor: colors.glassA },
+    dot: { width: 6, height: 6, borderRadius: 3 },
+    statusText: { fontSize: 10, fontWeight: '800' },
+    sessionId: { color: colors.textMuted, fontSize: 11 },
 
-  courseName: { color: Colors.textPrimary, fontSize: FontSize.md, fontWeight: '700', marginTop: 4 },
-  teacherName: { color: Colors.textSecondary, fontSize: FontSize.xs },
+    courseName: { color: colors.textPrimary, fontSize: FontSize.md, fontWeight: '700', marginTop: 4 },
+    teacherName: { color: colors.textSecondary, fontSize: FontSize.xs },
 
-  metricsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
-  },
-  metricItem: { alignItems: 'flex-start' },
-  metricVal: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  metricLabel: { color: Colors.textMuted, fontSize: 10 },
+    metricsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.glassBorder,
+    },
+    metricItem: { alignItems: 'flex-start' },
+    metricVal: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    metricLabel: { color: colors.textMuted, fontSize: 10 },
 
-  resetBtn: {
-    backgroundColor: 'rgba(248,113,113,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(248,113,113,0.3)',
-  },
-  resetBtnText: { color: Colors.danger, fontSize: FontSize.xs, fontWeight: '700' },
-  emptyText: { color: Colors.textMuted, textAlign: 'center', marginTop: 40 },
-});
+    resetBtn: {
+      backgroundColor: 'rgba(248,113,113,0.12)',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: 'rgba(248,113,113,0.3)',
+    },
+    resetBtnText: { color: colors.danger, fontSize: FontSize.xs, fontWeight: '700' },
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
+  });

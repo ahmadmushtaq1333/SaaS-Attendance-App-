@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,9 +18,11 @@ import {
   Section,
   AdminUser,
 } from '@/entities/admin';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 
 export const AdminCoursesPanel: React.FC = () => {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [courses, setCourses] = useState<AdminCourse[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -208,7 +210,7 @@ export const AdminCoursesPanel: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.purple} />
+        <ActivityIndicator size="large" color={colors.purple} />
       </View>
     );
   }
@@ -220,7 +222,7 @@ export const AdminCoursesPanel: React.FC = () => {
         <TextInput
           style={styles.searchInput}
           placeholder="🔍 Search courses by name or code..."
-          placeholderTextColor={Colors.textMuted}
+          placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
         />
@@ -289,7 +291,7 @@ export const AdminCoursesPanel: React.FC = () => {
             <TextInput
               style={styles.input}
               placeholder="e.g. Data Structures & Algorithms"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={courseName}
               onChangeText={setCourseName}
             />
@@ -298,7 +300,7 @@ export const AdminCoursesPanel: React.FC = () => {
             <TextInput
               style={styles.input}
               placeholder="e.g. CS201"
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={courseCode}
               onChangeText={setCourseCode}
               autoCapitalize="characters"
@@ -366,7 +368,7 @@ export const AdminCoursesPanel: React.FC = () => {
                 disabled={creating}
               >
                 {creating ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.saveBtnText}>Save Course</Text>
                 )}
@@ -388,7 +390,7 @@ export const AdminCoursesPanel: React.FC = () => {
             </Text>
 
             {loadingStudents ? (
-              <ActivityIndicator color={Colors.purple} style={{ marginVertical: 30 }} />
+              <ActivityIndicator color={colors.purple} style={{ marginVertical: 30 }} />
             ) : (
               <ScrollView style={{ maxHeight: 350, marginVertical: 10 }}>
                 {students.map((std) => {
@@ -423,12 +425,12 @@ export const AdminCoursesPanel: React.FC = () => {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: Colors.purple }]}
+                style={[styles.saveBtn, { backgroundColor: colors.purple }]}
                 onPress={handleBulkAssign}
                 disabled={assigning}
               >
                 {assigning ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.saveBtnText}>
                     Enroll ({selectedStudentIds.length})
@@ -443,151 +445,152 @@ export const AdminCoursesPanel: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  topBar: {
-    flexDirection: 'row',
-    padding: 14,
-    gap: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-    alignItems: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  addBtn: {
-    backgroundColor: Colors.purple,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-  },
-  addBtnText: { color: Colors.white, fontWeight: '700', fontSize: FontSize.xs },
+const createStyles = (colors: ReturnType<typeof useAppColors>) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'transparent' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    topBar: {
+      flexDirection: 'row',
+      padding: 14,
+      gap: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+      alignItems: 'center',
+    },
+    searchInput: {
+      flex: 1,
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    addBtn: {
+      backgroundColor: colors.purple,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+    },
+    addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.xs },
 
-  list: { padding: 14, gap: 12, paddingBottom: 60 },
-  card: {
-    backgroundColor: Colors.glassA,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    padding: 16,
-    gap: 14,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  badgeCode: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(167,139,250,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  codeText: { color: Colors.purple, fontSize: 13, fontWeight: '800' },
-  courseName: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  metaText: { color: Colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
-  deleteBtn: { padding: 6 },
-  deleteText: { color: Colors.danger, fontSize: 14, fontWeight: '700' },
+    list: { padding: 14, gap: 12, paddingBottom: 60 },
+    card: {
+      backgroundColor: colors.cardBg,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      padding: 16,
+      gap: 14,
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    badgeCode: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: `${colors.purple}20`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    codeText: { color: colors.purple, fontSize: 13, fontWeight: '800' },
+    courseName: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    metaText: { color: colors.textMuted, fontSize: FontSize.xs, marginTop: 2 },
+    deleteBtn: { padding: 6 },
+    deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
 
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
-  },
-  enrollmentStat: { flexDirection: 'column' },
-  enrollmentNumber: { color: Colors.cyan, fontSize: FontSize.md, fontWeight: '700' },
-  enrollmentLabel: { color: Colors.textMuted, fontSize: 10 },
-  enrollBtn: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  enrollBtnText: { color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
-  emptyText: { color: Colors.textMuted, textAlign: 'center', marginTop: 40 },
+    footerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.glassBorder,
+    },
+    enrollmentStat: { flexDirection: 'column' },
+    enrollmentNumber: { color: colors.cyan, fontSize: FontSize.md, fontWeight: '700' },
+    enrollmentLabel: { color: colors.textMuted, fontSize: 10 },
+    enrollBtn: {
+      backgroundColor: colors.glassA,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    enrollBtnText: { color: colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: Colors.cardBg,
-    borderRadius: Radius.lg,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  modalTitle: { color: Colors.textPrimary, fontSize: FontSize.md, fontWeight: '700', marginBottom: 4 },
-  subTitle: { color: Colors.textSecondary, fontSize: FontSize.xs, marginBottom: 10 },
-  label: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600', marginTop: 10, marginBottom: 4 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  pickerTrigger: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  pickerTriggerText: { color: Colors.textPrimary, fontSize: FontSize.sm },
-  btnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
-  cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  cancelBtnText: { color: Colors.textSecondary, fontSize: FontSize.sm },
-  saveBtn: {
-    backgroundColor: Colors.cyan,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-  },
-  saveBtnText: { color: Colors.bgDeep, fontWeight: '700', fontSize: FontSize.sm },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      justifyContent: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: colors.cardBgSolid,
+      borderRadius: Radius.lg,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    modalTitle: { color: colors.textPrimary, fontSize: FontSize.md, fontWeight: '700', marginBottom: 4 },
+    subTitle: { color: colors.textSecondary, fontSize: FontSize.xs, marginBottom: 10 },
+    label: { color: colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600', marginTop: 10, marginBottom: 4 },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    pickerTrigger: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    pickerTriggerText: { color: colors.textPrimary, fontSize: FontSize.sm },
+    btnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
+    cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
+    cancelBtnText: { color: colors.textSecondary, fontSize: FontSize.sm },
+    saveBtn: {
+      backgroundColor: colors.cyan,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+    },
+    saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.sm },
 
-  stdRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: Radius.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.03)',
-    gap: 10,
-  },
-  stdRowSelected: { backgroundColor: 'rgba(167,139,250,0.1)' },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxActive: { backgroundColor: Colors.purple, borderColor: Colors.purple },
-  checkMark: { color: Colors.white, fontSize: 12, fontWeight: '700' },
-  stdName: { color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
-  stdEmail: { color: Colors.textMuted, fontSize: 10 },
-  stdReg: { color: Colors.cyan, fontSize: 10, fontWeight: '600' },
-});
+    stdRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: Radius.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+      gap: 10,
+    },
+    stdRowSelected: { backgroundColor: `${colors.purple}15` },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxActive: { backgroundColor: colors.purple, borderColor: colors.purple },
+    checkMark: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+    stdName: { color: colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
+    stdEmail: { color: colors.textMuted, fontSize: 10 },
+    stdReg: { color: colors.cyan, fontSize: 10, fontWeight: '600' },
+  });

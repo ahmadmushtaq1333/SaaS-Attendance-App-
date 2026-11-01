@@ -37,7 +37,8 @@ export const studentApi = {
     return response.data;
   },
 
-  async markAttendance(tokenUuid: string): Promise<void> {
-    await apiClient.post('/attendance/mark/', { token_uuid: tokenUuid });
+  async markAttendance(tokenUuid: string): Promise<{ already_recorded?: boolean; message?: string; [key: string]: any }> {
+    const response = await apiClient.post('/attendance/mark/', { token_uuid: tokenUuid });
+    return response.data;
   },
 };

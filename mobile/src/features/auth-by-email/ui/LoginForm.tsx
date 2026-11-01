@@ -18,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { useLogin } from '../model/useLogin';
 import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
+import { haptic } from '@/shared/lib/haptics';
 
 interface LoginFormProps {
   onForgotPassword?: (email: string) => void;
@@ -39,13 +40,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   const handleLogin = async () => {
     if (!email.trim() || !password) return;
+    haptic.light();
     const result = await login({ email: email.trim(), password });
     if (!result.success) {
+      haptic.error();
       if (result.redirect === 'email_unverified' && onEmailUnverified) {
         onEmailUnverified(result.email || email.trim());
       } else if (result.redirect === 'device_mismatch' && onDeviceMismatch) {
         onDeviceMismatch(result.email || email.trim());
       }
+    } else {
+      haptic.success();
     }
   };
 
@@ -218,10 +223,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
-    shadowColor: '#4F8EF7',
+    shadowColor: '#2563EB',
     shadowOpacity: 0.35,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 3,
   },
   buttonInner: {
     flexDirection: 'row',
@@ -230,7 +235,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   buttonDisabled: {
-    opacity: 0.55,
+    opacity: 0.70,
   },
   buttonText: {
     color: '#FFFFFF',

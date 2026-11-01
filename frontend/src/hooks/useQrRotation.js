@@ -22,9 +22,11 @@ const DEFAULT_ROTATION_SEC = 10;
 export function useQrRotation({
   sessionId,
   initialQrCode = null,
+  initialTokenUuid = null,
   onSessionExpired,
   onError,
 }) {
+  const [tokenUuid, setTokenUuid] = useState(initialTokenUuid);
   const [qrCode, setQrCode] = useState(initialQrCode);
   const [timeLeft, setTimeLeft] = useState(DEFAULT_ROTATION_SEC);
   const [loading, setLoading] = useState(false);
@@ -33,13 +35,14 @@ export function useQrRotation({
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
 
-  // Sync initialQrCode if provided on session switch
+  // Sync initial values if provided on session switch
   useEffect(() => {
-    if (initialQrCode) {
-      setQrCode(initialQrCode);
+    if (initialTokenUuid || initialQrCode) {
+      if (initialTokenUuid) setTokenUuid(initialTokenUuid);
+      if (initialQrCode) setQrCode(initialQrCode);
       setTimeLeft(DEFAULT_ROTATION_SEC);
     }
-  }, [sessionId, initialQrCode]);
+  }, [sessionId, initialQrCode, initialTokenUuid]);
 
   const fetchQr = useCallback(async (isManual = false) => {
     if (!sessionId) return;
@@ -61,11 +64,15 @@ export function useQrRotation({
       if (!isMountedRef.current) return;
 
       if (res.data?.session_expired) {
+        setTokenUuid(null);
         setQrCode(null);
         onSessionExpired?.();
         return;
       }
 
+      if (res.data?.token_uuid) {
+        setTokenUuid(res.data.token_uuid);
+      }
       if (res.data?.qr_code) {
         setQrCode(res.data.qr_code);
       }
@@ -95,16 +102,17 @@ export function useQrRotation({
     }
   }, [sessionId, onSessionExpired, onError]);
 
-  // Initial fetch on mount or session change (if no initialQrCode)
+  // Initial fetch on mount or session change (if no initial token/QR)
   useEffect(() => {
     isMountedRef.current = true;
     if (!sessionId) {
+      setTokenUuid(null);
       setQrCode(null);
       setTimeLeft(DEFAULT_ROTATION_SEC);
       return;
     }
 
-    if (!initialQrCode) {
+    if (!initialTokenUuid && !initialQrCode) {
       fetchQr(true);
     }
 
@@ -112,7 +120,7 @@ export function useQrRotation({
       isMountedRef.current = false;
       abortRef.current?.abort();
     };
-  }, [sessionId, initialQrCode, fetchQr]);
+  }, [sessionId, initialQrCode, initialTokenUuid, fetchQr]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -134,5 +142,5 @@ export function useQrRotation({
     await fetchQr(true);
   }, [fetchQr]);
 
-  return { qrCode, timeLeft, loading, forceRotate };
+  return { tokenUuid, qrCode, timeLeft, loading, forceRotate };
 }

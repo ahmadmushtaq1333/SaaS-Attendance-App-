@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -25,6 +25,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
   const colors = useAppColors();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [isCameraMounted, setIsCameraMounted] = useState(false);
   const scanlineAnim = useRef(new Animated.Value(0)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
 
@@ -56,11 +57,22 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
     };
   }, [visible]);
 
-  const handleBarCodeScanned = ({ data }: { data: string }) => {
+  // Lazy-mount camera: mount immediately when visible, unmount after close
+  // animation (600 ms) to avoid yanking the camera mid-fade.
+  useEffect(() => {
+    if (visible) {
+      setIsCameraMounted(true);
+    } else {
+      const t = setTimeout(() => setIsCameraMounted(false), 600);
+      return () => clearTimeout(t);
+    }
+  }, [visible]);
+
+  const handleBarCodeScanned = useCallback(({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
     onScanned(data);
-  };
+  }, [scanned, onScanned]);
 
   useEffect(() => {
     if (visible && permission && !permission.granted && permission.canAskAgain) {
@@ -103,63 +115,65 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ visible, onClose
 
         {/* Camera Area */}
         <View style={styles.cameraArea}>
-          {!permission ? (
-            <ActivityIndicator color={colors.emerald} size="large" />
-          ) : !permission.granted ? (
-            <View style={[styles.permissionBox, { backgroundColor: colors.cardBg, borderColor: colors.glassBorder }]}>
-              <CameraOff size={44} color={colors.danger} style={{ alignSelf: 'center', marginBottom: 8 }} />
-              <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>
-                Camera Permission Required
-              </Text>
-              <Text style={[styles.permissionDesc, { color: colors.textMuted }]}>
-                We need access to your camera to scan the QR code shown by your instructor.
-              </Text>
-              <TouchableOpacity
-                style={[styles.permissionBtn, { backgroundColor: colors.emerald }]}
-                onPress={requestPermission}
-                activeOpacity={0.85}
-              >
-                <Camera size={16} color="#FFFFFF" />
-                <Text style={styles.permissionBtnText}>Grant Camera Access</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.cameraWrapper}>
-              <CameraView
-                style={StyleSheet.absoluteFill}
-                facing="back"
-                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              />
+          {isCameraMounted && (
+            !permission ? (
+              <ActivityIndicator color={colors.emerald} size="large" />
+            ) : !permission.granted ? (
+              <View style={[styles.permissionBox, { backgroundColor: colors.cardBg, borderColor: colors.glassBorder }]}>
+                <CameraOff size={44} color={colors.danger} style={{ alignSelf: 'center', marginBottom: 8 }} />
+                <Text style={[styles.permissionTitle, { color: colors.textPrimary }]}>
+                  Camera Permission Required
+                </Text>
+                <Text style={[styles.permissionDesc, { color: colors.textMuted }]}>
+                  We need access to your camera to scan the QR code shown by your instructor.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.permissionBtn, { backgroundColor: colors.emerald }]}
+                  onPress={requestPermission}
+                  activeOpacity={0.85}
+                >
+                  <Camera size={16} color="#FFFFFF" />
+                  <Text style={styles.permissionBtnText}>Grant Camera Access</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.cameraWrapper}>
+                <CameraView
+                  style={StyleSheet.absoluteFill}
+                  facing="back"
+                  onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                  barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+                />
 
-              {/* Viewfinder Overlay with Animated Glowing Scanline */}
-              <View style={[StyleSheet.absoluteFill, styles.overlay]}>
-                <View style={styles.overlayBand} />
-                <View style={styles.overlayMiddle}>
-                  <View style={styles.overlaySide} />
-                  <View style={[styles.frame, { borderColor: colors.emerald }]}>
-                    <View style={[styles.corner, styles.cornerTL, { borderColor: colors.emerald }]} />
-                    <View style={[styles.corner, styles.cornerTR, { borderColor: colors.emerald }]} />
-                    <View style={[styles.corner, styles.cornerBL, { borderColor: colors.emerald }]} />
-                    <View style={[styles.corner, styles.cornerBR, { borderColor: colors.emerald }]} />
-                    <Animated.View
-                      style={[
-                        styles.scanLine,
-                        {
-                          backgroundColor: colors.emerald,
-                          shadowColor: colors.emerald,
-                          transform: [{ translateY: scanlineAnim }],
-                        },
-                      ]}
-                    />
+                {/* Viewfinder Overlay with Animated Glowing Scanline */}
+                <View style={[StyleSheet.absoluteFill, styles.overlay]}>
+                  <View style={styles.overlayBand} />
+                  <View style={styles.overlayMiddle}>
+                    <View style={styles.overlaySide} />
+                    <View style={[styles.frame, { borderColor: colors.emerald }]}>
+                      <View style={[styles.corner, styles.cornerTL, { borderColor: colors.emerald }]} />
+                      <View style={[styles.corner, styles.cornerTR, { borderColor: colors.emerald }]} />
+                      <View style={[styles.corner, styles.cornerBL, { borderColor: colors.emerald }]} />
+                      <View style={[styles.corner, styles.cornerBR, { borderColor: colors.emerald }]} />
+                      <Animated.View
+                        style={[
+                          styles.scanLine,
+                          {
+                            backgroundColor: colors.emerald,
+                            shadowColor: colors.emerald,
+                            transform: [{ translateY: scanlineAnim }],
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.overlaySide} />
                   </View>
-                  <View style={styles.overlaySide} />
-                </View>
-                <View style={[styles.overlayBand, styles.overlayBottom]}>
-                  <Text style={styles.scanLabel}>Align QR code within the frame</Text>
+                  <View style={[styles.overlayBand, styles.overlayBottom]}>
+                    <Text style={styles.scanLabel}>Align QR code within the frame</Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            )
           )}
         </View>
 

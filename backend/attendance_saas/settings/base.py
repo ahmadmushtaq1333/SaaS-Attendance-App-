@@ -14,6 +14,8 @@ TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 SECRET_KEY = config("SECRET_KEY", default="change-me-in-production")
 
 INSTALLED_APPS = [
+    # Channels for WebSockets
+    "channels",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -66,6 +68,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "attendance_saas.wsgi.application"
+ASGI_APPLICATION = "attendance_saas.asgi.application"
+
+# ── Channels / WebSocket Settings ──────────────────────────────────────────────
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -152,4 +162,20 @@ CORS_ALLOW_HEADERS = [
 # Dev fallback: print emails to console. Overridden in prod.py via Resend HTTP API.
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="Quorum <muhammadahmadmushtaq11@gmail.com>")
+
+# ── Celery & Redis Settings ────────────────────────────────────────────────────
+REDIS_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/0")
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+# When True, Celery tasks execute eagerly in-process (synchronously),
+# providing a 100% reliable fallback in development environments where Redis isn't running.
+CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=True, cast=bool)
+CELERY_TASK_EAGER_PROPAGATES = True
+
 

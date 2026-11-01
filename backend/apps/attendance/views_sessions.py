@@ -82,18 +82,27 @@ class AttendanceSessionQRView(APIView):
         if session.expiry_time and session.expiry_time <= now:
             return Response({
                 "id": session.id,
+                "token_uuid": None,
                 "qr_code": None,
                 "token_expires_at": None,
                 "session_expired": True,
                 "expiry_time": session.expiry_time.isoformat(),
             })
 
-        from .qr_service import get_session_qr_code_with_ttl
-        qr_code, token_expires_at = get_session_qr_code_with_ttl(session)
+        from .qr_service import get_or_create_active_token, generate_qr_data_uri
+        token = get_or_create_active_token(session)
+        token_uuid_str = str(token.token_uuid)
+
+        # Feature 8.3: Client-side QR optimization.
+        # If client passes ?lightweight=1 or lightweight=true, skip server-side PNG rendering
+        skip_image = request.query_params.get("lightweight", "0").lower() in ("1", "true")
+        qr_code = None if skip_image else generate_qr_data_uri(token.token_uuid)
+
         return Response({
             "id": session.id,
+            "token_uuid": token_uuid_str,
             "qr_code": qr_code,
-            "token_expires_at": token_expires_at.isoformat(),
+            "token_expires_at": token.expiry_time.isoformat(),
             "session_expired": False,
             "expiry_time": session.expiry_time.isoformat() if session.expiry_time else None,
         })
@@ -113,5 +122,12 @@ class AttendanceSessionStopView(APIView):
         
         # Invalidate active QR tokens
         session.qr_tokens.all().update(expiry_time=timezone.now())
+
+        # Feature 8.1: Broadcast session termination event via WebSocket
+        try:
+            from .services.websocket_service import broadcast_session_stopped
+            broadcast_session_stopped(session.id)
+        except Exception:
+            pass
         
         return Response({"message": "Session terminated successfully."})

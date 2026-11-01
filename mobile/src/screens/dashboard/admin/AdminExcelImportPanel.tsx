@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { adminApi, Institution, ImportResultResponse } from '@/entities/admin';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 
 export const AdminExcelImportPanel: React.FC = () => {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [file, setFile] = useState<{ uri: string; name: string; size?: number; type?: string } | null>(null);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [selectedInstId, setSelectedInstId] = useState<number | null>(null);
@@ -212,7 +214,7 @@ export const AdminExcelImportPanel: React.FC = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter custom default password"
-            placeholderTextColor={Colors.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={customPassword}
             onChangeText={setCustomPassword}
           />
@@ -227,7 +229,7 @@ export const AdminExcelImportPanel: React.FC = () => {
           disabled={validating || !file}
         >
           {validating ? (
-            <ActivityIndicator color={Colors.white} size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <Text style={styles.validateBtnText}>🔍 Validate & Dry Run</Text>
           )}
@@ -240,7 +242,7 @@ export const AdminExcelImportPanel: React.FC = () => {
             disabled={importing}
           >
             {importing ? (
-              <ActivityIndicator color={Colors.bgDeep} size="small" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <Text style={styles.commitBtnText}>🚀 Commit Import</Text>
             )}
@@ -254,21 +256,21 @@ export const AdminExcelImportPanel: React.FC = () => {
           <Text style={styles.reportTitle}>Validation Summary</Text>
           <View style={styles.metricsRow}>
             <View style={styles.metricBox}>
-              <Text style={[styles.metricVal, { color: Colors.emerald }]}>
+              <Text style={[styles.metricVal, { color: colors.emerald }]}>
                 {validationResult.valid_count ?? 0}
               </Text>
               <Text style={styles.metricLabel}>Valid Rows</Text>
             </View>
 
             <View style={styles.metricBox}>
-              <Text style={[styles.metricVal, { color: Colors.danger }]}>
+              <Text style={[styles.metricVal, { color: colors.danger }]}>
                 {validationResult.errors?.length ?? 0}
               </Text>
               <Text style={styles.metricLabel}>Errors</Text>
             </View>
 
             <View style={styles.metricBox}>
-              <Text style={[styles.metricVal, { color: Colors.warning }]}>
+              <Text style={[styles.metricVal, { color: colors.warning }]}>
                 {validationResult.warnings?.length ?? 0}
               </Text>
               <Text style={styles.metricLabel}>Warnings</Text>
@@ -294,112 +296,113 @@ export const AdminExcelImportPanel: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
-  content: { padding: 16, paddingBottom: 60, gap: 16 },
-  header: { gap: 4 },
-  title: { color: Colors.textPrimary, fontSize: FontSize.md, fontWeight: '700' },
-  subtitle: { color: Colors.textSecondary, fontSize: FontSize.xs, lineHeight: 18 },
+const createStyles = (colors: ReturnType<typeof useAppColors>) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'transparent' },
+    content: { padding: 16, paddingBottom: 60, gap: 16 },
+    header: { gap: 4 },
+    title: { color: colors.textPrimary, fontSize: FontSize.md, fontWeight: '700' },
+    subtitle: { color: colors.textSecondary, fontSize: FontSize.xs, lineHeight: 18 },
 
-  uploadBox: {
-    backgroundColor: Colors.glassA,
-    borderWidth: 2,
-    borderColor: Colors.glassBorder,
-    borderStyle: 'dashed',
-    borderRadius: Radius.lg,
-    padding: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(79,142,247,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconText: { fontSize: 24 },
-  uploadPrompt: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '600' },
-  fileSize: { color: Colors.emerald, fontSize: FontSize.xs, fontWeight: '700' },
-  fileHint: { color: Colors.textMuted, fontSize: FontSize.xs },
+    uploadBox: {
+      backgroundColor: colors.cardBg,
+      borderWidth: 2,
+      borderColor: colors.glassBorder,
+      borderStyle: 'dashed',
+      borderRadius: Radius.lg,
+      padding: 24,
+      alignItems: 'center',
+      gap: 8,
+    },
+    iconCircle: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: `${colors.emerald}20`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    iconText: { fontSize: 24 },
+    uploadPrompt: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '600' },
+    fileSize: { color: colors.emerald, fontSize: FontSize.xs, fontWeight: '700' },
+    fileHint: { color: colors.textMuted, fontSize: FontSize.xs },
 
-  configCard: {
-    backgroundColor: Colors.glassA,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    padding: 16,
-    gap: 10,
-  },
-  cardHeader: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  label: { color: Colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600', marginTop: 6 },
-  roleRow: { flexDirection: 'row', gap: 8 },
-  roleBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    alignItems: 'center',
-  },
-  roleBtnActive: { backgroundColor: Colors.emerald },
-  roleBtnText: { color: Colors.textMuted, fontSize: FontSize.xs, fontWeight: '700' },
-  roleBtnTextActive: { color: Colors.bgDeep },
+    configCard: {
+      backgroundColor: colors.cardBg,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      padding: 16,
+      gap: 10,
+    },
+    cardHeader: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    label: { color: colors.textSecondary, fontSize: FontSize.xs, fontWeight: '600', marginTop: 6 },
+    roleRow: { flexDirection: 'row', gap: 8 },
+    roleBtn: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      backgroundColor: colors.glassA,
+      alignItems: 'center',
+    },
+    roleBtnActive: { backgroundColor: colors.emerald },
+    roleBtnText: { color: colors.textMuted, fontSize: FontSize.xs, fontWeight: '700' },
+    roleBtnTextActive: { color: '#FFFFFF' },
 
-  pickerBox: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  pickerText: { color: Colors.textPrimary, fontSize: FontSize.sm },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
+    pickerBox: {
+      backgroundColor: colors.inputBg,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    pickerText: { color: colors.textPrimary, fontSize: FontSize.sm },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
 
-  btnRow: { flexDirection: 'row', gap: 10 },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  validateBtn: { backgroundColor: Colors.glassB, borderWidth: 1, borderColor: Colors.glassBorder },
-  validateBtnText: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  commitBtn: { backgroundColor: Colors.emerald },
-  commitBtnText: { color: Colors.bgDeep, fontSize: FontSize.sm, fontWeight: '800' },
+    btnRow: { flexDirection: 'row', gap: 10 },
+    actionBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: Radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    validateBtn: { backgroundColor: colors.glassB, borderWidth: 1, borderColor: colors.glassBorder },
+    validateBtnText: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    commitBtn: { backgroundColor: colors.emerald },
+    commitBtnText: { color: '#FFFFFF', fontSize: FontSize.sm, fontWeight: '800' },
 
-  reportCard: {
-    backgroundColor: Colors.glassA,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    padding: 16,
-    gap: 12,
-  },
-  reportTitle: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  metricsRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  metricBox: { alignItems: 'center' },
-  metricVal: { fontSize: 22, fontWeight: '800' },
-  metricLabel: { color: Colors.textMuted, fontSize: 10, marginTop: 2 },
+    reportCard: {
+      backgroundColor: colors.cardBg,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      padding: 16,
+      gap: 12,
+    },
+    reportTitle: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    metricsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+    metricBox: { alignItems: 'center' },
+    metricVal: { fontSize: 22, fontWeight: '800' },
+    metricLabel: { color: colors.textMuted, fontSize: 10, marginTop: 2 },
 
-  errorList: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
-    paddingTop: 10,
-    gap: 4,
-  },
-  errorHeading: { color: Colors.danger, fontSize: FontSize.xs, fontWeight: '700' },
-  errorItem: { color: Colors.danger, fontSize: 11 },
-  moreErrors: { color: Colors.textMuted, fontSize: 10, fontStyle: 'italic' },
-});
+    errorList: {
+      borderTopWidth: 1,
+      borderTopColor: colors.glassBorder,
+      paddingTop: 10,
+      gap: 4,
+    },
+    errorHeading: { color: colors.danger, fontSize: FontSize.xs, fontWeight: '700' },
+    errorItem: { color: colors.danger, fontSize: 11 },
+    moreErrors: { color: colors.textMuted, fontSize: 10, fontStyle: 'italic' },
+  });

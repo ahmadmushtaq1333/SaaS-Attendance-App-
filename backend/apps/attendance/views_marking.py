@@ -47,9 +47,15 @@ class MarkAttendanceView(APIView):
         except Enrollment.DoesNotExist:
             return Response({"error": "You are not enrolled in this course."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Duplicate check — return 200 so the frontend shows success, not an error
+        # Duplicate check — return 200 with already_recorded flag and explicit warning message
         if AttendanceRecord.objects.filter(enrollment=enrollment, session=session).exists():
-            return Response({"already_recorded": True}, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "already_recorded": True,
+                    "message": "You have already marked attendance for this session. Duplicate scans are not allowed.",
+                },
+                status=status.HTTP_200_OK,
+            )
 
         # Create record
         record = AttendanceRecord.objects.create(
@@ -58,6 +64,16 @@ class MarkAttendanceView(APIView):
             timestamp=now,
             sync_status="synced",
         )
+
+        # Feature 8.1: Broadcast live attendance event via WebSocket
+        try:
+            from .services.websocket_service import broadcast_attendance_marked
+            present_count = AttendanceRecord.objects.filter(session=session).count()
+            total_enrolled = Enrollment.objects.filter(course=course).count()
+            broadcast_attendance_marked(session.id, request.user, record, present_count, total_enrolled)
+        except Exception:
+            pass
+
         serializer = AttendanceRecordSerializer(record)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -106,14 +122,17 @@ class SyncAttendanceView(APIView):
                 errors.append({"index": index, "token_uuid": token_uuid, "error": "Student not enrolled"})
                 continue
 
-            # Note: For offline sync, since the user scanned it offline, we validate if the scan happened
-            # within the token's active window (i.e. token.expiry_time > user's scan timestamp, and user's scan timestamp >= session.start_time).
-            # This allows offline sync to work correctly.
-            if timestamp > token.expiry_time:
-                errors.append({"index": index, "token_uuid": token_uuid, "error": "QR code was expired at the time of scan"})
+            # A7-S1 & A7-S2: Decouple token rotation from session acceptance window.
+            # The rotating token_uuid proves physical presence at scan time.
+            # For offline sync validation, verify that the scan timestamp fell within
+            # the active attendance session duration (with a 60s clock skew / grace window).
+            session_grace = session.expiry_time + timedelta(seconds=60)
+            if timestamp > session_grace:
+                errors.append({"index": index, "token_uuid": token_uuid, "error": "Attendance session had ended at the time of scan"})
                 continue
 
-            if timestamp < session.start_time:
+            # Allow 60s skew before session.start_time for mobile clocks that may be slightly behind
+            if timestamp < (session.start_time - timedelta(seconds=60)):
                 errors.append({"index": index, "token_uuid": token_uuid, "error": "Scan timestamp is prior to session start time"})
                 continue
             

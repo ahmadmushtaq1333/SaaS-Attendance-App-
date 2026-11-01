@@ -9,7 +9,7 @@ export const darkColors = {
   bgDeep: '#060B18',
   bgMid: '#091225',
   bgSurface: '#0C1A35',
-  cardBg: 'rgba(12, 26, 53, 0.75)',
+  cardBg: 'rgba(148, 187, 255, 0.08)',
   cardBgSolid: '#0C1A35',
 
   // Glass layers
@@ -49,15 +49,15 @@ export const lightColors = {
   bgDeep: '#F0F4FF',
   bgMid: '#E6EDFF',
   bgSurface: '#FFFFFF',
-  cardBg: 'rgba(255, 255, 255, 0.85)',
+  cardBg: '#FFFFFF',
   cardBgSolid: '#FFFFFF',
 
   // Glass layers
-  glassA: 'rgba(255, 255, 255, 0.85)',
-  glassB: 'rgba(255, 255, 255, 0.70)',
-  glassC: 'rgba(255, 255, 255, 0.55)',
-  glassBorder: 'rgba(215, 228, 255, 0.85)',
-  glassInner: 'rgba(255, 255, 255, 0.6)',
+  glassA: '#FFFFFF',
+  glassB: '#FFFFFF',
+  glassC: '#F8FAFC',
+  glassBorder: '#E2E8F0',
+  glassInner: '#F1F5F9',
 
   // Text
   textPrimary: '#0B1340',
@@ -79,8 +79,8 @@ export const lightColors = {
   danger: '#DC2626',
   dangerGlow: 'rgba(220, 38, 38, 0.20)',
 
-  inputBg: '#FFFFFF',
-  inputBorder: 'rgba(148, 163, 220, 0.55)',
+  inputBg: '#F8FAFC',
+  inputBorder: '#E2E8F0',
   white: '#FFFFFF',
 };
 
@@ -105,13 +105,6 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     AsyncStorage.setItem('theme_mode', isLight ? 'light' : 'dark').catch(() => {});
   },
 }));
-
-// Hydrate stored theme preference on app start
-AsyncStorage.getItem('theme_mode').then((val) => {
-  if (val === 'light') {
-    useThemeStore.getState().setTheme(true);
-  }
-}).catch(() => {});
 
 export const useAppColors = () => {
   const isLightMode = useThemeStore((s) => s.isLightMode);

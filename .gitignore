@@ -40,6 +40,11 @@ frontend/.env
 frontend/.env.local
 frontend/.env.production
 
+# Mobile builds & binaries
+*.apk
+*.aab
+preview/*.apk
+
 # Docker
 
 # IDE

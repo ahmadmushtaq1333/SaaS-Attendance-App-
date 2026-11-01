@@ -9,6 +9,7 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "institution")
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
+    token_uuid = serializers.SerializerMethodField()
     qr_code = serializers.SerializerMethodField()
     session_number = serializers.SerializerMethodField()
     course_name = serializers.CharField(source="course.name", read_only=True)
@@ -18,13 +19,21 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         model = AttendanceSession
         fields = (
             "id", "course", "course_name", "session_number",
-            "start_time", "expiry_time", "qr_code",
+            "start_time", "expiry_time", "token_uuid", "qr_code",
             "is_replicated", "replicated_from", "present_count",
         )
         read_only_fields = (
             "id", "course_name", "session_number", "start_time", "expiry_time",
-            "qr_code", "is_replicated", "replicated_from", "present_count",
+            "token_uuid", "qr_code", "is_replicated", "replicated_from", "present_count",
         )
+
+    def get_token_uuid(self, obj):
+        from django.utils import timezone
+        if obj.expiry_time and obj.expiry_time <= timezone.now():
+            return None
+        from .qr_service import get_or_create_active_token
+        token = get_or_create_active_token(obj)
+        return str(token.token_uuid) if token else None
 
     def get_session_number(self, obj):
         if hasattr(obj, "session_number"):

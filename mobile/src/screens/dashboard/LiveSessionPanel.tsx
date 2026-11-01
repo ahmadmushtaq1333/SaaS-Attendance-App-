@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -19,16 +21,19 @@ import {
   Users,
   CheckCircle,
   XCircle,
+  Zap,
 } from 'lucide-react-native';
 import { Session, LinkedCourse, teacherApi } from '@/entities/session/api/teacher-api';
 import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 import { ReplicateAttendanceButton } from '@/features/replicate-attendance';
+import { haptic } from '@/shared/lib/haptics';
 
 interface LiveSessionPanelProps {
-  session: Session;
+  session: Session | null;
   linkedCourses: LinkedCourse[];
   onBack: () => void;
   onStopSession: () => void;
+  onGoToCourses?: () => void;
 }
 
 export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({
@@ -36,33 +41,65 @@ export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({
   linkedCourses,
   onBack,
   onStopSession,
+  onGoToCourses,
 }) => {
   const colors = useAppColors();
   const [report, setReport] = useState<any>(null);
-  const [qrData, setQrData] = useState<string>(session.qr_code || '');
+  const [qrData, setQrData] = useState<string>(session?.qr_code || '');
   const [timeLeft, setTimeLeft] = useState(10);
-  const [loadingQR, setLoadingQR] = useState(!session.qr_code);
+  const [loadingQR, setLoadingQR] = useState(Boolean(session && !session.qr_code));
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
 
-  // Poll live roster every 5 seconds
   useEffect(() => {
-    fetchReport();
-    const interval = setInterval(fetchReport, 5000);
-    return () => clearInterval(interval);
-  }, [session.course]);
+    if (session?.qr_code) {
+      setQrData(session.qr_code);
+    }
+  }, [session?.qr_code]);
 
-  // QR countdown
+  // Poll live roster every 5 seconds only when session exists and app is active
   useEffect(() => {
+    if (!session?.course) return;
+
+    fetchReport();
+
+    let interval: ReturnType<typeof setInterval> | null = setInterval(fetchReport, 5000);
+
+    const handleAppState = (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        if (!interval) {
+          fetchReport();
+          interval = setInterval(fetchReport, 5000);
+        }
+      } else {
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppState);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      sub.remove();
+    };
+  }, [session?.course]);
+
+  // QR countdown only if session exists
+  useEffect(() => {
+    if (!session) return;
     if (timeLeft <= 0) {
       refreshQR();
       return;
     }
     const timer = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
     return () => clearTimeout(timer);
-  }, [timeLeft]);
+  }, [timeLeft, session]);
 
   const fetchReport = async () => {
+    if (!session?.course) return;
     try {
       const data = await teacherApi.getLiveReport(session.course);
       setReport(data);
@@ -72,6 +109,8 @@ export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({
   };
 
   const refreshQR = async () => {
+    if (!session?.id) return;
+    haptic.light();
     setLoadingQR(true);
     try {
       const sessions = await teacherApi.getSessions();
@@ -88,16 +127,63 @@ export const LiveSessionPanel: React.FC<LiveSessionPanelProps> = ({
   };
 
   const toggleAttendance = async (studentId: number, isPresent: boolean) => {
+    if (!session?.id) return;
+    haptic.medium();
     setTogglingId(studentId);
     try {
       await teacherApi.bulkOverride(session.id, [studentId], isPresent ? 'absent' : 'present');
       await fetchReport();
     } catch (err) {
+      haptic.error();
       console.error('Failed to toggle attendance manually:', err);
     } finally {
       setTogglingId(null);
     }
   };
+
+  if (!session) {
+    return (
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <View style={[styles.header, { backgroundColor: colors.bgMid, borderBottomColor: colors.glassBorder }]}>
+          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+            <ArrowLeft size={16} color={colors.textSecondary} />
+            <Text style={[styles.backText, { color: colors.textSecondary }]}>Back</Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Live Session</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <View style={styles.emptyContainer}>
+          <View
+            style={[
+              styles.emptyCard,
+              {
+                backgroundColor: colors.cardBg,
+                borderColor: colors.glassBorder,
+              },
+            ]}
+          >
+            <View style={[styles.emptyIconBox, { backgroundColor: `${colors.emerald}20` }]}>
+              <Zap size={30} color={colors.emerald} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+              No Active Live Session
+            </Text>
+            <Text style={[styles.emptySub, { color: colors.textMuted }]}>
+              You don't have an active session running right now. Choose a course from your assigned subjects to launch a dynamic rotating QR session.
+            </Text>
+            <TouchableOpacity
+              style={[styles.emptyActionBtn, { backgroundColor: colors.emerald }]}
+              onPress={onGoToCourses || onBack}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.emptyActionText}>Start Session from Courses</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const students = report?.students || [];
   const enrolledCount = students.length;
@@ -455,6 +541,54 @@ const styles = StyleSheet.create({
   },
   modalDismissText: {
     fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    gap: 14,
+    shadowColor: '#07111F',
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 1,
+  },
+  emptyIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+  emptyActionBtn: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  emptyActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '700',
   },
 });

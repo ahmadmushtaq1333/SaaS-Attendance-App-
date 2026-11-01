@@ -65,4 +65,12 @@ class AttendanceOverrideView(views.APIView):
             else:
                 return Response({"error": "Invalid action choice"}, status=status.HTTP_400_BAD_REQUEST)
 
+        if results["success"]:
+            try:
+                from .services.websocket_service import broadcast_roster_override
+                present_count = AttendanceRecord.objects.filter(session=session).count()
+                broadcast_roster_override(session.id, results["success"], action, present_count)
+            except Exception:
+                pass
+
         return Response({"message": f"Processed bulk override for {len(results['success'])} students.", "details": results})

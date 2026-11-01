@@ -41,7 +41,7 @@ export const CoursesPanel: React.FC<CoursesPanelProps> = ({ courses, onBack, onS
                 key={mins}
                 style={[
                   styles.durBtn,
-                  { borderColor: colors.glassBorder },
+                  { backgroundColor: colors.glassC, borderColor: colors.glassBorder },
                   duration === mins && { backgroundColor: colors.emerald, borderColor: colors.emerald },
                 ]}
                 onPress={() => {
@@ -97,7 +97,7 @@ export const CoursesPanel: React.FC<CoursesPanelProps> = ({ courses, onBack, onS
 
               <View style={styles.cardActions}>
                 <TouchableOpacity
-                  style={[styles.reportBtn, { borderColor: colors.glassBorder }]}
+                  style={[styles.reportBtn, { backgroundColor: colors.glassC, borderColor: colors.glassBorder }]}
                   onPress={() => onViewReports(course.id)}
                   activeOpacity={0.7}
                 >

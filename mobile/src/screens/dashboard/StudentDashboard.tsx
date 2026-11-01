@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  BackHandler,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  Home,
   ScanLine,
   BookOpen,
   Shield,
@@ -20,11 +23,13 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   Info,
   ArrowLeft,
   ChevronRight,
   Clock,
   Sparkles,
+  Share2,
 } from 'lucide-react-native';
 import { useAuthStore } from '@/entities/user';
 import { studentApi, StudentCourse, CourseDetail } from '@/entities/session/api/student-api';
@@ -32,18 +37,134 @@ import { QRScannerModal } from './QRScannerModal';
 import NetInfo from '@react-native-community/netinfo';
 import { offlineSync } from '@/shared/offline/offlineSync';
 import { AttendanceSafetyCalculator, SafetyBadge } from '@/features/calculate-safety';
-import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
-import { AppBackground, GlassNavBar, DashboardActionCard, ProgressRing } from '@/shared/ui';
+import { useAppColors, useThemeStore, Radius, FontSize } from '@/shared/constants/theme';
+import { AppBackground, GlassNavBar, DashboardActionCard, BottomTabBar, TabItem, ProgressRing } from '@/shared/ui';
+import { haptic } from '@/shared/lib/haptics';
+import { shareAttendanceSummary } from '@/shared/lib/exportAttendanceCard';
+
+interface CourseRowProps {
+  course: StudentCourse;
+  onPress: (course: StudentCourse) => void;
+  colors: ReturnType<typeof useAppColors>;
+}
+
+const CourseRow = React.memo<CourseRowProps>(({ course, onPress, colors }) => {
+  const pct = course.attendance_percentage;
+  const pctCol = pct >= 75 ? colors.emerald : pct >= 50 ? colors.warning : colors.danger;
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.courseRow,
+        {
+          backgroundColor: colors.glassC,
+          borderColor: course.is_at_risk ? 'rgba(248,113,113,0.3)' : colors.glassBorder,
+        },
+      ]}
+      onPress={() => onPress(course)}
+      activeOpacity={0.75}
+    >
+      <View
+        style={[
+          styles.courseIconBox,
+          { backgroundColor: `${pctCol}18` },
+        ]}
+      >
+        <BookOpen size={20} color={pctCol} />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={[styles.courseName, { color: colors.textPrimary }]}>
+          {course.course_name}
+        </Text>
+        <Text style={[styles.courseInst, { color: colors.textMuted }]}>
+          {course.institution_name || '—'}
+        </Text>
+        <Text style={[styles.courseSessions, { color: colors.textSecondary }]}>
+          {course.attended_count}/{course.total_sessions} sessions
+        </Text>
+      </View>
+      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+        <Text style={[styles.coursePct, { color: pctCol }]}>
+          {course.attendance_percentage}%
+        </Text>
+        {course.is_at_risk && (
+          <Text style={[styles.atRiskLabel, { color: colors.danger }]}>
+            At Risk
+          </Text>
+        )}
+      </View>
+      <ChevronRight size={18} color={colors.textMuted} />
+    </TouchableOpacity>
+  );
+});
+
+CourseRow.displayName = 'CourseRow';
+
+interface SessionLogRowProps {
+  session: { session_id: number; session_number?: number; date: string; time: string; present: boolean };
+  colors: ReturnType<typeof useAppColors>;
+}
+
+const SessionLogRow = React.memo<SessionLogRowProps>(({ session: s, colors }) => {
+  return (
+    <View
+      style={[
+        styles.sessionRow,
+        {
+          backgroundColor: s.present ? 'rgba(79, 142, 247, 0.06)' : 'rgba(248, 113, 113, 0.05)',
+          borderColor: s.present ? 'rgba(79, 142, 247, 0.20)' : 'rgba(248, 113, 113, 0.15)',
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.sessionIconBox,
+          {
+            backgroundColor: s.present ? 'rgba(79, 142, 247, 0.15)' : 'rgba(248, 113, 113, 0.12)',
+          },
+        ]}
+      >
+        {s.present ? (
+          <CheckCircle size={16} color={colors.emerald} />
+        ) : (
+          <XCircle size={16} color={colors.danger} />
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.sessionTitle, { color: colors.textPrimary }]}>
+          Session {s.session_number ?? s.session_id}
+        </Text>
+        <View style={styles.sessionMetaRow}>
+          <Clock size={11} color={colors.textMuted} />
+          <Text style={[styles.sessionDate, { color: colors.textMuted }]}>
+            {s.date} at {s.time}
+          </Text>
+        </View>
+      </View>
+      <Text
+        style={[
+          styles.sessionStatus,
+          { color: s.present ? colors.emerald : colors.danger },
+        ]}
+      >
+        {s.present ? 'Present' : 'Absent'}
+      </Text>
+    </View>
+  );
+});
+
+SessionLogRow.displayName = 'SessionLogRow';
 
 type ViewMode = 'grid' | 'attendance' | 'detail' | 'safety';
 
 export const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuthStore();
   const colors = useAppColors();
+  const isLightMode = useThemeStore((s) => s.isLightMode);
 
   const [activeView, setActiveView] = useState<ViewMode>('grid');
   const [scannerVisible, setScannerVisible] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
   const [courses, setCourses] = useState<StudentCourse[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<StudentCourse | null>(null);
@@ -55,7 +176,28 @@ export const StudentDashboard: React.FC = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [offlineCount, setOfflineCount] = useState(0);
 
-  const displayName = user?.full_name || (user?.email ? user.email.split('@')[0] : 'Student');
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeView === 'detail') {
+        setActiveView('attendance');
+        setSelectedCourse(null);
+        setCourseDetail(null);
+        return true;
+      }
+      if (activeView !== 'grid') {
+        setActiveView('grid');
+        return true;
+      }
+      return false;
+    });
+    return () => backHandler.remove();
+  }, [activeView]);
+
+  // Exact matching displayName logic from web Scanner.jsx line 35-36:
+  const fallbackName = user?.email?.split('@')[0]?.split('.')[0];
+  const displayName = user?.full_name || (fallbackName ? fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1) : 'Student');
+
+  const isProcessingScanRef = useRef(false);
 
   const fetchSummary = useCallback(async () => {
     setCoursesLoading(true);
@@ -69,21 +211,31 @@ export const StudentDashboard: React.FC = () => {
     }
   }, []);
 
-  const triggerSync = async () => {
+  const triggerSync = useCallback(async () => {
     const count = await offlineSync.getPendingScansCount();
     if (count > 0) {
       setStatusMsg({ text: 'Syncing offline records...', type: 'info' });
       try {
         const res = await offlineSync.syncOfflineScans();
-        setStatusMsg({ text: `Successfully synced ${res.success_count} scans!`, type: 'success' });
+        if (res.expired_count && res.expired_count > 0) {
+          haptic.warning();
+          setStatusMsg({
+            text: `Synced ${res.success_count} scan(s). ${res.expired_count} expired while offline.`,
+            type: 'warning',
+          });
+        } else {
+          haptic.success();
+          setStatusMsg({ text: `Successfully synced ${res.success_count} scans!`, type: 'success' });
+        }
         setOfflineCount(0);
         fetchSummary();
       } catch {
+        haptic.error();
         setStatusMsg({ text: 'Sync failed. Will retry later.', type: 'error' });
       }
       setTimeout(() => setStatusMsg(null), 4000);
     }
-  };
+  }, [fetchSummary]);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
@@ -94,7 +246,7 @@ export const StudentDashboard: React.FC = () => {
       }
     });
     return unsubscribe;
-  }, []);
+  }, [triggerSync]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -110,7 +262,7 @@ export const StudentDashboard: React.FC = () => {
     offlineSync.getPendingScansCount().then(setOfflineCount);
   }, []);
 
-  const fetchCourseDetail = async (courseId: number) => {
+  const fetchCourseDetail = useCallback(async (courseId: number) => {
     setDetailLoading(true);
     try {
       const data = await studentApi.getCourseDetail(courseId);
@@ -120,56 +272,127 @@ export const StudentDashboard: React.FC = () => {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
 
-  const handleQRScanned = async (tokenUuid: string) => {
+  const handleQRScanned = useCallback(async (tokenUuid: string) => {
+    if (isProcessingScanRef.current) return;
+    isProcessingScanRef.current = true;
     setScannerVisible(false);
 
     if (!isOnline) {
       await offlineSync.saveScanOffline(tokenUuid);
       setOfflineCount((prev) => prev + 1);
+      haptic.medium();
       setStatusMsg({ text: 'Offline: Scan saved. Will sync when connected.', type: 'info' });
       setTimeout(() => setStatusMsg(null), 4000);
+      isProcessingScanRef.current = false;
       return;
     }
 
     setStatusMsg({ text: 'Processing attendance scan…', type: 'info' });
     try {
-      const res: any = await studentApi.markAttendance(tokenUuid);
+      const res = await studentApi.markAttendance(tokenUuid);
       if (res?.already_recorded) {
-        setStatusMsg({ text: "You're already marked present for this session ✓", type: 'success' });
+        haptic.warning();
+        setStatusMsg({
+          text: res?.message || 'Already Recorded: You cannot mark attendance more than once for this session.',
+          type: 'warning',
+        });
       } else {
+        haptic.success();
         setStatusMsg({ text: 'Attendance marked successfully! ✓', type: 'success' });
       }
       fetchSummary();
     } catch (err: any) {
+      haptic.error();
       const msg = err.response?.data?.error || 'Error marking attendance';
       setStatusMsg({ text: msg, type: 'error' });
+    } finally {
+      isProcessingScanRef.current = false;
     }
     setTimeout(() => setStatusMsg(null), 4000);
-  };
+  }, [isOnline, fetchSummary]);
 
-  let totalAttended = 0;
-  let totalSessions = 0;
-  courses.forEach((c) => {
-    totalAttended += c.attended_count || 0;
-    totalSessions += c.total_sessions || 0;
-  });
-  const overallPct = totalSessions > 0
-    ? Math.round((totalAttended / totalSessions) * 100)
-    : 100;
-  const atRiskCount = courses.filter((c) => c.is_at_risk).length;
-  const filteredCourses = courses.filter((c) => (attendanceFilter === 'risk' ? c.is_at_risk : true));
+  const handleShareSummary = useCallback(async () => {
+    if (courses.length === 0) return;
+    haptic.light();
+    try {
+      await shareAttendanceSummary(courses, displayName);
+      haptic.success();
+    } catch (err: any) {
+      haptic.error();
+      setStatusMsg({ text: err.message || 'Could not share attendance report.', type: 'error' });
+    }
+  }, [courses, displayName]);
 
-  const pctColor = (pct: number) =>
-    pct >= 75 ? colors.emerald : pct >= 50 ? colors.warning : colors.danger;
+  const { totalAttended, totalSessions, overallPct, atRiskCount } = useMemo(() => {
+    let att = 0;
+    let tot = 0;
+    courses.forEach((c) => {
+      att += c.attended_count || 0;
+      tot += c.total_sessions || 0;
+    });
+    return {
+      totalAttended: att,
+      totalSessions: tot,
+      overallPct: tot > 0 ? Math.round((att / tot) * 100) : 100,
+      atRiskCount: courses.filter((c) => c.is_at_risk).length,
+    };
+  }, [courses]);
+  const filteredCourses = useMemo(
+    () => courses.filter((c) => (attendanceFilter === 'risk' ? c.is_at_risk : true)),
+    [courses, attendanceFilter]
+  );
+
+  const bottomTabs = useMemo<TabItem[]>(() => [
+    { id: 'grid', label: 'Overview', icon: Home },
+    { id: 'scan', label: 'Scan QR', icon: ScanLine },
+    { id: 'attendance', label: 'Courses', icon: BookOpen, badge: atRiskCount > 0 ? `${atRiskCount}` : undefined },
+    { id: 'safety', label: 'Safety', icon: Shield },
+  ], [atRiskCount]);
+
+  const handleTabPress = useCallback((id: string) => {
+    if (id === 'scan') {
+      setScannerVisible(true);
+      return;
+    }
+    if (id === 'grid') {
+      setSelectedCourse(null);
+      setCourseDetail(null);
+      setActiveView('grid');
+      return;
+    }
+    if (id === 'attendance') {
+      setAttendanceFilter('all');
+      setSelectedCourse(null);
+      setCourseDetail(null);
+      setActiveView('attendance');
+      return;
+    }
+    if (id === 'safety') {
+      setActiveView('safety');
+      return;
+    }
+  }, []);
+
+  const pctColor = useCallback(
+    (pct: number) => (pct >= 75 ? colors.emerald : pct >= 50 ? colors.warning : colors.danger),
+    [colors.emerald, colors.warning, colors.danger]
+  );
 
   if (activeView === 'safety') {
     return (
       <AppBackground>
         <SafeAreaView style={styles.safeArea}>
           <GlassNavBar />
-          <AttendanceSafetyCalculator courses={courses} onBack={() => setActiveView('grid')} />
+          <View style={{ flex: 1 }}>
+            <AttendanceSafetyCalculator courses={courses} onBack={() => setActiveView('grid')} />
+          </View>
+          <BottomTabBar
+            tabs={bottomTabs}
+            activeTab="safety"
+            onSelectTab={handleTabPress}
+          />
         </SafeAreaView>
       </AppBackground>
     );
@@ -189,93 +412,124 @@ export const StudentDashboard: React.FC = () => {
           }
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Interactive Welcome Hero (matches web Scanner.jsx) ── */}
+          {/* ── Interactive Welcome Hero (matches web Scanner.jsx lines 208-252) ── */}
           <View
             style={[
               styles.heroCard,
               {
                 backgroundColor: colors.cardBg,
                 borderColor: colors.glassBorder,
+                shadowOpacity: isLightMode ? 0.04 : 0.2,
               },
             ]}
           >
-            <View style={styles.heroTopRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.heroGreeting, { color: colors.textPrimary }]}>
-                  Hello, {displayName} 👋
-                </Text>
-                <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-                  Here's your quick attendance overview.
+            {/* Title & Subtitle */}
+            <Text style={[styles.heroGreeting, { color: colors.textPrimary }]}>
+              Hello, {displayName} 👋
+            </Text>
+            <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
+              Here's your quick attendance overview.
+            </Text>
+
+            {/* Online/Offline status pill */}
+            <View style={styles.statusPillsRow}>
+              <View
+                style={[
+                  styles.onlineBadge,
+                  {
+                    backgroundColor: isOnline
+                      ? isLightMode
+                        ? 'rgba(37, 99, 235, 0.08)'
+                        : 'rgba(79, 142, 247, 0.12)'
+                      : isLightMode
+                      ? 'rgba(220, 38, 38, 0.08)'
+                      : 'rgba(248, 113, 113, 0.12)',
+                    borderColor: isOnline
+                      ? isLightMode
+                        ? 'rgba(37, 99, 235, 0.20)'
+                        : 'rgba(79, 142, 247, 0.25)'
+                      : isLightMode
+                      ? 'rgba(220, 38, 38, 0.20)'
+                      : 'rgba(248, 113, 113, 0.25)',
+                  },
+                ]}
+              >
+                {isOnline ? (
+                  <Wifi size={12} color={colors.emerald} />
+                ) : (
+                  <WifiOff size={12} color={colors.danger} />
+                )}
+                <Text
+                  style={[
+                    styles.onlineBadgeText,
+                    { color: isOnline ? colors.emerald : colors.danger },
+                  ]}
+                >
+                  {isOnline ? 'Online' : 'Offline'}
                 </Text>
               </View>
 
-              {/* Online/Offline status pill */}
-              <View style={styles.statusPillsRow}>
+              {offlineCount > 0 && (
                 <View
                   style={[
-                    styles.onlineBadge,
+                    styles.queuedBadge,
                     {
-                      backgroundColor: isOnline ? 'rgba(79, 142, 247, 0.12)' : 'rgba(248, 113, 113, 0.12)',
-                      borderColor: isOnline ? 'rgba(79, 142, 247, 0.25)' : 'rgba(248, 113, 113, 0.25)',
+                      backgroundColor: isLightMode ? 'rgba(217, 119, 6, 0.12)' : 'rgba(251, 191, 36, 0.15)',
+                      borderColor: isLightMode ? 'rgba(217, 119, 6, 0.25)' : 'rgba(251, 191, 36, 0.3)',
                     },
                   ]}
                 >
-                  {isOnline ? (
-                    <Wifi size={12} color={colors.emerald} />
-                  ) : (
-                    <WifiOff size={12} color={colors.danger} />
-                  )}
-                  <Text
-                    style={[
-                      styles.onlineBadgeText,
-                      { color: isOnline ? colors.emerald : colors.danger },
-                    ]}
-                  >
-                    {isOnline ? 'Online' : 'Offline'}
+                  <Text style={[styles.queuedText, { color: colors.warning }]}>
+                    {offlineCount} queued
                   </Text>
                 </View>
-
-                {offlineCount > 0 && (
-                  <View style={[styles.queuedBadge, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
-                    <Text style={[styles.queuedText, { color: colors.warning }]}>
-                      {offlineCount} queued
-                    </Text>
-                  </View>
-                )}
-              </View>
+              )}
             </View>
 
-            {/* Quick Filter Action Cards (Overall & At Risk) */}
-            <View style={styles.quickCardsRow}>
+            {/* Clickable Quick Filters / KPI Cards matching web Scanner.jsx lines 225-251 */}
+            <View style={styles.kpiRow}>
               {/* Overall Standing Card */}
               <TouchableOpacity
                 style={[
-                  styles.quickCard,
+                  styles.kpiCard,
                   {
-                    backgroundColor: colors.glassC,
-                    borderColor: colors.glassBorder,
+                    backgroundColor: isLightMode ? '#F8FAFC' : colors.glassC,
+                    borderColor: isLightMode ? '#E2E8F0' : colors.glassBorder,
                   },
                 ]}
                 onPress={() => {
                   setAttendanceFilter('all');
                   setActiveView('attendance');
                 }}
-                activeOpacity={0.8}
+                activeOpacity={0.75}
               >
                 <ProgressRing
-                  pct={totalSessions === 0 ? 100 : overallPct}
+                  pct={totalSessions === 0 ? 0 : overallPct}
                   size={46}
-                  color={totalSessions === 0 ? colors.textMuted : overallPct >= 75 ? colors.emerald : colors.warning}
+                  stroke={4}
+                  color={
+                    totalSessions === 0
+                      ? colors.textMuted
+                      : overallPct >= 75
+                      ? colors.emerald
+                      : colors.warning
+                  }
+                  trackColor={isLightMode ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.08)'}
                 />
-                <View style={styles.quickCardText}>
-                  <Text style={[styles.quickCardLabel, { color: colors.textMuted }]}>
+                <View style={styles.kpiTextContainer}>
+                  <Text style={[styles.kpiLabel, { color: colors.textMuted }]}>
                     Overall Standing
                   </Text>
                   <Text
                     style={[
-                      styles.quickCardVal,
+                      styles.kpiValue,
                       {
-                        color: totalSessions === 0 ? colors.textPrimary : overallPct >= 75 ? colors.emerald : colors.warning,
+                        color:
+                          totalSessions === 0
+                            ? colors.textPrimary
+                            : overallPct >= 75
+                            ? colors.emerald
+                            : colors.warning,
                       },
                     ]}
                   >
@@ -287,11 +541,11 @@ export const StudentDashboard: React.FC = () => {
               {/* Courses at Risk Card */}
               <TouchableOpacity
                 style={[
-                  styles.quickCard,
+                  styles.kpiCard,
                   {
-                    backgroundColor: colors.glassC,
-                    borderColor: colors.glassBorder,
-                    opacity: atRiskCount === 0 ? 0.75 : 1,
+                    backgroundColor: isLightMode ? '#F8FAFC' : colors.glassC,
+                    borderColor: isLightMode ? '#E2E8F0' : colors.glassBorder,
+                    opacity: atRiskCount === 0 ? 0.9 : 1,
                   },
                 ]}
                 onPress={() => {
@@ -300,13 +554,20 @@ export const StudentDashboard: React.FC = () => {
                     setActiveView('attendance');
                   }
                 }}
-                activeOpacity={atRiskCount > 0 ? 0.8 : 1}
+                activeOpacity={atRiskCount > 0 ? 0.75 : 1}
               >
                 <View
                   style={[
-                    styles.riskIconBox,
+                    styles.riskIconCircle,
                     {
-                      backgroundColor: atRiskCount > 0 ? 'rgba(248,113,113,0.15)' : 'rgba(79,142,247,0.12)',
+                      backgroundColor:
+                        atRiskCount > 0
+                          ? isLightMode
+                            ? 'rgba(220, 38, 38, 0.12)'
+                            : 'rgba(248, 113, 113, 0.15)'
+                          : isLightMode
+                          ? 'rgba(37, 99, 235, 0.08)'
+                          : 'rgba(79, 142, 247, 0.12)',
                     },
                   ]}
                 >
@@ -316,21 +577,25 @@ export const StudentDashboard: React.FC = () => {
                     <CheckCircle2 size={22} color={colors.emerald} />
                   )}
                 </View>
-                <View style={styles.quickCardText}>
-                  <Text style={[styles.quickCardLabel, { color: colors.textMuted }]}>
+                <View style={styles.kpiTextContainer}>
+                  <Text style={[styles.kpiLabel, { color: colors.textMuted }]}>
                     Courses at Risk
                   </Text>
-                  <Text
-                    style={[
-                      styles.quickCardVal,
-                      { color: atRiskCount > 0 ? colors.danger : colors.emerald },
-                    ]}
-                  >
-                    {atRiskCount}{' '}
+                  <View style={styles.riskValueRow}>
+                    <Text
+                      style={[
+                        styles.kpiValue,
+                        { color: atRiskCount > 0 ? colors.danger : colors.emerald },
+                      ]}
+                    >
+                      {atRiskCount}
+                    </Text>
                     {atRiskCount === 0 && (
-                      <Text style={{ fontSize: 11, fontWeight: 'normal' }}>Safe</Text>
+                      <Text style={[styles.safeTag, { color: colors.emerald }]}>
+                        Safe
+                      </Text>
                     )}
-                  </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             </View>
@@ -347,12 +612,16 @@ export const StudentDashboard: React.FC = () => {
                       ? 'rgba(79, 142, 247, 0.12)'
                       : statusMsg.type === 'error'
                       ? 'rgba(248, 113, 113, 0.12)'
+                      : statusMsg.type === 'warning'
+                      ? isLightMode ? 'rgba(217, 119, 6, 0.12)' : 'rgba(251, 191, 36, 0.15)'
                       : 'rgba(167, 139, 250, 0.12)',
                   borderColor:
                     statusMsg.type === 'success'
                       ? colors.emerald
                       : statusMsg.type === 'error'
                       ? colors.danger
+                      : statusMsg.type === 'warning'
+                      ? colors.warning
                       : colors.purple,
                 },
               ]}
@@ -361,6 +630,8 @@ export const StudentDashboard: React.FC = () => {
                 <CheckCircle size={16} color={colors.emerald} style={{ flexShrink: 0 }} />
               ) : statusMsg.type === 'error' ? (
                 <AlertCircle size={16} color={colors.danger} style={{ flexShrink: 0 }} />
+              ) : statusMsg.type === 'warning' ? (
+                <AlertTriangle size={16} color={colors.warning} style={{ flexShrink: 0 }} />
               ) : (
                 <Info size={16} color={colors.purple} style={{ flexShrink: 0 }} />
               )}
@@ -373,6 +644,8 @@ export const StudentDashboard: React.FC = () => {
                         ? colors.emerald
                         : statusMsg.type === 'error'
                         ? colors.danger
+                        : statusMsg.type === 'warning'
+                        ? colors.warning
                         : colors.purple,
                   },
                 ]}
@@ -462,10 +735,27 @@ export const StudentDashboard: React.FC = () => {
                     Select a course to view history
                   </Text>
                 </View>
+                {/* B6: Share Attendance Report button */}
+                <TouchableOpacity
+                  style={[
+                    styles.shareReportBtn,
+                    {
+                      borderColor: colors.glassBorder,
+                      backgroundColor: colors.glassC,
+                    },
+                  ]}
+                  onPress={handleShareSummary}
+                  disabled={courses.length === 0}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Share attendance report"
+                >
+                  <Share2 size={14} color={colors.purple} />
+                  <Text style={[styles.shareReportText, { color: colors.purple }]}>Share</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Filter Toggles */}
-              <View style={[styles.filterRow, { borderColor: colors.glassBorder }]}>
+              <View style={[styles.filterRow, { backgroundColor: colors.glassC, borderColor: colors.glassBorder }]}>
                 <TouchableOpacity
                   style={[
                     styles.filterBtn,
@@ -509,52 +799,27 @@ export const StudentDashboard: React.FC = () => {
                   No courses found in this category.
                 </Text>
               ) : (
-                filteredCourses.map((course) => (
-                  <TouchableOpacity
-                    key={course.course_id}
-                    style={[
-                      styles.courseRow,
-                      {
-                        backgroundColor: colors.glassC,
-                        borderColor: course.is_at_risk ? 'rgba(248,113,113,0.3)' : colors.glassBorder,
-                      },
-                    ]}
-                    onPress={() => {
-                      setSelectedCourse(course);
-                      setActiveView('detail');
-                      fetchCourseDetail(course.course_id);
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    <ProgressRing
-                      pct={course.attendance_percentage}
-                      size={48}
-                      color={pctColor(course.attendance_percentage)}
+                /* Virtualized Courses List with Memoized CourseRow */
+                <FlatList
+                  data={filteredCourses}
+                  keyExtractor={(item) => String(item.course_id)}
+                  scrollEnabled={false}
+                  removeClippedSubviews={false}
+                  initialNumToRender={8}
+                  maxToRenderPerBatch={10}
+                  ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+                  renderItem={({ item: course }) => (
+                    <CourseRow
+                      course={course}
+                      onPress={(c) => {
+                        setSelectedCourse(c);
+                        setActiveView('detail');
+                        fetchCourseDetail(c.course_id);
+                      }}
+                      colors={colors}
                     />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={[styles.courseName, { color: colors.textPrimary }]}>
-                        {course.course_name}
-                      </Text>
-                      <Text style={[styles.courseInst, { color: colors.textMuted }]}>
-                        {course.institution_name || '—'}
-                      </Text>
-                      <Text style={[styles.courseSessions, { color: colors.textSecondary }]}>
-                        {course.attended_count}/{course.total_sessions} sessions
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text style={[styles.coursePct, { color: pctColor(course.attendance_percentage) }]}>
-                        {course.attendance_percentage}%
-                      </Text>
-                      {course.is_at_risk && (
-                        <Text style={[styles.atRiskLabel, { color: colors.danger }]}>
-                          At Risk
-                        </Text>
-                      )}
-                    </View>
-                    <ChevronRight size={18} color={colors.textMuted} />
-                  </TouchableOpacity>
-                ))
+                  )}
+                />
               )}
             </View>
           )}
@@ -571,11 +836,14 @@ export const StudentDashboard: React.FC = () => {
               ]}
             >
               <View style={styles.detailHeaderRow}>
-                <ProgressRing
-                  pct={selectedCourse.attendance_percentage}
-                  size={52}
-                  color={pctColor(selectedCourse.attendance_percentage)}
-                />
+                <View
+                  style={[
+                    styles.courseIconBox,
+                    { width: 44, height: 44, backgroundColor: `${pctColor(selectedCourse.attendance_percentage)}18` },
+                  ]}
+                >
+                  <BookOpen size={22} color={pctColor(selectedCourse.attendance_percentage)} />
+                </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.panelTitle, { color: colors.textPrimary }]}>
                     {selectedCourse.course_name}
@@ -614,52 +882,18 @@ export const StudentDashboard: React.FC = () => {
               {detailLoading ? (
                 <ActivityIndicator color={colors.emerald} style={{ padding: 24 }} />
               ) : courseDetail?.session_log?.length ? (
-                courseDetail.session_log.map((s) => (
-                  <View
-                    key={s.session_id}
-                    style={[
-                      styles.sessionRow,
-                      {
-                        backgroundColor: s.present ? 'rgba(79, 142, 247, 0.06)' : 'rgba(248, 113, 113, 0.05)',
-                        borderColor: s.present ? 'rgba(79, 142, 247, 0.20)' : 'rgba(248, 113, 113, 0.15)',
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.sessionIconBox,
-                        {
-                          backgroundColor: s.present ? 'rgba(79, 142, 247, 0.15)' : 'rgba(248, 113, 113, 0.12)',
-                        },
-                      ]}
-                    >
-                      {s.present ? (
-                        <CheckCircle size={16} color={colors.emerald} />
-                      ) : (
-                        <XCircle size={16} color={colors.danger} />
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.sessionTitle, { color: colors.textPrimary }]}>
-                        Session {s.session_number ?? s.session_id}
-                      </Text>
-                      <View style={styles.sessionMetaRow}>
-                        <Clock size={11} color={colors.textMuted} />
-                        <Text style={[styles.sessionDate, { color: colors.textMuted }]}>
-                          {s.date} at {s.time}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text
-                      style={[
-                        styles.sessionStatus,
-                        { color: s.present ? colors.emerald : colors.danger },
-                      ]}
-                    >
-                      {s.present ? 'Present' : 'Absent'}
-                    </Text>
-                  </View>
-                ))
+                <FlatList
+                  data={courseDetail.session_log}
+                  keyExtractor={(item) => String(item.session_id)}
+                  scrollEnabled={false}
+                  removeClippedSubviews={false}
+                  initialNumToRender={10}
+                  maxToRenderPerBatch={15}
+                  ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+                  renderItem={({ item: s }) => (
+                    <SessionLogRow session={s} colors={colors} />
+                  )}
+                />
               ) : (
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                   No sessions have been conducted for this course yet.
@@ -674,6 +908,13 @@ export const StudentDashboard: React.FC = () => {
           visible={scannerVisible}
           onClose={() => setScannerVisible(false)}
           onScanned={handleQRScanned}
+        />
+
+        {/* Floating Bottom Tab Navigation */}
+        <BottomTabBar
+          tabs={bottomTabs}
+          activeTab={activeView === 'detail' ? 'attendance' : activeView}
+          onSelectTab={handleTabPress}
         />
       </SafeAreaView>
     </AppBackground>
@@ -690,45 +931,42 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 16,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   heroCard: {
-    borderRadius: Radius.lg,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 18,
-    gap: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 3,
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
+    padding: 20,
+    gap: 4,
+    shadowColor: '#0B1340',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 16,
+    elevation: 2,
   },
   heroGreeting: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
+    lineHeight: 32,
   },
   heroSub: {
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 18,
   },
   statusPillsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginTop: 10,
   },
   onlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
     borderWidth: 1,
   },
   onlineBadgeText: {
@@ -736,47 +974,59 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   queuedBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   queuedText: {
     fontSize: 11,
     fontWeight: '700',
   },
-  quickCardsRow: {
+  kpiRow: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 16,
   },
-  quickCard: {
+  kpiCard: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: Radius.md,
-    padding: 12,
-    borderWidth: 1,
     gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  quickCardText: {
+  kpiTextContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
-  quickCardLabel: {
-    fontSize: 10,
+  kpiLabel: {
+    fontSize: 11,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    lineHeight: 14,
   },
-  quickCardVal: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 1,
+  kpiValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 2,
+    lineHeight: 24,
   },
-  riskIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  riskIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  riskValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  safeTag: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   statusBanner: {
     flexDirection: 'row',
@@ -837,7 +1087,6 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     padding: 4,
     borderRadius: Radius.md,
     borderWidth: 1,
@@ -859,6 +1108,13 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: Radius.md,
     borderWidth: 1,
+  },
+  courseIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   courseName: {
     fontSize: FontSize.md,
@@ -943,5 +1199,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: 24,
     fontSize: 13,
+  },
+  shareReportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 1,
+  },
+  shareReportText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

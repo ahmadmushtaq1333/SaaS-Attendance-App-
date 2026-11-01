@@ -166,13 +166,23 @@ class BulkNotifyTierView(APIView):
         if not target_student_emails:
             return Response({"message": f"No students found in the {tier} tier."}, status=status.HTTP_200_OK)
 
+        # Feature 8.2: Async Task Queue (Celery + Redis)
+        # Offloads email dispatch from the HTTP cycle with automatic sync fallback
+        task_id = None
         try:
-            send_tier_notification(course, tier, target_student_emails)
-        except Exception as e:
-            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            from .tasks import send_tier_notification_async
+            task = send_tier_notification_async.delay(course.id, tier, target_student_emails)
+            task_id = str(task.id)
+        except Exception:
+            try:
+                send_tier_notification(course, tier, target_student_emails)
+                task_id = "sync_fallback"
+            except Exception as e:
+                return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
             "message": f"Successfully notified {len(target_student_emails)} students in the {tier} tier.",
+            "task_id": task_id,
             "notified": target_student_emails,  # lets the frontend mark per-row "✓ sent"
         })
 
@@ -214,20 +224,68 @@ class NotifyStudentView(APIView):
         except User.DoesNotExist:
             return Response({"error": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        from apps.reports.services import notify_student_attendance
-        
+        # Feature 8.2: Async Task Queue (Celery + Redis)
+        task_id = None
         try:
-            tier = notify_student_attendance(course, student)
-        except Exception as e:
-            return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        if not tier:
-            return Response({"message": "Student meets the attendance threshold — no notice needed."}, status=status.HTTP_200_OK)
+            from .tasks import notify_student_attendance_async
+            task = notify_student_attendance_async.delay(course.id, student.id)
+            task_id = str(task.id)
+        except Exception:
+            from apps.reports.services import notify_student_attendance
+            try:
+                tier = notify_student_attendance(course, student)
+                task_id = "sync_fallback"
+            except Exception as e:
+                return Response({"error": f"Failed to send email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
-            "message": f"Notice sent to {student.email} ({tier} tier).",
-            "tier": tier,
+            "message": f"Notice queued for {student.email}.",
+            "task_id": task_id,
         })
+
+
+class AsyncTaskStatusView(APIView):
+    """
+    Checks the status and result of an asynchronous background Celery task.
+    GET /api/reports/task-status/<task_id>/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, task_id):
+        if not task_id:
+            return Response({"error": "task_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if task_id == "sync_fallback":
+            return Response({
+                "task_id": task_id,
+                "status": "SUCCESS",
+                "ready": True,
+                "result": {"success": True, "executed": "synchronously"},
+            })
+
+        try:
+            from celery.result import AsyncResult
+            async_result = AsyncResult(task_id)
+            response_data = {
+                "task_id": task_id,
+                "status": async_result.status,
+                "ready": async_result.ready(),
+            }
+
+            if async_result.successful():
+                response_data["result"] = async_result.result
+            elif async_result.failed():
+                response_data["error"] = str(async_result.result)
+
+            return Response(response_data)
+        except Exception as exc:
+            # Resilient fallback if Redis backend is temporarily offline
+            return Response({
+                "task_id": task_id,
+                "status": "PENDING",
+                "ready": False,
+                "detail": "Task status querying fallback (broker offline or task pending)",
+            })
 
 
 

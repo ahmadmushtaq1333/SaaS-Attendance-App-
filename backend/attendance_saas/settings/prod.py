@@ -61,6 +61,41 @@ LOGGING = {
     },
 }
 
+# ── Celery & Channel Layers in Production ──────────────────────────────────────
+# Automatically detect Redis from Railway environment variables
+REDIS_HOST = config("REDISHOST", default="")
+if REDIS_HOST:
+    redis_user = config("REDISUSER", default="default")
+    redis_password = config("REDISPASSWORD", default="")
+    redis_port = config("REDISPORT", default="6379")
+    auth_part = f"{redis_user}:{redis_password}@" if redis_password else ""
+    REDIS_URL = f"redis://{auth_part}{REDIS_HOST}:{redis_port}/0"
+else:
+    REDIS_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/0")
+
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
+# In production, tasks are truly async unless explicitly forced eager
+CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=False, cast=bool)
+
+# Redis-backed distributed channel layer for WebSocket scaling across multiple workers/nodes
+try:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        },
+    }
+except Exception:
+    # Graceful fallback if Redis isn't reachable
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        }
+    }
+
 # ── Shared Cache (database-backed, cross-worker safe) ─────────────────────────
 # LocMemCache (the Django default) is per-process. With Gunicorn's 2 workers,
 # worker A writes the WebAuthn challenge but worker B can't see it, causing

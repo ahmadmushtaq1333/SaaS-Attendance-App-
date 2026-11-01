@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,11 +18,13 @@ import {
   BarChart2,
   ChevronRight,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react-native';
 import { useAuthStore } from '@/entities/user';
 import { teacherApi, Course, Session } from '@/entities/session/api/teacher-api';
 import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
-import { AppBackground, GlassNavBar } from '@/shared/ui';
+import { AppBackground, GlassNavBar, BottomTabBar, TabItem } from '@/shared/ui';
+import { haptic } from '@/shared/lib/haptics';
 import { LiveSessionPanel } from './LiveSessionPanel';
 import { CoursesPanel } from './CoursesPanel';
 import { ReportsPanel } from './ReportsPanel';
@@ -82,29 +84,61 @@ export const TeacherDashboard: React.FC = () => {
     }
   };
 
-  const handleStartSession = async (courseId: number, durationMins: number) => {
+  const handleStartSession = useCallback(async (courseId: number, durationMins: number) => {
     try {
+      haptic.medium();
       const session = await teacherApi.startSession(courseId, durationMins);
       setActiveSession(session);
       setActiveView('live');
+      haptic.success();
     } catch (err) {
+      haptic.error();
       alert('Failed to start session');
     }
-  };
+  }, []);
 
-  const handleStopSession = async () => {
+  const handleStopSession = useCallback(async () => {
     if (!activeSession) return;
     try {
+      haptic.warning();
       await teacherApi.stopSession(activeSession.id);
       setActiveSession(null);
       setActiveView('grid');
       fetchInitialData();
+      haptic.success();
     } catch (err) {
+      haptic.error();
       alert('Failed to stop session');
     }
-  };
+  }, [activeSession]);
 
+  const handleSelectBottomTab = useCallback((tabId: string) => {
+    haptic.light();
+    if (tabId === 'reports') {
+      if (courses.length > 0) {
+        if (!selectedCourseId) {
+          setSelectedCourseId(courses[0].id);
+        }
+        setActiveView('reports');
+      } else {
+        alert('No assigned courses found.');
+      }
+    } else {
+      setActiveView(tabId as ViewMode);
+    }
+  }, [courses, selectedCourseId]);
+
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const displayName = user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Teacher';
+
+  const bottomTabs = useMemo<TabItem[]>(() => [
+    { id: 'grid', label: 'Overview', icon: Home },
+    { id: 'live', label: 'Live QR', icon: Zap, badge: activeSession ? '•' : undefined },
+    { id: 'courses', label: 'Courses', icon: BookOpen, badge: courses.length > 0 ? courses.length : undefined },
+    { id: 'reports', label: 'Reports', icon: BarChart2 },
+    { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
+  ], [activeSession, courses.length]);
 
   if (loading) {
     return (
@@ -119,29 +153,23 @@ export const TeacherDashboard: React.FC = () => {
     );
   }
 
-  // --- SUB-PANEL RENDERING ---
-  if (activeView === 'live') {
-    const activeCourseMeta = courses.find((c) => c.id === activeSession?.course);
-    return (
-      <AppBackground>
-        <SafeAreaView style={styles.safeArea}>
-          <GlassNavBar />
+  return (
+    <AppBackground>
+      <SafeAreaView style={styles.safeArea}>
+        <GlassNavBar />
+
+        {/* --- VIEW CONTENT --- */}
+        {activeView === 'live' && (
           <LiveSessionPanel
-            session={activeSession!}
-            linkedCourses={activeCourseMeta?.linked_courses ?? []}
+            session={activeSession}
+            linkedCourses={courses.find((c) => c.id === activeSession?.course)?.linked_courses ?? []}
             onBack={() => setActiveView('grid')}
             onStopSession={handleStopSession}
+            onGoToCourses={() => setActiveView('courses')}
           />
-        </SafeAreaView>
-      </AppBackground>
-    );
-  }
+        )}
 
-  if (activeView === 'courses') {
-    return (
-      <AppBackground>
-        <SafeAreaView style={styles.safeArea}>
-          <GlassNavBar />
+        {activeView === 'courses' && (
           <CoursesPanel
             courses={courses}
             onBack={() => setActiveView('grid')}
@@ -152,49 +180,33 @@ export const TeacherDashboard: React.FC = () => {
               setActiveView('reports');
             }}
           />
-        </SafeAreaView>
-      </AppBackground>
-    );
-  }
+        )}
 
-  if (activeView === 'reports' && selectedCourseId) {
-    return (
-      <AppBackground>
-        <SafeAreaView style={styles.safeArea}>
-          <GlassNavBar />
+        {activeView === 'reports' && selectedCourseId && (
           <ReportsPanel
             courseId={selectedCourseId}
             courseName={courses.find((c) => c.id === selectedCourseId)?.name}
             initialSessionId={selectedSessionId || undefined}
+            courses={courses}
+            onSelectCourse={(id) => {
+              setSelectedCourseId(id);
+              setSelectedSessionId(null);
+            }}
             onBack={() => {
               setSelectedSessionId(null);
               setActiveView('grid');
             }}
           />
-        </SafeAreaView>
-      </AppBackground>
-    );
-  }
+        )}
 
-  if (activeView === 'alerts') {
-    return (
-      <AppBackground>
-        <SafeAreaView style={styles.safeArea}>
-          <GlassNavBar />
+        {activeView === 'alerts' && (
           <AlertsPanel
             courses={courses}
             onBack={() => setActiveView('grid')}
           />
-        </SafeAreaView>
-      </AppBackground>
-    );
-  }
+        )}
 
-  if (activeView === 'history') {
-    return (
-      <AppBackground>
-        <SafeAreaView style={styles.safeArea}>
-          <GlassNavBar />
+        {activeView === 'history' && (
           <HistoryPanel
             sessions={recentSessions}
             onBack={() => setActiveView('grid')}
@@ -204,188 +216,185 @@ export const TeacherDashboard: React.FC = () => {
               setActiveView('reports');
             }}
           />
-        </SafeAreaView>
-      </AppBackground>
-    );
-  }
+        )}
 
-  // --- MAIN GRID OVERVIEW ---
-  return (
-    <AppBackground>
-      <SafeAreaView style={styles.safeArea}>
-        <GlassNavBar
-          tabs={[
-            { id: 'grid', label: 'Overview', icon: Home },
-            { id: 'reports', label: 'Reports', icon: BarChart2 },
-          ]}
-          activeTab={activeView === 'reports' ? 'reports' : 'grid'}
-          onSelectTab={(tabId) => {
-            if (tabId === 'reports') {
-              if (courses.length > 0) {
-                setSelectedCourseId(courses[0].id);
-                setActiveView('reports');
-              } else {
-                alert('No assigned courses found.');
-              }
-            } else {
-              setActiveView('grid');
-            }
-          }}
-        />
-
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Hero Header Card */}
-          <View
-            style={[
-              styles.heroCard,
-              {
-                backgroundColor: colors.cardBg,
-                borderColor: colors.glassBorder,
-              },
-            ]}
+        {activeView === 'grid' && (
+          <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.heroTop}>
-              <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
-                Hello, {displayName} 👋
-              </Text>
-              <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-                {activeSession
-                  ? '⚡ A live attendance session is currently running.'
-                  : 'No active session — pick a course and start one.'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Action Cards Grid */}
-          <View style={styles.cardsGrid}>
-            {/* Live Session Card */}
-            <TouchableOpacity
+            {/* Hero Header Card */}
+            <View
               style={[
-                styles.actionCard,
+                styles.heroCard,
                 {
                   backgroundColor: colors.cardBg,
-                  borderColor: activeSession ? colors.emerald : colors.glassBorder,
+                  borderColor: colors.glassBorder,
                 },
               ]}
-              onPress={() => {
-                if (activeSession) setActiveView('live');
-                else alert('No active session. Please start one from My Courses.');
-              }}
-              activeOpacity={0.8}
             >
-              <View style={[styles.iconBox, { backgroundColor: `${colors.emerald}20` }]}>
-                <Zap size={22} color={colors.emerald} />
-              </View>
-              <View style={styles.cardContent}>
-                <View style={styles.cardTitleRow}>
-                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                    Live Session
+              <View style={styles.heroTop}>
+                <View style={styles.greetingRow}>
+                  <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>
+                    {timeGreeting}, {displayName} 👋
                   </Text>
-                  {activeSession && (
-                    <View style={[styles.liveBadge, { backgroundColor: `${colors.emerald}25` }]}>
+                  {activeSession ? (
+                    <View style={[styles.activeLivePill, { backgroundColor: `${colors.emerald}20`, borderColor: colors.emerald }]}>
                       <View style={[styles.liveDot, { backgroundColor: colors.emerald }]} />
-                      <Text style={[styles.liveText, { color: colors.emerald }]}>LIVE</Text>
+                      <Text style={[styles.activeLiveText, { color: colors.emerald }]}>SESSION ACTIVE</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.activeLivePill, { backgroundColor: colors.glassC, borderColor: colors.glassBorder }]}>
+                      <View style={[styles.liveDot, { backgroundColor: colors.textMuted }]} />
+                      <Text style={[styles.activeLiveText, { color: colors.textMuted }]}>IDLE</Text>
                     </View>
                   )}
                 </View>
-                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                  Present QR code and monitor attendance
+                <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
+                  {activeSession
+                    ? 'A live attendance session is active. Tap below to present QR or view roster.'
+                    : 'All systems ready. Pick a course to launch a dynamic QR attendance session.'}
                 </Text>
               </View>
-              <ChevronRight size={18} color={colors.textMuted} />
-            </TouchableOpacity>
+            </View>
 
-            {/* My Courses Card */}
-            <TouchableOpacity
-              style={[
-                styles.actionCard,
-                {
-                  backgroundColor: colors.cardBg,
-                  borderColor: colors.glassBorder,
-                },
-              ]}
-              onPress={() => setActiveView('courses')}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.iconBox, { backgroundColor: `${colors.purple}20` }]}>
-                <BookOpen size={22} color={colors.purple} />
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  My Courses
-                </Text>
-                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                  View assigned courses, start sessions &amp; reports
-                </Text>
-              </View>
-              <View style={[styles.countBadge, { backgroundColor: `${colors.purple}20` }]}>
-                <Text style={[styles.countText, { color: colors.purple }]}>
-                  {courses.length}
-                </Text>
-              </View>
-            </TouchableOpacity>
+            {/* Action Cards Grid with Perfect Symmetry */}
+            <View style={styles.cardsGrid}>
+              {/* Live Session Card */}
+              <TouchableOpacity
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.cardBg,
+                    borderColor: activeSession ? colors.emerald : colors.glassBorder,
+                  },
+                ]}
+                onPress={() => {
+                  if (activeSession) setActiveView('live');
+                  else {
+                    setActiveView('courses');
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.iconBox, { backgroundColor: `${colors.emerald}20` }]}>
+                  <Zap size={22} color={colors.emerald} />
+                </View>
+                <View style={styles.cardContent}>
+                  <View style={styles.cardTitleRow}>
+                    <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                      Live Session
+                    </Text>
+                    {activeSession && (
+                      <View style={[styles.liveBadge, { backgroundColor: `${colors.emerald}25` }]}>
+                        <View style={[styles.liveDot, { backgroundColor: colors.emerald }]} />
+                        <Text style={[styles.liveText, { color: colors.emerald }]}>LIVE</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {activeSession ? 'Present rotating QR & roster' : 'Start a new session from courses'}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.textMuted} />
+              </TouchableOpacity>
 
-            {/* Attendance Alerts Card */}
-            <TouchableOpacity
-              style={[
-                styles.actionCard,
-                {
-                  backgroundColor: colors.cardBg,
-                  borderColor: colors.glassBorder,
-                },
-              ]}
-              onPress={() => setActiveView('alerts')}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.iconBox, { backgroundColor: `${colors.danger}20` }]}>
-                <AlertTriangle size={22} color={colors.danger} />
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Attendance Alerts
-                </Text>
-                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                  Students below the 75% requirement threshold
-                </Text>
-              </View>
-              <ChevronRight size={18} color={colors.textMuted} />
-            </TouchableOpacity>
+              {/* My Courses Card */}
+              <TouchableOpacity
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.glassBorder,
+                  },
+                ]}
+                onPress={() => setActiveView('courses')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.iconBox, { backgroundColor: `${colors.purple}20` }]}>
+                  <BookOpen size={22} color={colors.purple} />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                    My Courses
+                  </Text>
+                  <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                    View assigned courses &amp; launch sessions
+                  </Text>
+                </View>
+                <View style={[styles.countBadge, { backgroundColor: `${colors.purple}20` }]}>
+                  <Text style={[styles.countText, { color: colors.purple }]}>
+                    {courses.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-            {/* Session History Card */}
-            <TouchableOpacity
-              style={[
-                styles.actionCard,
-                {
-                  backgroundColor: colors.cardBg,
-                  borderColor: colors.glassBorder,
-                },
-              ]}
-              onPress={() => setActiveView('history')}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.iconBox, { backgroundColor: `${colors.cyan}20` }]}>
-                <Clock size={22} color={colors.cyan} />
-              </View>
-              <View style={styles.cardContent}>
-                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Session History
-                </Text>
-                <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>
-                  Review recent attendance records
-                </Text>
-              </View>
-              <View style={[styles.countBadge, { backgroundColor: `${colors.cyan}20` }]}>
-                <Text style={[styles.countText, { color: colors.cyan }]}>
-                  {recentSessions.length}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+              {/* Attendance Alerts Card */}
+              <TouchableOpacity
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.glassBorder,
+                  },
+                ]}
+                onPress={() => setActiveView('alerts')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.iconBox, { backgroundColor: `${colors.danger}20` }]}>
+                  <AlertTriangle size={22} color={colors.danger} />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                    Attendance Alerts
+                  </Text>
+                  <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                    Students below the 75% threshold
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+
+              {/* Session History Card */}
+              <TouchableOpacity
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: colors.cardBg,
+                    borderColor: colors.glassBorder,
+                  },
+                ]}
+                onPress={() => setActiveView('history')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.iconBox, { backgroundColor: `${colors.cyan}20` }]}>
+                  <Clock size={22} color={colors.cyan} />
+                </View>
+                <View style={styles.cardContent}>
+                  <Text style={[styles.cardTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                    Session History
+                  </Text>
+                  <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                    Review past attendance logs
+                  </Text>
+                </View>
+                <View style={[styles.countBadge, { backgroundColor: `${colors.cyan}20` }]}>
+                  <Text style={[styles.countText, { color: colors.cyan }]}>
+                    {recentSessions.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        )}
+
+        {/* Floating Frosted Glass Bottom Navigation Bar */}
+        <BottomTabBar
+          tabs={bottomTabs}
+          activeTab={activeView === 'history' ? 'grid' : activeView}
+          onSelectTab={handleSelectBottomTab}
+        />
       </SafeAreaView>
     </AppBackground>
   );
@@ -401,24 +410,45 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     gap: 16,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   heroCard: {
     borderRadius: Radius.lg,
     borderWidth: 1,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowColor: '#07111F',
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 1,
   },
   heroTop: {
-    gap: 4,
+    gap: 8,
+  },
+  greetingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   heroTitle: {
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.3,
+  },
+  activeLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+  },
+  activeLiveText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   heroSub: {
     fontSize: 13,
@@ -434,15 +464,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     gap: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    minHeight: 84,
+    shadowColor: '#07111F',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 1,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.md,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },

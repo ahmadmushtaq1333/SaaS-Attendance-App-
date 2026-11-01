@@ -11,11 +11,18 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  redis:
+    image: redis:7-alpine
+    container_name: attendance_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
   backend:
     build: ./backend
     container_name: attendance_django_backend
     restart: always
-    command: gunicorn --bind 0.0.0.0:8000 attendance_saas.wsgi:application
+    command: daphne -b 0.0.0.0 -p 8000 attendance_saas.asgi:application
     volumes:
       - ./backend:/app
     ports:
@@ -28,9 +35,35 @@ services:
       - DB_PASSWORD=rootpassword
       - DB_HOST=db
       - DB_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - ALLOWED_HOSTS=*
     depends_on:
       - db
+      - redis
+
+  celery_worker:
+    build: ./backend
+    container_name: attendance_celery_worker
+    restart: always
+    command: celery -A attendance_saas worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    environment:
+      - SECRET_KEY=prod-secret-key-123456
+      - DJANGO_SETTINGS_MODULE=attendance_saas.settings.prod
+      - DB_NAME=attendance_db
+      - DB_USER=root
+      - DB_PASSWORD=rootpassword
+      - DB_HOST=db
+      - DB_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
 
   frontend:
     build: ./frontend

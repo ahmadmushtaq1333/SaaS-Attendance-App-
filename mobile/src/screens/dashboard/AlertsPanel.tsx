@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  FlatList,
 } from 'react-native';
 import {
   AlertTriangle,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react-native';
 import { Course, teacherApi } from '@/entities/session/api/teacher-api';
 import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
+import { haptic } from '@/shared/lib/haptics';
 
 interface AlertsPanelProps {
   courses: Course[];
@@ -28,6 +30,69 @@ const TIERS = [
   { key: 'SEVERE', label: 'Severe', range: '25% – 50%', color: '#ea580c', bg: 'rgba(234,88,12,0.08)' },
   { key: 'WARNING', label: 'Warning', range: '50% – 75%', color: '#ca8a04', bg: 'rgba(202,138,4,0.08)' },
 ];
+
+interface StudentAlertRowProps {
+  std: any;
+  color: string;
+  bg: string;
+  isNotifying: boolean;
+  isNotified: boolean;
+  onNotify: (id: number, email: string) => void;
+  colors: ReturnType<typeof useAppColors>;
+}
+
+const StudentAlertRow = React.memo<StudentAlertRowProps>(({
+  std,
+  color,
+  bg,
+  isNotifying,
+  isNotified,
+  onNotify,
+  colors,
+}) => {
+  const regNo = std.registration_number || (std.email ? std.email.split('@')[0] : '—');
+
+  return (
+    <View style={[styles.studentRow, { backgroundColor: bg, borderColor: color + '30' }]}>
+      <View style={{ flex: 1, marginRight: 8 }}>
+        <Text style={[styles.studentName, { color: colors.textPrimary }]} numberOfLines={1}>
+          {std.full_name || std.email}
+        </Text>
+        <Text style={[styles.studentSub, { color: colors.textMuted }]}>Reg: {regNo}</Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={[styles.pctBadge, { backgroundColor: color + '22' }]}>
+          <Text style={[styles.pctText, { color }]}>
+            {typeof std.attendance_percentage === 'number'
+              ? std.attendance_percentage.toFixed(1)
+              : std.attendance_percentage}%
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.miniNoticeBtn, { borderColor: color + '50' }]}
+          onPress={() => onNotify(std.id, std.email)}
+          disabled={isNotifying}
+          activeOpacity={0.7}
+        >
+          {isNotifying ? (
+            <ActivityIndicator size="small" color={color} />
+          ) : (
+            <View style={styles.miniNoticeInner}>
+              <Bell size={10} color={color} />
+              <Text style={[styles.miniNoticeText, { color }]}>
+                {isNotified ? 'Sent' : 'Alert'}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+StudentAlertRow.displayName = 'StudentAlertRow';
 
 export const AlertsPanel: React.FC<AlertsPanelProps> = ({ courses, onBack }) => {
   const colors = useAppColors();
@@ -58,31 +123,37 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ courses, onBack }) => 
     }
   };
 
-  const sendStudentNotice = async (studentId: number, email: string) => {
+  const sendStudentNotice = useCallback(async (studentId: number, email: string) => {
     if (!selectedCourseId) return;
+    haptic.light();
     setNotifyingStudentId(studentId);
     try {
       await teacherApi.notifyStudent(selectedCourseId, studentId);
       setNotifiedStudentIds((prev) => new Set(prev).add(studentId));
+      haptic.success();
       Alert.alert('Notice Sent', `Warning notice sent to ${email}`);
     } catch {
+      haptic.error();
       Alert.alert('Error', `Failed to send notice to ${email}`);
     } finally {
       setNotifyingStudentId(null);
     }
-  };
+  }, [selectedCourseId]);
 
-  const sendBulkNotice = async (tier: string) => {
+  const sendBulkNotice = useCallback(async (tier: string) => {
     if (!selectedCourseId) return;
+    haptic.medium();
     setTierState((prev) => ({ ...prev, [tier]: 'sending' }));
     try {
       await teacherApi.sendBulkNotice(selectedCourseId, tier);
       setTierState((prev) => ({ ...prev, [tier]: 'sent' }));
+      haptic.success();
     } catch {
+      haptic.error();
       Alert.alert('Error', `Failed to send bulk notice for ${tier} tier.`);
       setTierState((prev) => ({ ...prev, [tier]: 'idle' }));
     }
-  };
+  }, [selectedCourseId]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgDeep }]}>
@@ -192,52 +263,28 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ courses, onBack }) => 
                   </TouchableOpacity>
                 </View>
 
-                {/* Student rows */}
+                {/* Virtualized Student Rows with Memoized Row Items */}
                 <View style={styles.studentList}>
-                  {students.map((std: any) => {
-                    const regNo = std.registration_number || (std.email ? std.email.split('@')[0] : '—');
-                    const isNotifying = notifyingStudentId === std.id;
-                    const isNotified = notifiedStudentIds.has(std.id);
-
-                    return (
-                      <View key={std.id} style={[styles.studentRow, { backgroundColor: bg, borderColor: color + '30' }]}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={[styles.studentName, { color: colors.textPrimary }]} numberOfLines={1}>
-                            {std.full_name || std.email}
-                          </Text>
-                          <Text style={[styles.studentSub, { color: colors.textMuted }]}>Reg: {regNo}</Text>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <View style={[styles.pctBadge, { backgroundColor: color + '22' }]}>
-                            <Text style={[styles.pctText, { color }]}>
-                              {typeof std.attendance_percentage === 'number'
-                                ? std.attendance_percentage.toFixed(1)
-                                : std.attendance_percentage}%
-                            </Text>
-                          </View>
-
-                          <TouchableOpacity
-                            style={[styles.miniNoticeBtn, { borderColor: color + '50' }]}
-                            onPress={() => sendStudentNotice(std.id, std.email)}
-                            disabled={isNotifying}
-                            activeOpacity={0.7}
-                          >
-                            {isNotifying ? (
-                              <ActivityIndicator size="small" color={color} />
-                            ) : (
-                              <View style={styles.miniNoticeInner}>
-                                <Bell size={10} color={color} />
-                                <Text style={[styles.miniNoticeText, { color }]}>
-                                  {isNotified ? 'Sent' : 'Alert'}
-                                </Text>
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })}
+                  <FlatList
+                    data={students}
+                    keyExtractor={(item) => String(item.id)}
+                    scrollEnabled={false}
+                    removeClippedSubviews={false}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={15}
+                    ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+                    renderItem={({ item: std }) => (
+                      <StudentAlertRow
+                        std={std}
+                        color={color}
+                        bg={bg}
+                        isNotifying={notifyingStudentId === std.id}
+                        isNotified={notifiedStudentIds.has(std.id)}
+                        onNotify={sendStudentNotice}
+                        colors={colors}
+                      />
+                    )}
+                  />
                 </View>
               </View>
             );

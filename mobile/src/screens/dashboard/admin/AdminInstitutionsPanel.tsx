@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,9 +17,11 @@ import {
   Semester,
   Section,
 } from '@/entities/admin';
-import { Colors, Radius, FontSize } from '@/shared/constants/theme';
+import { useAppColors, Radius, FontSize } from '@/shared/constants/theme';
 
 export const AdminInstitutionsPanel: React.FC = () => {
+  const colors = useAppColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedInsts, setExpandedInsts] = useState<Record<number, boolean>>({});
@@ -212,7 +214,7 @@ export const AdminInstitutionsPanel: React.FC = () => {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.cyan} />
+        <ActivityIndicator size="large" color={colors.cyan} />
       </View>
     );
   }
@@ -427,7 +429,7 @@ export const AdminInstitutionsPanel: React.FC = () => {
                   ? 'Semester Number (e.g. 1)'
                   : 'Name (e.g. Computer Science)'
               }
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={inputName}
               onChangeText={setInputName}
               keyboardType={modalType === 'sem' ? 'number-pad' : 'default'}
@@ -437,7 +439,7 @@ export const AdminInstitutionsPanel: React.FC = () => {
               <TextInput
                 style={[styles.input, { marginTop: 12 }]}
                 placeholder="Domain (optional, e.g. stanford.edu)"
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={inputDomain}
                 onChangeText={setInputDomain}
                 autoCapitalize="none"
@@ -458,7 +460,7 @@ export const AdminInstitutionsPanel: React.FC = () => {
                 disabled={saving}
               >
                 {saving ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <Text style={styles.saveText}>Save</Text>
                 )}
@@ -471,181 +473,182 @@ export const AdminInstitutionsPanel: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgDeep },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.glassBorder,
-  },
-  title: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary },
-  addInstBtn: {
-    backgroundColor: Colors.cyan,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.md,
-  },
-  addInstText: { color: Colors.bgDeep, fontWeight: '700', fontSize: FontSize.xs },
-  scrollList: { padding: 16, paddingBottom: 60, gap: 12 },
+const createStyles = (colors: ReturnType<typeof useAppColors>) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: 'transparent' },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    topBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.glassBorder,
+    },
+    title: { fontSize: FontSize.md, fontWeight: '700', color: colors.textPrimary },
+    addInstBtn: {
+      backgroundColor: colors.cyan,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: Radius.md,
+    },
+    addInstText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.xs },
+    scrollList: { padding: 16, paddingBottom: 60, gap: 12 },
 
-  instCard: {
-    backgroundColor: Colors.glassA,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    overflow: 'hidden',
-  },
-  entityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 14,
-  },
-  expandTrigger: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 },
-  expandIcon: { color: Colors.textMuted, fontSize: 10, width: 14 },
-  instName: { color: Colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
-  metaDomain: { color: Colors.cyan, fontSize: FontSize.xs, marginTop: 2 },
-  actionPills: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  iconBtn: { padding: 2 },
-  addDeptPill: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
-    color: Colors.cyan,
-    fontSize: 10,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-  },
-  addSemPill: {
-    backgroundColor: 'rgba(167,139,250,0.15)',
-    color: Colors.purple,
-    fontSize: 10,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-  },
-  addSecPill: {
-    backgroundColor: 'rgba(79,142,247,0.15)',
-    color: Colors.emerald,
-    fontSize: 10,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-  },
-  editPill: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    color: Colors.textSecondary,
-    fontSize: 10,
-    fontWeight: '600',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-  },
-  delPill: {
-    backgroundColor: 'rgba(248,113,113,0.12)',
-    color: Colors.danger,
-    fontSize: 10,
-    fontWeight: '700',
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-  },
+    instCard: {
+      backgroundColor: colors.cardBg,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+      overflow: 'hidden',
+    },
+    entityRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 14,
+    },
+    expandTrigger: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 },
+    expandIcon: { color: colors.textMuted, fontSize: 10, width: 14 },
+    instName: { color: colors.textPrimary, fontSize: FontSize.sm, fontWeight: '700' },
+    metaDomain: { color: colors.cyan, fontSize: FontSize.xs, marginTop: 2 },
+    actionPills: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    iconBtn: { padding: 2 },
+    addDeptPill: {
+      backgroundColor: `${colors.cyan}18`,
+      color: colors.cyan,
+      fontSize: 10,
+      fontWeight: '700',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+    },
+    addSemPill: {
+      backgroundColor: `${colors.purple}18`,
+      color: colors.purple,
+      fontSize: 10,
+      fontWeight: '700',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+    },
+    addSecPill: {
+      backgroundColor: `${colors.emerald}18`,
+      color: colors.emerald,
+      fontSize: 10,
+      fontWeight: '700',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+    },
+    editPill: {
+      backgroundColor: colors.glassA,
+      color: colors.textSecondary,
+      fontSize: 10,
+      fontWeight: '600',
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+    },
+    delPill: {
+      backgroundColor: 'rgba(248,113,113,0.12)',
+      color: colors.danger,
+      fontSize: 10,
+      fontWeight: '700',
+      paddingHorizontal: 6,
+      paddingVertical: 4,
+      borderRadius: Radius.sm,
+    },
 
-  deptContainer: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingLeft: 16,
-    paddingRight: 10,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  deptCard: {
-    backgroundColor: Colors.glassB,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  deptName: { color: Colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
+    deptContainer: {
+      borderTopWidth: 1,
+      borderTopColor: colors.glassBorder,
+      backgroundColor: colors.glassC,
+      paddingLeft: 16,
+      paddingRight: 10,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    deptCard: {
+      backgroundColor: colors.cardBg,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    deptName: { color: colors.textPrimary, fontSize: FontSize.xs, fontWeight: '600' },
 
-  semContainer: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    paddingLeft: 14,
-    paddingRight: 8,
-    paddingVertical: 6,
-    gap: 6,
-  },
-  semCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-  },
-  semName: { color: Colors.purple, fontSize: FontSize.xs, fontWeight: '600' },
+    semContainer: {
+      borderTopWidth: 1,
+      borderTopColor: colors.glassBorder,
+      backgroundColor: colors.glassB,
+      paddingLeft: 14,
+      paddingRight: 8,
+      paddingVertical: 6,
+      gap: 6,
+    },
+    semCard: {
+      backgroundColor: colors.glassA,
+      borderRadius: Radius.sm,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    semName: { color: colors.purple, fontSize: FontSize.xs, fontWeight: '600' },
 
-  secContainer: {
-    paddingLeft: 14,
-    paddingRight: 6,
-    paddingVertical: 6,
-    gap: 4,
-  },
-  secRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: Radius.sm,
-  },
-  secName: { color: Colors.textSecondary, fontSize: FontSize.xs },
+    secContainer: {
+      paddingLeft: 14,
+      paddingRight: 6,
+      paddingVertical: 6,
+      gap: 4,
+    },
+    secRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: colors.glassA,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      borderRadius: Radius.sm,
+    },
+    secName: { color: colors.textSecondary, fontSize: FontSize.xs },
 
-  emptySubtext: { color: Colors.textMuted, fontSize: FontSize.xs, padding: 8, fontStyle: 'italic' },
-  emptyText: { color: Colors.textMuted, textAlign: 'center', marginTop: 40 },
+    emptySubtext: { color: colors.textMuted, fontSize: FontSize.xs, padding: 8, fontStyle: 'italic' },
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    backgroundColor: Colors.cardBg,
-    borderRadius: Radius.lg,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  modalTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.textPrimary, marginBottom: 16 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: Radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    color: Colors.textPrimary,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  modalBtnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
-  cancelBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.md },
-  cancelText: { color: Colors.textSecondary, fontWeight: '600', fontSize: FontSize.sm },
-  saveBtn: {
-    backgroundColor: Colors.cyan,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: Radius.md,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  saveText: { color: Colors.bgDeep, fontWeight: '700', fontSize: FontSize.sm },
-});
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    modalContent: {
+      backgroundColor: colors.cardBgSolid,
+      borderRadius: Radius.lg,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.glassBorder,
+    },
+    modalTitle: { fontSize: FontSize.md, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+    input: {
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.md,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      color: colors.textPrimary,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: colors.inputBorder,
+    },
+    modalBtnRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
+    cancelBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.md },
+    cancelText: { color: colors.textSecondary, fontWeight: '600', fontSize: FontSize.sm },
+    saveBtn: {
+      backgroundColor: colors.cyan,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      minWidth: 70,
+      alignItems: 'center',
+    },
+    saveText: { color: '#FFFFFF', fontWeight: '700', fontSize: FontSize.sm },
+  });

@@ -11,7 +11,9 @@ import Sparkline from "../components/Sparkline";
 import DashboardActionCard from "../components/DashboardActionCard";
 import ReplicateAttendanceButton from "../components/ReplicateAttendanceButton";
 import { useQrRotation } from "../hooks/useQrRotation";
+import { useSessionWebSocket } from "../hooks/useSessionWebSocket";
 import QrZoomModal from "../components/QrZoomModal";
+import QRCodeDisplay from "../components/QRCodeDisplay";
 
 export default function Dashboard({ user, onViewReports }) {
   const [courses, setCourses] = useState([]);
@@ -52,11 +54,49 @@ export default function Dashboard({ user, onViewReports }) {
     fetchActiveAndRecentSessions();
   }, []);
 
-  const { qrCode, timeLeft, loading: qrLoading, forceRotate } = useQrRotation({
+  // Feature 8.3: Client-side QR rotation with tokenUuid
+  const { tokenUuid, qrCode, timeLeft, loading: qrLoading, forceRotate } = useQrRotation({
     sessionId: activeSession?.id ?? null,
     initialQrCode: activeSession?.qr_code || null,
+    initialTokenUuid: activeSession?.token_uuid || null,
     onSessionExpired: handleSessionExpired,
     onError: setError,
+  });
+
+  // Feature 8.1: Real-time WebSocket Live Feed
+  const handleLiveAttendanceMarked = useCallback((data) => {
+    setSessionReport((prev) => {
+      if (!prev || !prev.students) return prev;
+      const updatedStudents = prev.students.map((st) => {
+        if (st.id === data.student_id || st.email === data.student_email) {
+          const sessions = { ...(st.sessions || {}), [String(data.session_id)]: true };
+          const prevPresent = st.sessions && st.sessions[String(data.session_id)] === true;
+          const attended_count = (st.attended_count || 0) + (prevPresent ? 0 : 1);
+          return { ...st, sessions, attended_count };
+        }
+        return st;
+      });
+      return {
+        ...prev,
+        students: updatedStudents,
+      };
+    });
+  }, []);
+
+  const handleLiveRosterOverride = useCallback(() => {
+    fetchLiveReport();
+  }, []);
+
+  const handleLiveSessionStopped = useCallback(() => {
+    handleSessionExpired();
+  }, [handleSessionExpired]);
+
+  const { isConnected: isWsConnected } = useSessionWebSocket({
+    sessionId: activeSession?.id ?? null,
+    onAttendanceMarked: handleLiveAttendanceMarked,
+    onRosterOverride: handleLiveRosterOverride,
+    onSessionStopped: handleLiveSessionStopped,
+    enabled: Boolean(activeSession),
   });
 
   useEffect(() => {
@@ -67,10 +107,13 @@ export default function Dashboard({ user, onViewReports }) {
   useEffect(() => {
     if (!activeSession) { setSessionReport(null); return; }
     fetchLiveReport();
-    const interval = setInterval(fetchLiveReport, 5000);
+    // Feature 8.1: Adaptive polling. When WebSocket is connected, relax poll to 30s as a passive sanity check.
+    // When WebSocket is disconnected/reconnecting, actively poll at 5s.
+    const pollInterval = isWsConnected ? 30000 : 5000;
+    const interval = setInterval(fetchLiveReport, pollInterval);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSession]);
+  }, [activeSession, isWsConnected]);
 
   const fetchCourses = async () => {
     try {
@@ -292,6 +335,30 @@ export default function Dashboard({ user, onViewReports }) {
 
           {activeSession ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+              {/* Feature 8.1: Real-time Live Connection Pill */}
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "4px 12px",
+                borderRadius: 20,
+                background: isWsConnected ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
+                color: isWsConnected ? "var(--emerald)" : "var(--amber)",
+                border: `1px solid ${isWsConnected ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
+              }}>
+                <span style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: isWsConnected ? "var(--emerald)" : "var(--amber)",
+                  display: "inline-block",
+                  boxShadow: isWsConnected ? "0 0 8px var(--emerald)" : "none",
+                }} />
+                {isWsConnected ? "Real-time Live Stream Active" : "Polling Sync Active"}
+              </div>
+
               <div style={{ display: "flex", gap: 16, padding: "10px 16px", background: "rgba(79,142,247,0.08)", border: "1px solid rgba(79,142,247,0.2)", borderRadius: 12, width: "100%", maxWidth: 420, justifyContent: "space-around", flexWrap: "wrap" }}>
                 <div style={{ textAlign: "center" }}>
                   <div className="text-meta">Present / Total</div>
@@ -304,15 +371,15 @@ export default function Dashboard({ user, onViewReports }) {
                 </div>
               </div>
 
+              {/* Feature 8.3: Client-side rendered QR canvas */}
               <div style={{ position: "relative", cursor: "pointer" }} onClick={() => setIsZoomed(true)} title="Click to zoom QR code">
                 <div className="qr-ring" style={{ position: "relative" }}>
-                  {qrCode ? (
-                    <img src={qrCode} alt="Attendance QR Code" style={{ width: "min(210px, 70vw)", height: "auto", display: "block" }} />
-                  ) : (
-                    <div style={{ width: "min(210px, 70vw)", height: "min(210px, 70vw)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
-                      Loading QR Code…
-                    </div>
-                  )}
+                  <QRCodeDisplay
+                    value={tokenUuid}
+                    fallbackSrc={qrCode}
+                    size={210}
+                    alt="Attendance QR Code"
+                  />
                   <div style={{ position: "absolute", bottom: 10, right: 10, background: "rgba(0,0,0,0.75)", color: "white", padding: 6, borderRadius: 8, display: "flex", alignItems: "center" }}>
                     <Maximize2 size={14} />
                   </div>
@@ -520,6 +587,7 @@ export default function Dashboard({ user, onViewReports }) {
       {/* Fullscreen QR Modal */}
       {isZoomed && activeSession && (
         <QrZoomModal
+          tokenUuid={tokenUuid}
           qrCode={qrCode}
           timeLeft={timeLeft}
           loading={qrLoading}
