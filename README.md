@@ -75,6 +75,18 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 **What it does:** Keeps data organized. The system isn't just a flat list of people; it understands the real-world structure of a school.
 **How it works:** The data is structured like a tree: `Institution (e.g., MIT)` ➔ `Department (e.g., Computer Science)` ➔ `Semester (e.g., Fall 2026)` ➔ `Section (e.g., Section A)` ➔ `Students`. This ensures that a teacher in the Science department only sees their specific Science students, keeping the software clean, secure, and fast.
 
+### 6. Real-Time Live Feed (WebSockets & Django Channels)
+**What it does:** Allows instructors to watch attendance mark in real time without refreshing or constantly polling the server.
+**How it works:** When a teacher opens an active session, the browser connects to an asynchronous WebSocket stream (`/ws/sessions/<id>/`) secured via JWT cookies. As soon as a student scans the QR code, Django Channels broadcasts the scan event across the session's group. The teacher's roster instantly updates with a checkmark and live counter with zero network lag, backed by an adaptive polling fallback if the network interrupts.
+
+### 7. Asynchronous Task Queue (Celery + Redis)
+**What it does:** Decouples long-running operations—such as sending bulk attendance warning emails to dozens or hundreds of at-risk students—from the HTTP request/response cycle.
+**How it works:** When a teacher triggers tier warning emails, the HTTP endpoint delegates the dispatch to a Celery background worker queue backed by Redis and returns immediately with a task ID. Instructors never experience screen freezing or gateway timeouts, and Celery retries failed dispatches automatically.
+
+### 8. Client-Side QR Rendering Optimization
+**What it does:** Minimizes server CPU load and network payload during fast 10-second anti-cheat QR rotations.
+**How it works:** Instead of the server rendering heavy 40KB base64 PNG images every 10 seconds, the API delivers a lightweight JSON token payload. The teacher's browser dynamically renders crisp, vector-quality QR codes on an HTML5 canvas locally via the `qrcode` library, slashing bandwidth consumption by ~95%.
+
 ---
 
 ## ✨ Features
@@ -83,13 +95,15 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 | Feature | Description |
 |---------|-------------|
 | 🟢 **Live QR Sessions** | Start attendance sessions with a dynamic, zoomable QR code displayed to students |
+| ⚡ **WebSocket Live Feed** | Real-time push updates via Django Channels — scans reflect instantly on the roster with zero polling latency |
 | 🔄 **Anti-Cheat QR Rotation** | QR token auto-rotates every **10 seconds** — screenshots cannot be shared |
+| 🖼️ **Client-Side QR Canvas** | High-performance HTML5 canvas QR rendering eliminates server image rasterization and payload bloat |
 | ⏱️ **Custom Session Duration** | Type any duration in minutes or use quick presets (15m, 30m, 1h, 2h…) |
 | 📊 **Live Scan Counter** | Real-time count of scans and attendance percentage during the session |
 | ✅ **Manual Override** | Mark any student present or absent manually from the live dashboard |
 | ⚠️ **Risk Alerts** | Automatic alerts for students below 75% attendance threshold |
 | 📜 **Session History** | View all past sessions and re-open or delete them |
-| 📧 **Warning Email Trigger** | One-click warning notice dispatch for at-risk students |
+| 📧 **Async Warning Queue** | One-click bulk warning notices dispatched asynchronously via Celery without UI blocking |
 | 🔍 **QR Zoom / Fullscreen** | Click the QR code to expand it for projection display |
 
 ### 👨‍🎓 Student Portal
@@ -141,17 +155,20 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 | Technology | Version | Purpose |
 |-----------|---------|---------|
 | **Django** | 6.0 | Web framework & ORM |
+| **Django Channels** | 4.3 | WebSocket handling & real-time live attendance broadcasting |
+| **Daphne** | 4.2 | ASGI server for production WebSocket & HTTP traffic |
+| **Celery** | 5.6 | Distributed asynchronous task queue for email alerts & heavy jobs |
+| **Redis** | 8.1 / 7+ | In-memory message broker, result backend, and Channels layer |
 | **Django REST Framework** | 3.15 | REST API layer |
 | **SimpleJWT** | 5.3 | JWT authentication (15m access / 30d refresh, via HTTPOnly cookies) |
 | **django-cors-headers** | 4.3 | Cross-origin request handling |
 | **django-ratelimit** | 4.1 | IP-based rate limiting on auth endpoints |
 | **django-anymail** | 10+ | Transactional email via Brevo API (production) |
 | **openpyxl** | 3.1 | Excel `.xlsx` parsing for bulk user import |
-| **qrcode[pil]** | 7.4 | QR code generation |
+| **qrcode[pil]** | 7.4 | QR code generation (fallback) |
 | **drf-spectacular** | 0.28 | Auto-generated OpenAPI / Swagger docs |
 | **sentry-sdk** | latest | Error tracking in production |
 | **MySQL / SQLite** | — | Database (MySQL in production, SQLite in dev) |
-| **Gunicorn** | 21.2 | WSGI server for production |
 | **WhiteNoise** | 6.7 | Static file serving |
 
 ### Frontend
@@ -160,6 +177,7 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 | **React** | 19 | UI framework |
 | **Vite** | 8 | Build tool & dev server |
 | **Axios** | 1.18 | HTTP client with queued JWT refresh interceptor |
+| **qrcode** | 1.5 | Client-side HTML5 canvas QR code generation |
 | **jsQR** | 1.4 | Client-side QR code scanning |
 | **Lucide React** | 1.21 | Icon library |
 | **Vanilla CSS** | — | Custom design system with GPU-accelerated animations |
@@ -176,20 +194,25 @@ Instead of sending 50 individual emails to 50 failing students (which wastes tim
 │  │  Teacher     │  │  Student QR  │  │  Admin Panel  │  │
 │  │  Dashboard   │  │   Scanner    │  │  (5 tabs)     │  │
 │  └──────┬──────┘  └──────┬───────┘  └───────┬───────┘  │
-│         └────────────────┴──────────────────┘           │
-│         Axios (withCredentials) + HTTPOnly JWT Cookie    │
-└───────────────────────────┬─────────────────────────────┘
-                            │ HTTPS / REST API
-┌───────────────────────────▼─────────────────────────────┐
-│                   Django REST API                        │
+│         │                │                  │           │
+│   WebSocket (Live)  Axios (HTTPOnly JWT)    │           │
+└─────────┼────────────────┼──────────────────┴───────────┘
+          │ ws://          │ HTTPS / REST API
+┌─────────▼────────────────▼──────────────────────────────┐
+│            Daphne ASGI + Django REST API                │
 │  ┌──────────┐ ┌─────────────┐ ┌──────────┐ ┌────────┐  │
 │  │ /auth/*  │ │ /sessions/* │ │/attend/* │ │/report │  │
 │  │ (cookie) │ │ (QR rotate) │ │ (scan)   │ │ /*     │  │
-│  └──────────┘ └─────────────┘ └──────────┘ └────────┘  │
-│      ┌───────────────────────────────────┐              │
-│      │      /admin/* (AdminViewSets)      │              │
-│      │  Users · Import · Courses · Orgs  │              │
-│      └───────────────────────────────────┘              │
+│  └────┬─────┘ └──────┬──────┘ └────┬─────┘ └────┬───┘  │
+│       │              │             │            │       │
+│  ┌────▼──────────────▼─────────────▼────────────▼───┐  │
+│  │         Django Channels + Celery Queue           │  │
+│  │   WebSocket Groups · Background Task Workers      │  │
+│  └───────────────────┬──────────────────────────────┘  │
+│                      │                                  │
+│             ┌────────▼─────────┐                        │
+│             │  Redis 7 Broker  │                        │
+│             └──────────────────┘                        │
 │                  Permission Layer                        │
 │          IsTeacher | IsStudent | IsAdminUser             │
 └───────────────────────────┬─────────────────────────────┘
@@ -223,10 +246,15 @@ SaaS-Attendance-App/
 │   │   │   └── permissions.py         # IsTeacher, IsStudent, IsAdminUser
 │   │   ├── attendance/
 │   │   │   ├── models.py              # AttendanceSession, QRToken, AttendanceRecord
-│   │   │   ├── qr_service.py          # Service for QR code generation and rotation
-│   │   │   ├── views_sessions.py      # Session CRUD + QR token rotation
-│   │   │   ├── views_marking.py       # QR scan validation + manual override
-│   │   │   └── views_override.py      # Retroactive attendance correction
+│   │   │   ├── consumers.py           # WebSocket consumer for live attendance streaming
+│   │   │   ├── routing.py             # Channels WebSocket URL routing
+│   │   │   ├── middleware.py          # WebSocket JWT cookie & query token auth
+│   │   │   ├── qr_service.py          # QR token rotation and generation
+│   │   │   ├── services/
+│   │   │   │   └── websocket_service.py # Broadcast dispatcher for real-time events
+│   │   │   ├── views_sessions.py      # Session CRUD + lightweight QR token rotation
+│   │   │   ├── views_marking.py       # QR scan validation + live WebSocket broadcast
+│   │   │   └── views_override.py      # Retroactive correction + broadcast
 │   │   ├── courses/
 │   │   │   ├── models.py              # Course, Enrollment, CourseInstructor
 │   │   │   ├── services.py            # Course management service layer
@@ -235,13 +263,16 @@ SaaS-Attendance-App/
 │   │   │   └── models.py              # Institution, Department, Semester, Section
 │   │   └── reports/
 │   │       ├── services.py            # Report generation logic
-│   │       └── views.py               # Per-course reports, defaulters, CSV export
+│   │       ├── tasks.py               # Celery async background email notification tasks
+│   │       └── views.py               # Per-course reports, async tier notices, task status
 │   ├── shared/                        # Shared utility layer (email, rate limiting, utils)
 │   ├── attendance_saas/
+│   │   ├── asgi.py                    # ASGI entrypoint for Daphne & Channels
+│   │   ├── celery.py                  # Celery application initialization
 │   │   ├── settings/
-│   │   │   ├── base.py                # Shared settings (JWT, CORS, apps, rate limits)
-│   │   │   ├── dev.py                 # SQLite dev config
-│   │   │   └── prod.py                # MySQL + WhiteNoise + Brevo email (Railway)
+│   │   │   ├── base.py                # Shared settings (Channels, Celery, JWT, CORS)
+│   │   │   ├── dev.py                 # SQLite dev config (in-memory Channels, eager Celery)
+│   │   │   └── prod.py                # MySQL + Redis Channels + Celery workers
 │   │   └── urls.py                    # Root URL routing
 │   ├── manage.py
 │   └── requirements.txt
@@ -253,6 +284,8 @@ SaaS-Attendance-App/
 │   │   └── icons.svg
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── QRCodeDisplay.jsx      # High-performance client-side QR canvas renderer
+│   │   │   ├── QrZoomModal.jsx        # Fullscreen QR projection modal
 │   │   │   ├── AccordionSection.jsx   # Reusable collapsible section
 │   │   │   ├── DashboardActionCard.jsx# Reusable dashboard UI cards
 │   │   │   ├── RoleRouter.jsx         # Role-based route protection
@@ -264,12 +297,15 @@ SaaS-Attendance-App/
 │   │   │       ├── InstitutionsPanel.jsx # Inst → Dept → Semester → Section tree
 │   │   │       ├── SessionsPanel.jsx  # Session monitoring across all institutions
 │   │   │       └── ExcelImportPanel.jsx  # .xlsx bulk import with batch assignment
+│   │   ├── hooks/
+│   │   │   ├── useQrRotation.js       # Auto-rotation timer with token UUID
+│   │   │   └── useSessionWebSocket.js # Real-time session WebSocket hook with reconnects
 │   │   ├── pages/
 │   │   │   ├── Login.jsx              # Auth page (email + password)
 │   │   │   ├── EmailVerification.jsx  # OTP verification page for new accounts
 │   │   │   ├── ForgotPassword.jsx     # OTP-based password reset flow
 │   │   │   ├── AdminDashboard.jsx     # Admin panel shell with 5-tab navigation
-│   │   │   ├── Dashboard.jsx          # Teacher dashboard (sessions + live QR)
+│   │   │   ├── Dashboard.jsx          # Teacher dashboard (live roster, QR, WebSockets)
 │   │   │   ├── Reports.jsx            # Analytics & reports page
 │   │   │   └── Scanner.jsx            # Student QR scanner with offline queue
 │   │   ├── services/
