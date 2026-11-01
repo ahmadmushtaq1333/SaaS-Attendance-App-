@@ -6,6 +6,7 @@ import QRCodeDisplay from "./QRCodeDisplay";
  * QrZoomModal
  *
  * Fullscreen projection modal for QR attendance codes with:
+ * - Theme-aware styling (adapts seamlessly between Dark and Light mode)
  * - Real-time rotation countdown indicator
  * - Keyboard (ESC) & backdrop click-to-close listeners
  * - High-performance client-side QR rendering
@@ -30,24 +31,11 @@ export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onCl
       role="dialog"
       aria-modal="true"
       aria-label="Attendance QR Code Fullscreen"
+      className="qr-zoom-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
-      }}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        background: "rgba(3, 7, 18, 0.90)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px 16px",
-        overflowY: "auto",
       }}
     >
       <button
@@ -68,33 +56,8 @@ export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onCl
       </button>
 
       {/* Projection Card Container */}
-      <div
-        style={{
-          background: "rgba(255, 255, 255, 0.04)",
-          border: "1px solid rgba(255, 255, 255, 0.12)",
-          borderRadius: 24,
-          padding: "28px 24px",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.6), 0 0 50px rgba(79, 142, 247, 0.25)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          maxWidth: "92vw",
-          width: "auto",
-        }}
-      >
-        <div
-          style={{
-            background: "#FFFFFF",
-            padding: 20,
-            borderRadius: 20,
-            boxShadow: "0 10px 35px rgba(0, 0, 0, 0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: 240,
-            minHeight: 240,
-          }}
-        >
+      <div className="qr-zoom-card">
+        <div className="qr-zoom-qr-box">
           <QRCodeDisplay
             value={tokenUuid}
             fallbackSrc={qrCode}
@@ -123,7 +86,7 @@ export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onCl
               size={14}
               className={isUrgent || loading ? "animate-spin" : ""}
             />
-            <span>Anti-Cheat Rotation in {timeLeft}s</span>
+            <span>Code rotates in {timeLeft}s</span>
           </div>
 
           <div
@@ -144,7 +107,7 @@ export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onCl
               maxWidth: 360,
             }}
           >
-            Token refreshes automatically to eliminate proxy attendance. Press ESC or click outside to exit.
+            Code refreshes automatically. Press ESC or click anywhere outside to exit.
           </p>
         </div>
       </div>

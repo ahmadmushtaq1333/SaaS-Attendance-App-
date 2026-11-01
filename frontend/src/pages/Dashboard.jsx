@@ -335,30 +335,6 @@ export default function Dashboard({ user, onViewReports }) {
 
           {activeSession ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
-              {/* Feature 8.1: Real-time Live Connection Pill */}
-              <div style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                fontSize: 12,
-                fontWeight: 500,
-                padding: "4px 12px",
-                borderRadius: 20,
-                background: isWsConnected ? "rgba(16, 185, 129, 0.12)" : "rgba(245, 158, 11, 0.12)",
-                color: isWsConnected ? "var(--emerald)" : "var(--amber)",
-                border: `1px solid ${isWsConnected ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`,
-              }}>
-                <span style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: isWsConnected ? "var(--emerald)" : "var(--amber)",
-                  display: "inline-block",
-                  boxShadow: isWsConnected ? "0 0 8px var(--emerald)" : "none",
-                }} />
-                {isWsConnected ? "Real-time Live Stream Active" : "Polling Sync Active"}
-              </div>
-
               <div style={{ display: "flex", gap: 16, padding: "10px 16px", background: "rgba(79,142,247,0.08)", border: "1px solid rgba(79,142,247,0.2)", borderRadius: 12, width: "100%", maxWidth: 420, justifyContent: "space-around", flexWrap: "wrap" }}>
                 <div style={{ textAlign: "center" }}>
                   <div className="text-meta">Present / Total</div>
@@ -392,7 +368,7 @@ export default function Dashboard({ user, onViewReports }) {
               <div style={{ textAlign: "center" }}>
                 <div className={`countdown-badge ${timeLeft <= 3 ? "urgent" : ""}`}>
                   <RefreshCw size={13} className={timeLeft <= 3 || qrLoading ? "animate-spin" : ""} />
-                  Anti-Cheat Rotation in {timeLeft}s
+                  Code rotates in {timeLeft}s
                 </div>
                 <div className="progress-bar" style={{ marginTop: 8, width: "min(220px, 70vw)" }}>
                   <div className={`progress-fill ${timeLeft <= 3 ? "danger" : ""}`} style={{ width: `${progressPct}%` }} />
@@ -439,9 +415,14 @@ export default function Dashboard({ user, onViewReports }) {
                               </span>
                             )}
                           </div>
-                          <button onClick={() => toggleStudentAttendance(s.id, isPresent)} className={isPresent ? "btn-secondary" : "btn-primary"} style={{ padding: "4px 10px", fontSize: 12 }}>
-                            {isPresent ? "Mark Absent" : "Mark Present"}
-                          </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span className={`badge ${isPresent ? "badge-good" : "badge-defaulter"}`} style={{ fontSize: 11, padding: "3px 8px" }}>
+                              {isPresent ? "Present" : "Absent"}
+                            </span>
+                            <button onClick={() => toggleStudentAttendance(s.id, isPresent)} className={isPresent ? "btn-danger" : "btn-success"} style={{ padding: "4px 10px", fontSize: 12 }}>
+                              {isPresent ? "Mark Absent" : "Mark Present"}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}

@@ -535,6 +535,153 @@ html, body {
   transform: translateY(-1px);
 }
 
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--emerald);
+  background: var(--emerald-dim);
+  border: 1px solid rgba(79, 142, 247, 0.30);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: rgba(79, 142, 247, 0.22);
+  border-color: rgba(79, 142, 247, 0.50);
+  box-shadow: 0 0 16px var(--emerald-glow);
+  transform: translateY(-1px);
+}
+
+.btn-success:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Light Mode Button Overrides ── */
+:root.light-mode .btn-secondary {
+  color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(148, 163, 220, 0.45) !important;
+  box-shadow: 0 1px 3px rgba(11, 19, 64, 0.05);
+}
+
+:root.light-mode .btn-secondary:hover:not(:disabled) {
+  background: #FFFFFF !important;
+  color: #0B1340 !important;
+  border-color: rgba(79, 142, 247, 0.70) !important;
+  box-shadow: 0 4px 12px rgba(11, 19, 64, 0.08) !important;
+}
+
+:root.light-mode .btn-danger {
+  color: #DC2626 !important;
+  background: rgba(220, 38, 38, 0.09) !important;
+  border: 1px solid rgba(220, 38, 38, 0.28) !important;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.05);
+}
+
+:root.light-mode .btn-danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.16) !important;
+  border-color: rgba(220, 38, 38, 0.50) !important;
+  box-shadow: 0 2px 10px rgba(220, 38, 38, 0.18) !important;
+}
+
+:root.light-mode .btn-success {
+  color: #2563EB !important;
+  background: rgba(37, 99, 235, 0.09) !important;
+  border: 1px solid rgba(37, 99, 235, 0.28) !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.05);
+}
+
+:root.light-mode .btn-success:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.16) !important;
+  border-color: rgba(37, 99, 235, 0.50) !important;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.18) !important;
+}
+
+/* ── Light Mode Badge Overrides ── */
+:root.light-mode .badge-good,
+:root.light-mode .badge-present {
+  background: rgba(37, 99, 235, 0.10) !important;
+  color: #2563EB !important;
+  border: 1px solid rgba(37, 99, 235, 0.25) !important;
+}
+
+:root.light-mode .badge-defaulter,
+:root.light-mode .badge-absent {
+  background: rgba(220, 38, 38, 0.10) !important;
+  color: #DC2626 !important;
+  border: 1px solid rgba(220, 38, 38, 0.25) !important;
+}
+
+:root.light-mode .badge-warning,
+:root.light-mode .badge-late {
+  background: rgba(217, 119, 6, 0.10) !important;
+  color: #D97706 !important;
+  border: 1px solid rgba(217, 119, 6, 0.25) !important;
+}
+
+/* ── QR Zoom Modal Styles ── */
+.qr-zoom-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(3, 7, 18, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+:root.light-mode .qr-zoom-backdrop {
+  background: rgba(240, 244, 255, 0.88) !important;
+}
+
+.qr-zoom-card {
+  background: rgba(12, 26, 53, 0.80);
+  border: 1px solid rgba(148, 187, 255, 0.16);
+  border-radius: 24px;
+  padding: 28px 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 50px rgba(79, 142, 247, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 92vw;
+  width: auto;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+:root.light-mode .qr-zoom-card {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 20px 50px -10px rgba(11, 19, 64, 0.12), 0 0 35px rgba(37, 99, 235, 0.10) !important;
+}
+
+.qr-zoom-qr-box {
+  background: #FFFFFF;
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 240px;
+  min-height: 240px;
+}
+
+:root.light-mode .qr-zoom-qr-box {
+  box-shadow: 0 10px 30px rgba(11, 19, 64, 0.10) !important;
+  border: 1px solid rgba(148, 163, 220, 0.30) !important;
+}
+
 /* ── Form Inputs ── */
 .form-input {
   width: 100%;

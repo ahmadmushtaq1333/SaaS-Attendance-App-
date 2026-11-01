@@ -139,16 +139,16 @@ export default function SessionOverridePanel({
           <button 
             onClick={() => handleBulkAction('present')} 
             disabled={bulkLoading}
-            className="btn-secondary" 
-            style={{ padding: '6px 12px', fontSize: 12, color: 'var(--emerald)', borderColor: 'rgba(52,211,153,0.3)' }}
+            className="btn-success" 
+            style={{ padding: '6px 12px', fontSize: 12 }}
           >
             Mark Present
           </button>
           <button 
             onClick={() => handleBulkAction('absent')} 
             disabled={bulkLoading}
-            className="btn-secondary" 
-            style={{ padding: '6px 12px', fontSize: 12, color: 'var(--danger)', borderColor: 'rgba(248,113,113,0.3)' }}
+            className="btn-danger" 
+            style={{ padding: '6px 12px', fontSize: 12 }}
           >
             Mark Absent
           </button>
@@ -206,7 +206,7 @@ export default function SessionOverridePanel({
                 <td>
                   <button
                     onClick={() => onToggle(student.id, student.isPresent)}
-                    className={student.isPresent ? "btn-danger" : "btn-secondary"}
+                    className={student.isPresent ? "btn-danger" : "btn-success"}
                     style={{ padding: "6px 14px", fontSize: 12 }}
                   >
                     {student.isPresent ? "Mark Absent" : "Mark Present"}
