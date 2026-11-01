@@ -116,12 +116,13 @@ class AttendanceSessionStopView(APIView):
         except AttendanceSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        # Expire session instantly
-        session.expiry_time = timezone.now()
+        # Expire session instantly (set to past to avoid sub-second clock drift races)
+        now = timezone.now()
+        session.expiry_time = now - timedelta(seconds=10)
         session.save()
         
         # Invalidate active QR tokens
-        session.qr_tokens.all().update(expiry_time=timezone.now())
+        session.qr_tokens.all().update(expiry_time=now - timedelta(seconds=10))
 
         # Feature 8.1: Broadcast session termination event via WebSocket
         try:

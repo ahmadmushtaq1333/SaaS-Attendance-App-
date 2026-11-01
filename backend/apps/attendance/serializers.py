@@ -14,18 +14,23 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
     session_number = serializers.SerializerMethodField()
     course_name = serializers.CharField(source="course.name", read_only=True)
     present_count = serializers.SerializerMethodField()
+    is_active = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceSession
         fields = (
             "id", "course", "course_name", "session_number",
             "start_time", "expiry_time", "token_uuid", "qr_code",
-            "is_replicated", "replicated_from", "present_count",
+            "is_replicated", "replicated_from", "present_count", "is_active",
         )
         read_only_fields = (
             "id", "course_name", "session_number", "start_time", "expiry_time",
-            "token_uuid", "qr_code", "is_replicated", "replicated_from", "present_count",
+            "token_uuid", "qr_code", "is_replicated", "replicated_from", "present_count", "is_active",
         )
+
+    def get_is_active(self, obj):
+        from django.utils import timezone
+        return bool(obj.expiry_time and obj.expiry_time > timezone.now())
 
     def get_token_uuid(self, obj):
         from django.utils import timezone

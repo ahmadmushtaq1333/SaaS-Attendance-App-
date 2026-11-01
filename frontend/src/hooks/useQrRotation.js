@@ -34,9 +34,11 @@ export function useQrRotation({
   const abortRef = useRef(null);
   const isMountedRef = useRef(true);
   const isFetchingRef = useRef(false);
+  const isExpiredRef = useRef(false);
 
   // Sync initial values if provided on session switch
   useEffect(() => {
+    isExpiredRef.current = false;
     if (initialTokenUuid || initialQrCode) {
       if (initialTokenUuid) setTokenUuid(initialTokenUuid);
       if (initialQrCode) setQrCode(initialQrCode);
@@ -45,7 +47,7 @@ export function useQrRotation({
   }, [sessionId, initialQrCode, initialTokenUuid]);
 
   const fetchQr = useCallback(async (isManual = false) => {
-    if (!sessionId) return;
+    if (!sessionId || isExpiredRef.current) return;
     if (isFetchingRef.current && !isManual) return;
 
     if (abortRef.current) {
@@ -64,6 +66,7 @@ export function useQrRotation({
       if (!isMountedRef.current) return;
 
       if (res.data?.session_expired) {
+        isExpiredRef.current = true;
         setTokenUuid(null);
         setQrCode(null);
         onSessionExpired?.();
@@ -124,7 +127,7 @@ export function useQrRotation({
 
   // Countdown timer effect
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || isExpiredRef.current) return;
 
     if (timeLeft <= 0) {
       fetchQr();

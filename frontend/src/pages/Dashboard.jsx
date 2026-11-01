@@ -29,6 +29,15 @@ export default function Dashboard({ user, onViewReports }) {
   const [recentSessions, setRecentSessions] = useState([]);
   const [activeView, setActiveView] = useState("grid");
 
+  const fetchRecentSessions = async () => {
+    try {
+      const res = await API.get("/sessions/");
+      if (res.data) {
+        setRecentSessions(res.data.slice(0, 5));
+      }
+    } catch { console.error("Failed to load recent sessions"); }
+  };
+
   const fetchActiveAndRecentSessions = async () => {
     try {
       const res = await API.get("/sessions/");
@@ -36,22 +45,26 @@ export default function Dashboard({ user, onViewReports }) {
         setRecentSessions(res.data.slice(0, 5));
         if (res.data.length > 0) {
           const latest = res.data[0];
-          const expiryDate = parseUTCDate(latest.expiry_time);
-          const sessionDiff = Math.floor((expiryDate - new Date()) / 1000);
-          if (sessionDiff > 0) {
-            setActiveSession(latest);
-            setSessionTimeLeft(sessionDiff);
+          // Check if session is active via backend is_active or local expiry check
+          const isLatestActive = latest.is_active ?? (latest.expiry_time && parseUTCDate(latest.expiry_time) > new Date());
+          if (isLatestActive) {
+            const expiryDate = parseUTCDate(latest.expiry_time);
+            const sessionDiff = Math.floor((expiryDate - new Date()) / 1000);
+            if (sessionDiff > 2) {
+              setActiveSession(latest);
+              setSessionTimeLeft(sessionDiff);
+            }
           }
         }
       }
     } catch { console.error("Failed to load sessions"); }
   };
-  const fetchRecentSessions = fetchActiveAndRecentSessions;
 
   const handleSessionExpired = useCallback(() => {
     setActiveSession(null);
     setSessionTimeLeft(0);
-    fetchActiveAndRecentSessions();
+    setIsZoomed(false);
+    fetchRecentSessions();
   }, []);
 
   // Feature 8.3: Client-side QR rotation with tokenUuid
@@ -166,18 +179,32 @@ export default function Dashboard({ user, onViewReports }) {
 
   const stopSession = async () => {
     if (!activeSession) return;
+    const currentSessionId = activeSession.id;
+    // Immediately clear local active session state & close zoom modal to eliminate UI flicker
+    setActiveSession(null);
+    setSessionTimeLeft(0);
+    setIsZoomed(false);
     try {
-      await API.post(`/sessions/${activeSession.id}/stop/`);
-      setActiveSession(null); setSessionTimeLeft(0);
+      await API.post(`/sessions/${currentSessionId}/stop/`);
       fetchRecentSessions();
-    } catch { setError("Failed to end session"); }
+    } catch {
+      setError("Failed to end session");
+      // Fallback: re-sync from server only if stop call threw an error
+      fetchActiveAndRecentSessions();
+    }
   };
 
   useEffect(() => {
     if (!activeSession || sessionTimeLeft <= 0) return;
+    if (sessionTimeLeft === 1) {
+      const timer = setTimeout(() => {
+        handleSessionExpired();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
     const timer = setTimeout(() => setSessionTimeLeft(t => t - 1), 1000);
     return () => clearTimeout(timer);
-  }, [sessionTimeLeft, activeSession]);
+  }, [sessionTimeLeft, activeSession, handleSessionExpired]);
 
   const toggleStudentAttendance = async (studentId, currentStatus) => {
     if (!activeSession) return;
