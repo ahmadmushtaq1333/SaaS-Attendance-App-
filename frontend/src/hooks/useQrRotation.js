@@ -23,12 +23,13 @@ export function useQrRotation({
   sessionId,
   initialQrCode = null,
   initialTokenUuid = null,
+  rotationInterval = 10,
   onSessionExpired,
   onError,
 }) {
   const [tokenUuid, setTokenUuid] = useState(initialTokenUuid);
   const [qrCode, setQrCode] = useState(initialQrCode);
-  const [timeLeft, setTimeLeft] = useState(DEFAULT_ROTATION_SEC);
+  const [timeLeft, setTimeLeft] = useState(rotationInterval);
   const [loading, setLoading] = useState(false);
 
   const abortRef = useRef(null);
@@ -42,9 +43,9 @@ export function useQrRotation({
     if (initialTokenUuid || initialQrCode) {
       if (initialTokenUuid) setTokenUuid(initialTokenUuid);
       if (initialQrCode) setQrCode(initialQrCode);
-      setTimeLeft(DEFAULT_ROTATION_SEC);
+      setTimeLeft(rotationInterval);
     }
-  }, [sessionId, initialQrCode, initialTokenUuid]);
+  }, [sessionId, initialQrCode, initialTokenUuid, rotationInterval]);
 
   const fetchQr = useCallback(async (isManual = false) => {
     if (!sessionId || isExpiredRef.current) return;
@@ -59,7 +60,7 @@ export function useQrRotation({
     setLoading(true);
 
     try {
-      const res = await API.get(`/sessions/${sessionId}/qr/`, {
+      const res = await API.get(`/sessions/${sessionId}/qr/?interval=${rotationInterval}`, {
         signal: ctrl.signal,
       });
 
@@ -80,12 +81,17 @@ export function useQrRotation({
         setQrCode(res.data.qr_code);
       }
 
-      if (res.data?.token_expires_at) {
+      // Priority 1: Use server-computed expires_in to eliminate client-server clock drift
+      if (typeof res.data?.expires_in === "number") {
+        const cappedSeconds = Math.min(rotationInterval, Math.max(1, Math.round(res.data.expires_in)));
+        setTimeLeft(cappedSeconds);
+      } else if (res.data?.token_expires_at) {
+        // Fallback: strictly clamp calculated seconds to rotationInterval
         const msLeft = new Date(res.data.token_expires_at).getTime() - Date.now();
-        const secondsLeft = Math.max(1, Math.round(msLeft / 1000));
+        const secondsLeft = Math.min(rotationInterval, Math.max(1, Math.round(msLeft / 1000)));
         setTimeLeft(secondsLeft);
       } else {
-        setTimeLeft(DEFAULT_ROTATION_SEC);
+        setTimeLeft(rotationInterval);
       }
     } catch (err) {
       if (err.name === "CanceledError" || err.name === "AbortError") {
@@ -95,15 +101,15 @@ export function useQrRotation({
 
       const errMsg = err.response?.data?.error || "Failed to rotate QR code";
       onError?.(errMsg);
-      // Backoff for 4 seconds on error to prevent tight error loops
-      setTimeLeft(4);
+      // Backoff for short delay on error to prevent tight error loops
+      setTimeLeft(Math.min(4, rotationInterval));
     } finally {
       isFetchingRef.current = false;
       if (isMountedRef.current) {
         setLoading(false);
       }
     }
-  }, [sessionId, onSessionExpired, onError]);
+  }, [sessionId, rotationInterval, onSessionExpired, onError]);
 
   // Initial fetch on mount or session change (if no initial token/QR)
   useEffect(() => {

@@ -5,13 +5,13 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import QRToken
 
-def get_or_create_active_token(session):
+def get_or_create_active_token(session, interval=10):
     """Returns the current active QR token, creating one if needed."""
     token = session.qr_tokens.filter(expiry_time__gt=timezone.now()).first()
     if not token:
         token = QRToken.objects.create(
             session=session,
-            expiry_time=timezone.now() + timedelta(seconds=10)
+            expiry_time=timezone.now() + timedelta(seconds=interval)
         )
     return token
 

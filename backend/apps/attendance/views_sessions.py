@@ -90,19 +90,29 @@ class AttendanceSessionQRView(APIView):
             })
 
         from .qr_service import get_or_create_active_token, generate_qr_data_uri
-        token = get_or_create_active_token(session)
+        try:
+            interval = int(request.query_params.get("interval", 10))
+            if interval not in (5, 10):
+                interval = 10
+        except (ValueError, TypeError):
+            interval = 10
+
+        token = get_or_create_active_token(session, interval=interval)
         token_uuid_str = str(token.token_uuid)
 
         # Feature 8.3: Client-side QR optimization.
         # If client passes ?lightweight=1 or lightweight=true, skip server-side PNG rendering
         skip_image = request.query_params.get("lightweight", "0").lower() in ("1", "true")
         qr_code = None if skip_image else generate_qr_data_uri(token.token_uuid)
+        seconds_remaining = max(1, min(interval, int((token.expiry_time - now).total_seconds())))
 
         return Response({
             "id": session.id,
             "token_uuid": token_uuid_str,
             "qr_code": qr_code,
             "token_expires_at": token.expiry_time.isoformat(),
+            "expires_in": seconds_remaining,
+            "rotation_interval": interval,
             "session_expired": False,
             "expiry_time": session.expiry_time.isoformat() if session.expiry_time else None,
         })

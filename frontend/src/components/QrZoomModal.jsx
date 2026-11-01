@@ -12,7 +12,7 @@ import QRCodeDisplay from "./QRCodeDisplay";
  * - High-performance client-side QR rendering
  * - Responsive sizing and high-contrast projection frame
  */
-export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onClose }) {
+export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, rotationInterval = 10, loading, onClose }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
@@ -23,8 +23,8 @@ export default function QrZoomModal({ qrCode, tokenUuid, timeLeft, loading, onCl
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const isUrgent = timeLeft <= 3;
-  const progressPct = Math.max(0, Math.min(100, (timeLeft / 10) * 100));
+  const isUrgent = timeLeft <= Math.max(2, Math.floor(rotationInterval * 0.3));
+  const progressPct = Math.max(0, Math.min(100, (timeLeft / rotationInterval) * 100));
 
   return (
     <div

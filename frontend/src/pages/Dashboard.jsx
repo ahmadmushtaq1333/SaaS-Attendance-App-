@@ -67,11 +67,14 @@ export default function Dashboard({ user, onViewReports }) {
     fetchRecentSessions();
   }, []);
 
+  const [rotationInterval, setRotationInterval] = useState(10);
+
   // Feature 8.3: Client-side QR rotation with tokenUuid
   const { tokenUuid, qrCode, timeLeft, loading: qrLoading, forceRotate } = useQrRotation({
     sessionId: activeSession?.id ?? null,
     initialQrCode: activeSession?.qr_code || null,
     initialTokenUuid: activeSession?.token_uuid || null,
+    rotationInterval,
     onSessionExpired: handleSessionExpired,
     onError: setError,
   });
@@ -218,7 +221,7 @@ export default function Dashboard({ user, onViewReports }) {
     } catch { alert("Failed to update student attendance status"); }
   };
 
-  const progressPct = Math.max(0, Math.min(100, (timeLeft / 10) * 100));
+  const progressPct = Math.max(0, Math.min(100, (timeLeft / rotationInterval) * 100));
   const formatTime = (secs) => `${Math.floor(secs / 60)}m ${(secs % 60).toString().padStart(2, "0")}s`;
 
   const todayStr = new Date().toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -389,16 +392,31 @@ export default function Dashboard({ user, onViewReports }) {
                 </div>
               </div>
               <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13, textAlign: "center" }}>
-                Click QR to full-screen · Auto-rotates every 10 seconds
+                Click QR to full-screen · Auto-rotates every {rotationInterval} seconds
               </p>
 
-              <div style={{ textAlign: "center" }}>
-                <div className={`countdown-badge ${timeLeft <= 3 ? "urgent" : ""}`}>
+              <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", background: "rgba(255,255,255,0.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span className="text-meta" style={{ fontSize: 11, fontWeight: 600 }}>Rotation:</span>
+                  {[10, 5].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setRotationInterval(sec)}
+                      className={rotationInterval === sec ? "btn-primary" : "btn-secondary"}
+                      style={{ padding: "2px 8px", fontSize: 11, borderRadius: 6, minWidth: 32 }}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+
+                <div className={`countdown-badge ${timeLeft <= Math.max(2, Math.floor(rotationInterval * 0.3)) ? "urgent" : ""}`}>
                   <RefreshCw size={13} className={timeLeft <= 3 || qrLoading ? "animate-spin" : ""} />
                   Code rotates in {timeLeft}s
                 </div>
-                <div className="progress-bar" style={{ marginTop: 8, width: "min(220px, 70vw)" }}>
-                  <div className={`progress-fill ${timeLeft <= 3 ? "danger" : ""}`} style={{ width: `${progressPct}%` }} />
+                <div className="progress-bar" style={{ marginTop: 2, width: "min(220px, 70vw)" }}>
+                  <div className={`progress-fill ${timeLeft <= Math.max(2, Math.floor(rotationInterval * 0.3)) ? "danger" : ""}`} style={{ width: `${progressPct}%` }} />
                 </div>
               </div>
 
@@ -598,6 +616,7 @@ export default function Dashboard({ user, onViewReports }) {
           tokenUuid={tokenUuid}
           qrCode={qrCode}
           timeLeft={timeLeft}
+          rotationInterval={rotationInterval}
           loading={qrLoading}
           onClose={() => setIsZoomed(false)}
         />
