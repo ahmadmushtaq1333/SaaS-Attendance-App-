@@ -9,6 +9,7 @@
  */
 
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { RootNavigator } from '@/app/navigation/RootNavigator';
@@ -25,16 +26,17 @@ export default function App() {
   const isThemeReady = useHydrateTheme();
 
   if (!isThemeReady) {
-    // Returning null keeps the native splash screen visible via expo-splash-screen.
-    return null;
+    return <View style={{ flex: 1, backgroundColor: '#000308' }} />;
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <ErrorBoundary>
-        <RootNavigator />
-      </ErrorBoundary>
-    </SafeAreaProvider>
+    <View style={{ flex: 1, backgroundColor: '#000308' }}>
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: '#000308' }}>
+        <StatusBar style="light" backgroundColor="#000308" />
+        <ErrorBoundary>
+          <RootNavigator />
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </View>
   );
 }

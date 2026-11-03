@@ -7,6 +7,7 @@ export const apiClient = axios.create({
   timeout: 15_000,
   headers: {
     'Content-Type': 'application/json',
+    'X-Client-Platform': 'mobile',
   },
   // We do NOT use withCredentials: true on mobile because we are manually handling JWTs in SecureStore
 });

@@ -36,12 +36,17 @@ export interface Quorum3DIntroProps {
 export const Quorum3DIntro: React.FC<Quorum3DIntroProps> = React.memo(({ onFinish, onReady }) => {
   const insets = useSafeAreaInsets();
   const [isMounted, setIsMounted] = useState(true);
+  // True until Three.js fires READY — keeps an opaque black cover over the WebView
+  // so the user never sees the WebView's blank white initialisation frame.
+  const [webViewReady, setWebViewReady] = useState(false);
   const isTransitioningRef = useRef(false);
   const splashDismissedRef = useRef(false);
   const webViewRef = useRef<any>(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const flashAnim = useRef(new Animated.Value(0)).current;
+  // Fades the black cover out once Three.js is ready
+  const coverAnim = useRef(new Animated.Value(1)).current;
 
   const htmlContent = useMemo(() => getQuorum3dHtml(), []);
 
@@ -55,15 +60,18 @@ export const Quorum3DIntro: React.FC<Quorum3DIntroProps> = React.memo(({ onFinis
     }
   }, []);
 
-  // Safety fallback: ensure native splash screen is dismissed within 600ms even if bridge is slow
+  // Safety fallback: if Three.js never fires READY (e.g. WebView crash),
+  // dismiss native splash and reveal whatever is rendered after 3s.
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
       dismissSplash();
+      setWebViewReady(true);
+      coverAnim.setValue(0);
       webViewRef.current?.postMessage(JSON.stringify({ type: 'START' }));
-    }, 600);
+    }, 3000);
 
     return () => clearTimeout(fallbackTimer);
-  }, [dismissSplash]);
+  }, [dismissSplash, coverAnim]);
 
   const triggerHandoff = useCallback((isSkip: boolean) => {
     if (isTransitioningRef.current) return;
@@ -102,12 +110,21 @@ export const Quorum3DIntro: React.FC<Quorum3DIntroProps> = React.memo(({ onFinis
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'READY') {
+        // Dismiss native splash first, then fade the black cover to reveal
+        // the fully-rendered Three.js first frame — no white flash possible.
         dismissSplash();
-        // Give 120ms for the native splash fade to begin so the user sees the entire entrance
-        setTimeout(() => {
-          webViewRef.current?.postMessage(JSON.stringify({ type: 'START' }));
-        }, 120);
-        onReady?.();
+        setWebViewReady(true);
+        Animated.timing(coverAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => {
+          // Tell Three.js to begin its animation sequence
+          setTimeout(() => {
+            webViewRef.current?.postMessage(JSON.stringify({ type: 'START' }));
+          }, 80);
+          onReady?.();
+        });
       } else if (data.type === 'COMPLETE') {
         triggerHandoff(false);
       } else if (data.type === 'SKIP') {
@@ -115,9 +132,11 @@ export const Quorum3DIntro: React.FC<Quorum3DIntroProps> = React.memo(({ onFinis
       }
     } catch {
       dismissSplash();
+      setWebViewReady(true);
+      coverAnim.setValue(0);
       triggerHandoff(false);
     }
-  }, [dismissSplash, onReady, triggerHandoff]);
+  }, [dismissSplash, coverAnim, onReady, triggerHandoff]);
 
   if (!isMounted) {
     return null;
@@ -140,6 +159,16 @@ export const Quorum3DIntro: React.FC<Quorum3DIntroProps> = React.memo(({ onFinis
         onMessage={onMessage}
         backgroundColor="#000308"
       />
+
+      {/* Black cover held opaque until Three.js fires READY.
+          Prevents the WebView blank-white initialisation frame from ever
+          being visible to the user. Fades out in 200ms once ready. */}
+      {!webViewReady && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.blackCover, { opacity: coverAnim }]}
+        />
+      )}
 
       {/* Optional Pure White Flash Overlay during camera surge */}
       <Animated.View
@@ -180,6 +209,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: '#FFFFFF',
     zIndex: 10000,
+  },
+  blackCover: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#000308',
+    zIndex: 9998, // below flashOverlay, above webView
   },
   skipButton: {
     position: 'absolute',

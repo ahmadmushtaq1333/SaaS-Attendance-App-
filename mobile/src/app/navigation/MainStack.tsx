@@ -14,6 +14,7 @@ export const MainStack = () => {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#000308' },
       }}
       initialRouteName={user?.full_name ? 'Dashboard' : 'NameSetup'}
     >

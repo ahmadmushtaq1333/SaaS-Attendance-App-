@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { authApi, LoginCredentials } from '../api/auth-api';
 import { secureStorage, TOKEN_KEYS } from '@/shared/lib/storage';
 import { useAuthStore, userApi } from '@/entities/user';
@@ -6,6 +7,18 @@ import { apiClient } from '@/shared/api';
 import { ENV } from '@/shared/config/env';
 import { getDeviceFingerprint } from '@/shared/lib/deviceFingerprint';
 import { WebAuthnClient } from '@/shared/lib/webauthn';
+
+/**
+ * Raw axios instance for WebAuthn pre-auth requests.
+ * We intentionally bypass apiClient here because apiClient's request interceptor
+ * overwrites the Authorization header with the stored access token, which would
+ * replace the pre_auth_token that WebAuthn challenge/verify endpoints require.
+ */
+const rawHttp = axios.create({
+  baseURL: ENV.API_URL,
+  timeout: 15_000,
+  headers: { 'Content-Type': 'application/json' },
+});
 
 export interface LoginResult {
   success: boolean;
@@ -45,53 +58,28 @@ export const useLogin = () => {
         const preAuthHeaders = { Authorization: `Bearer ${preAuthToken}` };
 
         if (response.is_registered) {
-          // Authentication flow
-          try {
-            const challengeRes = await apiClient.get('/auth/webauthn/auth/challenge/', {
-              headers: preAuthHeaders,
-            });
-            const credentialPromise = WebAuthnClient.authenticate(challengeRes.data);
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Passkey prompt timed out')), 5000)
-            );
-            const credential = await Promise.race([credentialPromise, timeoutPromise]);
-            const verifyRes = await apiClient.post('/auth/webauthn/auth/verify/', credential, {
-              headers: preAuthHeaders,
-            });
-            accessToken = verifyRes.data.access;
-            refreshToken = verifyRes.data.refresh;
-          } catch (passkeyErr: any) {
-            console.warn('[Passkey] Authentication failed or cancelled on device, trying dev fallback:', passkeyErr);
-            const verifyRes = await apiClient.post('/auth/webauthn/auth/verify/', { dev_bypass: true }, {
-              headers: preAuthHeaders,
-            });
-            accessToken = verifyRes.data.access;
-            refreshToken = verifyRes.data.refresh;
-          }
+          // Authentication flow — use rawHttp so the pre_auth_token is NOT
+          // overwritten by apiClient's stored-access-token interceptor.
+          const challengeRes = await rawHttp.get('/auth/webauthn/auth/challenge/', {
+            headers: preAuthHeaders,
+          });
+          const credential = await WebAuthnClient.authenticate(challengeRes.data);
+          const verifyRes = await rawHttp.post('/auth/webauthn/auth/verify/', credential, {
+            headers: preAuthHeaders,
+          });
+          accessToken = verifyRes.data.access;
+          refreshToken = verifyRes.data.refresh;
         } else {
-          // Registration flow
-          try {
-            const challengeRes = await apiClient.get('/auth/webauthn/register/challenge/', {
-              headers: preAuthHeaders,
-            });
-            const credentialPromise = WebAuthnClient.register(challengeRes.data);
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Passkey prompt timed out')), 5000)
-            );
-            const credential = await Promise.race([credentialPromise, timeoutPromise]);
-            const verifyRes = await apiClient.post('/auth/webauthn/register/verify/', credential, {
-              headers: preAuthHeaders,
-            });
-            accessToken = verifyRes.data.access;
-            refreshToken = verifyRes.data.refresh;
-          } catch (passkeyErr: any) {
-            console.warn('[Passkey] Registration failed or cancelled on device, trying dev fallback:', passkeyErr);
-            const verifyRes = await apiClient.post('/auth/webauthn/register/verify/', { dev_bypass: true }, {
-              headers: preAuthHeaders,
-            });
-            accessToken = verifyRes.data.access;
-            refreshToken = verifyRes.data.refresh;
-          }
+          // Registration flow — same reason: use rawHttp, not apiClient.
+          const challengeRes = await rawHttp.get('/auth/webauthn/register/challenge/', {
+            headers: preAuthHeaders,
+          });
+          const credential = await WebAuthnClient.register(challengeRes.data);
+          const verifyRes = await rawHttp.post('/auth/webauthn/register/verify/', credential, {
+            headers: preAuthHeaders,
+          });
+          accessToken = verifyRes.data.access;
+          refreshToken = verifyRes.data.refresh;
         }
       }
 

@@ -5,6 +5,7 @@ export interface LoginCredentials {
   password: string;
   device_fingerprint?: string;
   device_token?: string; // Sent by mobile to satisfy device binding check
+  client_platform?: string;
 }
 
 export interface LoginResponse {
@@ -18,7 +19,10 @@ export interface LoginResponse {
 
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await apiClient.post<LoginResponse>('/auth/login/', credentials);
+    const response = await apiClient.post<LoginResponse>('/auth/login/', {
+      ...credentials,
+      client_platform: 'mobile',
+    });
     return response.data;
   }
 };

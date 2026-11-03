@@ -14,7 +14,7 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { View, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { useAuthStore, userApi } from '@/entities/user';
@@ -27,6 +27,18 @@ import { MainStack } from './MainStack';
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
+
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#000308',
+    card: '#000308',
+    border: '#111a2e',
+    primary: '#1a44dd',
+    text: '#e8eaf6',
+  },
+};
 
 export const RootNavigator: React.FC = () => {
   const { isAuthenticated, setUser, logout, isLoading, setLoading } = useAuthStore();
@@ -106,7 +118,7 @@ export const RootNavigator: React.FC = () => {
   // Navigation tree
   // ---------------------------------------------------------------------------
   return (
-    <NavigationContainer onReady={onNavigationReady}>
+    <NavigationContainer theme={navTheme} onReady={onNavigationReady}>
       {/* Core security rule: auth state is the single source of truth */}
       {isAuthenticated ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
