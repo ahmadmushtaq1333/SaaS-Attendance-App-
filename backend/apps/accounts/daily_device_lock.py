@@ -52,13 +52,11 @@ class DailyDeviceLockService:
         # --- Direction 2: Has THIS account already logged in from a different device today? ---
         existing_user_lock = DailyDeviceLock.objects.filter(user=user, date=today).first()
         if existing_user_lock and existing_user_lock.device_fingerprint != device_fingerprint:
-            raise serializers.ValidationError({
-                "device_locked": True,
-                "detail": (
-                    "Your account has already been accessed from a different device today. "
-                    "Use that device, or try again tomorrow."
-                ),
-            })
+            # If the student accessed the web dashboard earlier today, seamlessly update
+            # their active device lock to their mobile app so they are not locked out.
+            existing_user_lock.device_fingerprint = device_fingerprint
+            existing_user_lock.save(update_fields=['device_fingerprint'])
+            return
 
         # --- No lock exists for this fingerprint or user today — create one ---
         DailyDeviceLock.objects.get_or_create(
