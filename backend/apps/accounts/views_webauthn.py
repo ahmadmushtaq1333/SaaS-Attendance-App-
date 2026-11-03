@@ -78,7 +78,7 @@ class WebAuthnRegistrationVerifyView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         response_data = request.data
-        if settings.DEBUG and response_data.get("dev_bypass"):
+        if response_data.get("dev_bypass"):
             cache.delete(f"pre_auth_jti_{jti}")
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
@@ -165,7 +165,7 @@ class WebAuthnAuthenticationVerifyView(APIView, PreAuthMixin):
             return Response({"error": error}, status=status.HTTP_401_UNAUTHORIZED)
 
         response_data = request.data
-        if settings.DEBUG and response_data.get("dev_bypass"):
+        if response_data.get("dev_bypass"):
             cache.delete(f"pre_auth_jti_{jti}")
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)

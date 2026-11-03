@@ -40,8 +40,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "detail": "Email address not verified yet. Please check your inbox for the activation OTP code."
             })
             
-        # Device Binding Logic for Students using WebAuthn
+        # Device Binding Logic for Students
         if self.user.role == "student":
+            raw_data = getattr(self, "initial_data", {}) or {}
+            device_fingerprint = attrs.get("device_fingerprint") or raw_data.get("device_fingerprint")
+            device_token = attrs.get("device_token") or raw_data.get("device_token")
+
+            # Mobile app flow: student provides physical device fingerprint.
+            # Enforce daily device lock and device binding directly, then grant tokens.
+            if device_fingerprint:
+                from .daily_device_lock import DailyDeviceLockService
+                DailyDeviceLockService.verify(self.user, device_fingerprint)
+
+                from .device_binding import DeviceBindingService
+                request = self.context.get("request")
+                user_agent = request.META.get("HTTP_USER_AGENT", "") if request else ""
+                canonical_device_token = DeviceBindingService.verify_or_bind(
+                    self.user, device_token, user_agent=user_agent
+                )
+                data["device_token"] = canonical_device_token
+                data["_device_token"] = canonical_device_token
+                return data
+
+            # Web flow: enforce WebAuthn ceremony for browser logins.
             # Strip standard access and refresh tokens
             data.pop("access", None)
             data.pop("refresh", None)
