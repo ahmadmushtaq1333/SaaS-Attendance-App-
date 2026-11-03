@@ -40,29 +40,43 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "detail": "Email address not verified yet. Please check your inbox for the activation OTP code."
             })
             
-        # Device Binding Logic for Students
+        # Student Authentication & Device Binding Logic
         if self.user.role == "student":
             raw_data = getattr(self, "initial_data", {}) or {}
-            device_fingerprint = attrs.get("device_fingerprint") or raw_data.get("device_fingerprint")
-            device_token = attrs.get("device_token") or raw_data.get("device_token")
+            request = self.context.get("request")
+            user_agent = request.META.get("HTTP_USER_AGENT", "") if request else ""
+            client_platform = (
+                attrs.get("client_platform")
+                or raw_data.get("client_platform")
+                or (request.headers.get("x-client-platform", "").lower() if request and hasattr(request, "headers") else "")
+                or (request.META.get("HTTP_X_CLIENT_PLATFORM", "").lower() if request and hasattr(request, "META") else "")
+            )
+            is_mobile = (
+                client_platform == "mobile"
+                or "okhttp" in user_agent.lower()
+                or "quorum" in user_agent.lower()
+            )
 
-            # Mobile app flow: student provides physical device fingerprint.
-            # Enforce daily device lock and device binding directly, then grant tokens.
-            if device_fingerprint:
-                from .daily_device_lock import DailyDeviceLockService
-                DailyDeviceLockService.verify(self.user, device_fingerprint)
+            # Mobile app flow: physical device binding & daily anti-proxy lock.
+            # Directly grants tokens upon credential + device check without WebAuthn passkey ceremony.
+            if is_mobile:
+                device_fingerprint = attrs.get("device_fingerprint") or raw_data.get("device_fingerprint")
+                device_token = attrs.get("device_token") or raw_data.get("device_token")
+
+                if device_fingerprint:
+                    from .daily_device_lock import DailyDeviceLockService
+                    DailyDeviceLockService.verify(self.user, device_fingerprint)
 
                 from .device_binding import DeviceBindingService
-                request = self.context.get("request")
-                user_agent = request.META.get("HTTP_USER_AGENT", "") if request else ""
                 canonical_device_token = DeviceBindingService.verify_or_bind(
-                    self.user, device_token, user_agent=user_agent
+                    self.user, device_token, user_agent=user_agent or "Quorum Mobile"
                 )
                 data["device_token"] = canonical_device_token
                 data["_device_token"] = canonical_device_token
                 return data
 
-            # Web flow: enforce WebAuthn ceremony for browser logins.
+            # Web flow: enforce WebAuthn passkey ceremony for browser logins.
+            # Web sessions do not conflict with or modify mobile hardware device bindings.
             # Strip standard access and refresh tokens
             data.pop("access", None)
             data.pop("refresh", None)
