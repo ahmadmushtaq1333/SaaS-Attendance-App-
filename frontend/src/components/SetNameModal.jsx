@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import API from '../services/api';
 
-export default function SetNameModal({ user, onNameSet }) {
+export default function SetNameModal({ onNameSet }) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ export default function SetNameModal({ user, onNameSet }) {
     try {
       const res = await API.patch('/auth/me/', { full_name: name.trim() });
       onNameSet(res.data);
-    } catch (err) {
+    } catch {
       setError('Failed to save name. Please try again.');
     } finally {
       setLoading(false);

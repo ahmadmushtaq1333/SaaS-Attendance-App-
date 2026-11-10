@@ -169,6 +169,7 @@ export default function Login({ onLoginSuccess, lightMode, setLightMode }) {
     return () => {
       if (timer) clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewState, preAuthToken]);
 
 

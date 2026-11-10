@@ -48,7 +48,7 @@ export function useSessionWebSocket({
 
   const getWebSocketUrl = useCallback((id) => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    let base = "";
+    let base;
 
     if (apiUrl) {
       // E.g. https://api.quorum.com/api -> wss://api.quorum.com/ws/sessions/123/

@@ -101,6 +101,7 @@ export default function Dashboard({ user, onViewReports }) {
 
   const handleLiveRosterOverride = useCallback(() => {
     fetchLiveReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLiveSessionStopped = useCallback(() => {
