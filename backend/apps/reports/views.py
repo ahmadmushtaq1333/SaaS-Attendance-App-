@@ -266,16 +266,26 @@ class AsyncTaskStatusView(APIView):
         try:
             from celery.result import AsyncResult
             async_result = AsyncResult(task_id)
+            try:
+                task_status = async_result.status
+                is_ready = async_result.ready()
+            except Exception:
+                task_status = "UNKNOWN"
+                is_ready = True
+
             response_data = {
                 "task_id": task_id,
-                "status": async_result.status,
-                "ready": async_result.ready(),
+                "status": task_status,
+                "ready": is_ready,
             }
 
-            if async_result.successful():
-                response_data["result"] = async_result.result
-            elif async_result.failed():
-                response_data["error"] = str(async_result.result)
+            try:
+                if async_result.successful():
+                    response_data["result"] = async_result.result
+                elif async_result.failed():
+                    response_data["error"] = str(async_result.result)
+            except Exception:
+                pass
 
             return Response(response_data)
         except Exception as exc:

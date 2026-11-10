@@ -63,23 +63,25 @@ LOGGING = {
 
 # ── Celery & Channel Layers in Production ──────────────────────────────────────
 # Automatically detect Redis from Railway environment variables
+REDIS_URL = (
+    config("REDIS_PRIVATE_URL", default="")
+    or config("REDIS_URL", default="")
+)
+
 REDIS_HOST = config("REDISHOST", default="")
-if REDIS_HOST:
+if not REDIS_URL and REDIS_HOST:
     redis_user = config("REDISUSER", default="default")
     redis_password = config("REDISPASSWORD", default="")
     redis_port = config("REDISPORT", default="6379")
     auth_part = f"{redis_user}:{redis_password}@" if redis_password else ""
     REDIS_URL = f"redis://{auth_part}{REDIS_HOST}:{redis_port}/0"
-else:
-    REDIS_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/0")
 
-CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
-CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
-# In production, tasks are truly async unless explicitly forced eager
-CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=False, cast=bool)
+# Verify if a valid external Redis is actually configured (avoid 127.0.0.1 in production container)
+REDIS_AVAILABLE = bool(
+    REDIS_URL and not any(h in REDIS_URL for h in ("127.0.0.1", "localhost"))
+)
 
-# Redis-backed distributed channel layer for WebSocket scaling across multiple workers/nodes
-try:
+if REDIS_AVAILABLE:
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
@@ -88,13 +90,23 @@ try:
             },
         },
     }
-except Exception:
-    # Graceful fallback if Redis isn't reachable
+    CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
+    CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
+    # Tasks run async by default only if Redis is configured, unless overridden
+    CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=False, cast=bool)
+else:
+    # Graceful in-memory fallback: single-container Daphne on Railway works seamlessly
+    # without crashing WebSocket connections with Error 111.
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer"
         }
     }
+    # Execute Celery tasks synchronously in-process so bulk operations (e.g. bulk emails)
+    # never fail or get lost due to a missing/unreachable Redis broker.
+    CELERY_BROKER_URL = "memory://"
+    CELERY_RESULT_BACKEND = "cache+memory://"
+    CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=True, cast=bool)
 
 # ── Shared Cache (database-backed, cross-worker safe) ─────────────────────────
 # LocMemCache (the Django default) is per-process. With Gunicorn's 2 workers,

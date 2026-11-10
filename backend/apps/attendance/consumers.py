@@ -27,10 +27,14 @@ class AttendanceSessionConsumer(AsyncJsonWebsocketConsumer):
             return
 
         # 3. Join the session's broadcast group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+        try:
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Failed to join channel layer group %s: %s", self.room_group_name, exc)
 
         await self.accept()
 
@@ -42,11 +46,14 @@ class AttendanceSessionConsumer(AsyncJsonWebsocketConsumer):
         })
 
     async def disconnect(self, close_code):
-        if hasattr(self, "room_group_name"):
-            await self.channel_layer.group_discard(
-                self.room_group_name,
-                self.channel_name
-            )
+        if hasattr(self, "room_group_name") and getattr(self, "channel_layer", None):
+            try:
+                await self.channel_layer.group_discard(
+                    self.room_group_name,
+                    self.channel_name
+                )
+            except Exception:
+                pass
 
     async def receive_json(self, content):
         """Handle incoming messages from client (e.g. heartbeat / ping)."""
